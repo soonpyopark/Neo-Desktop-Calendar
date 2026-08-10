@@ -281,10 +281,8 @@ export function formatDayListExportEventParts(event, dayKey, tags) {
 
   const description = String(event?.description ?? '').trim();
   if (description) {
-    const lines = description.split(/\r?\n/);
-    for (const part of lines) {
-      details.push({ text: part, kind: 'description' });
-    }
+    // Keep newlines inside one detail so markdown parses like the event detail view.
+    details.push({ text: description, kind: 'description' });
   }
 
   for (const item of getExportEventLinks(event)) {

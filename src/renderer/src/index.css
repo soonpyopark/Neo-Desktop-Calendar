@@ -1272,6 +1272,11 @@ input[type='search']::-ms-clear,
   word-break: break-word;
 }
 
+.day-list-preview-md {
+  display: inline;
+  color: inherit;
+}
+
 .day-list-preview-detail-line + .day-list-preview-detail-line {
   margin-top: 0.25em;
 }

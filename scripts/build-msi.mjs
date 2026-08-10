@@ -4,7 +4,7 @@
  * Requires WiX CLI 7+ (winget install WiXToolset.WiXCLI) and: wix eula accept wix7
  *
  * Flow:
- * 1) sync-version
+ * 1) stamp APP_BUILD_STAMP + sync-version (same YYMMDD_HHMMSS as MSI filename)
  * 2) build desktop-hit helper + electron-vite build + electron-builder --win --dir → release/win-unpacked/
  * 3) stage into a no-space temp work dir (repo path has spaces; WiX Files Include splits on them)
  *    (+ .env without any 공휴일 API key — the key never leaves the build machine)
@@ -68,6 +68,25 @@ function formatTimestamp(date = new Date()) {
   const pad = (n) => String(n).padStart(2, '0')
   const yy = String(date.getFullYear()).slice(2)
   return `${yy}${pad(date.getMonth() + 1)}${pad(date.getDate())}_${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`
+}
+
+function resolveBuildStamp() {
+  const fromEnv = String(process.env.NEO_BUILD_STAMP || '').trim()
+  if (/^\d{6}_\d{6}$/.test(fromEnv)) return fromEnv
+  return formatTimestamp()
+}
+
+/** Embed the same YYMMDD_HHMMSS used in the MSI filename into the packaged app. */
+function stampBuildId(stamp) {
+  process.env.NEO_BUILD_STAMP = stamp
+  run(`node scripts/sync-version.mjs --stamp=${stamp}`)
+}
+
+function ensurePublished() {
+  const builtExe = path.join(PUBLISH_DIR, STAGE_EXE)
+  if (!fs.existsSync(builtExe)) {
+    throw new Error(`Publish output not found: ${builtExe}`)
+  }
 }
 
 function resolveWixCmd() {
@@ -228,14 +247,13 @@ function stageForMsi() {
   log(`staged: ${stageDir}`)
 }
 
-function buildMsi() {
+function buildMsi(timestamp) {
   if (!workDir) throw new Error('Work dir not prepared')
 
   const version = readVersion()
   const productVersion = toMsiVersion(version)
   // New ProductCode every build + MajorUpgrade AllowSameVersionUpgrades removes prior ARP entries.
   const productCode = randomUUID().toUpperCase()
-  const timestamp = formatTimestamp()
   const outputName = `${APP_NAME} v${version}_${timestamp}.msi`
   const outputPath = path.join(MSI_OUT_DIR, outputName)
   const workOutput = path.join(workDir, outputName.replace(/\s/g, '_'))
@@ -282,13 +300,22 @@ function cleanupWorkDir() {
 
 function main() {
   ensureWix()
-  run('node scripts/sync-version.mjs')
+  const timestamp = resolveBuildStamp()
+  if (process.env.NEO_SKIP_STAMP !== '1') {
+    stampBuildId(timestamp)
+  }
+  log(`build stamp: ${timestamp}`)
   logBundledHolidaySeed()
-  publishPortable()
+  if (process.env.NEO_SKIP_PUBLISH === '1') {
+    ensurePublished()
+    log('skip publish (reuse release/win-unpacked)')
+  } else {
+    publishPortable()
+  }
   stageForMsi()
 
   try {
-    buildMsi()
+    buildMsi(timestamp)
   } finally {
     cleanupWorkDir()
   }

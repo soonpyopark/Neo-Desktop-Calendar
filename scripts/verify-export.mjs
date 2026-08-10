@@ -179,6 +179,7 @@ function assertDayListMultiDay() {
   // Description body only — no "설명:" label (day-list / PDF).
   assert.ok(detail.line.includes('회의실 A\n준비물 챙기기'))
   assert.ok(!detail.line.includes('설명:'))
+  assert.ok(detail.details?.some((d) => d.kind === 'description' && d.text.includes('회의실 A')))
   assert.ok(detail.line.includes('링크: 회의 링크 — https://example.com/meet'))
   assert.ok(detail.line.includes('첨부: 자료.pdf'))
 }

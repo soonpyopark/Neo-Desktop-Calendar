@@ -4,7 +4,7 @@
  * Requires 7-Zip on the build machine (default: C:\Program Files\7-Zip\7z.exe).
  *
  * Flow:
- * 1) sync-version
+ * 1) stamp APP_BUILD_STAMP + sync-version (same YYMMDD_HHMMSS as zip filename)
  * 2) build desktop-hit helper + electron-vite build + electron-builder --win --dir
  * 3) stage win-unpacked (+ .env without holiday API key; no data/)
  * 4) 7z a -tzip → msi/Neo Desktop Calendar v{version}_YYMMDD_HHMMSS_portable.zip
@@ -47,6 +47,25 @@ function formatTimestamp(date = new Date()) {
   const pad = (n) => String(n).padStart(2, '0')
   const yy = String(date.getFullYear()).slice(2)
   return `${yy}${pad(date.getMonth() + 1)}${pad(date.getDate())}_${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`
+}
+
+function resolveBuildStamp() {
+  const fromEnv = String(process.env.NEO_BUILD_STAMP || '').trim()
+  if (/^\d{6}_\d{6}$/.test(fromEnv)) return fromEnv
+  return formatTimestamp()
+}
+
+/** Embed the same YYMMDD_HHMMSS used in the zip filename into the packaged app. */
+function stampBuildId(stamp) {
+  process.env.NEO_BUILD_STAMP = stamp
+  run(`node scripts/sync-version.mjs --stamp=${stamp}`)
+}
+
+function ensurePublished() {
+  const builtExe = path.join(PUBLISH_DIR, STAGE_EXE)
+  if (!fs.existsSync(builtExe)) {
+    throw new Error(`Publish output not found: ${builtExe}`)
+  }
 }
 
 function resolve7z() {
@@ -175,11 +194,10 @@ function stagePortable() {
   return stageDir
 }
 
-function buildZip(sevenZip) {
+function buildZip(sevenZip, timestamp) {
   if (!workDir) throw new Error('Work dir not prepared')
 
   const version = readVersion()
-  const timestamp = formatTimestamp()
   const outputName = `${APP_NAME} v${version}_${timestamp}_portable.zip`
   const outputPath = path.join(OUT_DIR, outputName)
 
@@ -207,13 +225,22 @@ function cleanupWorkDir() {
 function main() {
   const sevenZip = resolve7z()
   log(`7-Zip: ${sevenZip}`)
-  run('node scripts/sync-version.mjs')
+  const timestamp = resolveBuildStamp()
+  if (process.env.NEO_SKIP_STAMP !== '1') {
+    stampBuildId(timestamp)
+  }
+  log(`build stamp: ${timestamp}`)
   logBundledHolidaySeed()
-  publishApp()
+  if (process.env.NEO_SKIP_PUBLISH === '1') {
+    ensurePublished()
+    log('skip publish (reuse release/win-unpacked)')
+  } else {
+    publishApp()
+  }
   stagePortable()
 
   try {
-    buildZip(sevenZip)
+    buildZip(sevenZip, timestamp)
   } finally {
     cleanupWorkDir()
   }

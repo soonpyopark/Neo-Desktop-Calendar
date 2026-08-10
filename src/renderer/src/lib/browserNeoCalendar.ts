@@ -716,10 +716,11 @@ export function installBrowserNeoCalendar(): void {
       window.open(url, '_blank', 'noopener,noreferrer')
     },
     checkForUpdates: async () => {
-      const { APP_VERSION } = await import('../../../shared/constants')
+      const { APP_BUILD_STAMP, APP_VERSION } = await import('../../../shared/constants')
       const {
         RELEASES_LATEST_API,
         RELEASES_PAGE_URL,
+        maxBuildStamp,
         parseReleaseTag
       } = await import('../../../shared/updateCheck')
       try {
@@ -733,28 +734,44 @@ export function installBrowserNeoCalendar(): void {
           return {
             ok: false,
             current: APP_VERSION,
+            currentBuildStamp: APP_BUILD_STAMP,
             error: `GitHub 응답 오류 (HTTP ${response.status})`
           }
         }
-        const payload = (await response.json()) as { tag_name?: string; html_url?: string }
+        const payload = (await response.json()) as {
+          tag_name?: string
+          html_url?: string
+          updated_at?: string
+          published_at?: string
+          assets?: Array<{ name?: string }>
+        }
         const latest = parseReleaseTag(String(payload.tag_name || ''))
         if (!latest) {
           return {
             ok: false,
             current: APP_VERSION,
+            currentBuildStamp: APP_BUILD_STAMP,
             error: `릴리스 버전을 해석할 수 없습니다: ${payload.tag_name || '(없음)'}`
           }
         }
+        const assetNames = Array.isArray(payload.assets)
+          ? payload.assets.map((item) => String(item?.name || ''))
+          : []
         return {
           ok: true,
           current: APP_VERSION,
+          currentBuildStamp: APP_BUILD_STAMP,
           latest,
+          latestBuildStamp: maxBuildStamp(assetNames),
+          releaseUpdatedAt:
+            String(payload.updated_at || payload.published_at || '').trim() || null,
           releaseUrl: String(payload.html_url || '').trim() || RELEASES_PAGE_URL
         }
       } catch (error) {
         return {
           ok: false,
           current: APP_VERSION,
+          currentBuildStamp: APP_BUILD_STAMP,
           error: error instanceof Error ? error.message || '네트워크 오류' : '네트워크 오류'
         }
       }

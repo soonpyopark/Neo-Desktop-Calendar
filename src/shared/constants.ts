@@ -1,5 +1,11 @@
 /** Continues the My Desktop Calendar line (dev 1.1.x) rather than restarting at 1.0. */
-export const APP_VERSION = '1.2.0'
+export const APP_VERSION = '1.2.1'
+/**
+ * Package build id (YYMMDD_HHMMSS) — matches MSI/portable filename suffix.
+ * Refreshed by `build:release` / `build:msi` / `build:portable` for update checks
+ * when the GitHub tag version is unchanged (same-version republish).
+ */
+export const APP_BUILD_STAMP = '260810_182806'
 export const APP_NAME = 'Neo Desktop Calendar'
 export const APP_TITLE = `${APP_NAME} v${APP_VERSION}`
 export const SITE_URL = 'https://note4all.tistory.com'

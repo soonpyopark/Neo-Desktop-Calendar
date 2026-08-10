@@ -2,6 +2,7 @@ import type { UpdateCheckResult } from '../../../shared/updateCheck'
 import {
   RELEASES_PAGE_URL,
   isUpdateAvailable,
+  resolveUpdateKind,
   versionLabel
 } from '../../../shared/updateCheck'
 
@@ -25,6 +26,9 @@ export async function presentUpdateCheckResult(
 ): Promise<void> {
   const title = '업데이트 확인'
   const current = versionLabel(result.current)
+  const currentHint = result.currentBuildStamp
+    ? `${current} (${result.currentBuildStamp})`
+    : current
 
   if (!result.ok) {
     const open = await dialog.confirm(
@@ -42,21 +46,28 @@ export async function presentUpdateCheckResult(
   }
 
   if (isUpdateAvailable(result)) {
-    const open = await dialog.confirm(
-      `새 버전이 있습니다: ${versionLabel(result.latest || '')}\n\n현재 버전: ${current}`,
-      {
-        title,
-        confirmLabel: '다운로드',
-        cancelLabel: '나중에'
-      }
-    )
+    const kind = resolveUpdateKind(result)
+    const latest = versionLabel(result.latest || '')
+    const stampHint =
+      kind === 'build' && result.latestBuildStamp
+        ? `\n최신 빌드: ${result.latestBuildStamp}`
+        : ''
+    const message =
+      kind === 'build'
+        ? `같은 버전의 새 빌드가 있습니다: ${latest}\n\n현재 버전: ${currentHint}${stampHint}`
+        : `새 버전이 있습니다: ${latest}\n\n현재 버전: ${currentHint}`
+    const open = await dialog.confirm(message, {
+      title,
+      confirmLabel: '다운로드',
+      cancelLabel: '나중에'
+    })
     if (open) {
       await window.neoCalendar?.openExternal?.(result.releaseUrl || RELEASES_PAGE_URL)
     }
     return
   }
 
-  await dialog.alert(`최신 버전입니다.\n\n현재 버전: ${current}`, { title })
+  await dialog.alert(`최신 버전입니다.\n\n현재 버전: ${currentHint}`, { title })
 }
 
 /** Run GitHub Releases check then show the result dialog. */

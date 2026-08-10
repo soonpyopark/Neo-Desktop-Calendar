@@ -3,6 +3,9 @@
  * Sync display version into package.json / .env.example / MSI License.rtf / README.
  * Source of truth: src/shared/constants.ts → APP_VERSION
  *
+ * Optional: NEO_BUILD_STAMP=YYMMDD_HHMMSS (or --stamp=…) writes APP_BUILD_STAMP
+ * so MSI/portable filename and in-app update check stay aligned.
+ *
  * MSI license body (AGPL-3.0 + third-party summary): legal/msi-license-body.txt
  * Full notices: legal/THIRD_PARTY_NOTICES.md (also shipped via extraResources)
  * App license text: LICENSE (AGPL-3.0)
@@ -28,6 +31,42 @@ function readVersion() {
   const version = match?.[1] ?? pkg.version
   if (!version) throw new Error('Could not resolve app version')
   return version
+}
+
+function formatBuildStamp(date = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0')
+  const yy = String(date.getFullYear()).slice(2)
+  return `${yy}${pad(date.getMonth() + 1)}${pad(date.getDate())}_${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`
+}
+
+function resolveStampArg() {
+  const fromEnv = String(process.env.NEO_BUILD_STAMP || '').trim()
+  if (/^\d{6}_\d{6}$/.test(fromEnv)) return fromEnv
+  for (const arg of process.argv.slice(2)) {
+    if (arg === '--refresh-stamp') return formatBuildStamp()
+    const m = /^--stamp=(.+)$/.exec(arg)
+    if (m && /^\d{6}_\d{6}$/.test(m[1].trim())) return m[1].trim()
+  }
+  return null
+}
+
+/** Keep APP_BUILD_STAMP in sync with MSI/portable package filename suffix. */
+function syncBuildStamp(stamp) {
+  let text = fs.readFileSync(CONSTANTS_PATH, 'utf8')
+  if (/APP_BUILD_STAMP\s*=\s*['"][^'"]*['"]/.test(text)) {
+    text = text.replace(
+      /APP_BUILD_STAMP\s*=\s*['"][^'"]*['"]/,
+      `APP_BUILD_STAMP = '${stamp}'`
+    )
+  } else {
+    text = text.replace(
+      /(export const APP_VERSION\s*=\s*['"][^'"]*['"]\s*\n)/,
+      `$1export const APP_BUILD_STAMP = '${stamp}'\n`
+    )
+  }
+  if (writeIfChanged(CONSTANTS_PATH, text)) {
+    console.log(`[sync-version] APP_BUILD_STAMP -> ${stamp}`)
+  }
 }
 
 /**
@@ -150,9 +189,16 @@ function syncMsiLicenseRtf(version) {
   }
 }
 
+const stamp = resolveStampArg()
+if (stamp) syncBuildStamp(stamp)
+
 const version = readVersion()
 syncPackageJson(version)
 syncReadme(version)
 syncEnvExample(version)
 syncMsiLicenseRtf(version)
-console.log(`[sync-version] done (${APP_NAME} v${version})`)
+console.log(
+  stamp
+    ? `[sync-version] done (${APP_NAME} v${version}, build ${stamp})`
+    : `[sync-version] done (${APP_NAME} v${version})`
+)

@@ -30,6 +30,7 @@ import { useImageActionMenu } from './ImageActionMenu'
 import { openExternalUrl } from '../lib/openExternal'
 import { cn } from '../lib/cn'
 import { useAppDialog } from './AppDialogProvider'
+import { SimpleMarkdownText } from './SimpleMarkdownText'
 
 export type DayListPreviewPanelProps = {
   open: boolean
@@ -79,6 +80,9 @@ type TextPart = {
 type AttachmentRef = { eventId: string; attachmentId: string }
 
 type PreviewDetailLine = {
+  kind: 'description' | 'link' | 'attachment' | 'other'
+  /** Original detail text (markdown source for descriptions). */
+  text: string
   parts: TextPart[]
   /** Set when the line is a 첨부 entry — clicking opens that file. */
   attachment: AttachmentRef | null
@@ -569,13 +573,19 @@ export function DayListPreviewPanel({
             const split = buildTitleParts(event.head, needle, index)
             index = split.nextIndex
             const detailLines: PreviewDetailLine[] = event.details.map((detail) => {
+              const kind =
+                detail.kind === 'description' ||
+                detail.kind === 'link' ||
+                detail.kind === 'attachment'
+                  ? detail.kind
+                  : 'other'
               const detailSplit =
-                detail.kind === 'description'
+                kind === 'description'
                   ? buildMarkdownTextParts(detail.text, needle, index)
                   : buildTextParts(detail.text, needle, index)
               index = detailSplit.nextIndex
               const attachmentId =
-                detail.kind === 'attachment' && detail.attachmentId ? detail.attachmentId : ''
+                kind === 'attachment' && detail.attachmentId ? detail.attachmentId : ''
               const attachment =
                 attachmentId
                   ? { eventId: event.eventId, attachmentId }
@@ -584,6 +594,8 @@ export function DayListPreviewPanel({
                 ? findAttachmentMeta(store, attachment.eventId, attachment.attachmentId)
                 : null
               return {
+                kind,
+                text: detail.text,
                 parts: detailSplit.parts,
                 attachment,
                 isImage: Boolean(meta && isImageAttachment(meta)),
@@ -1046,6 +1058,11 @@ export function DayListPreviewPanel({
                                       parts={line.parts}
                                       activeIndex={activeIndex}
                                       onOpen={() => void openAttachment(line.attachment)}
+                                    />
+                                  ) : line.kind === 'description' && !query.trim() ? (
+                                    <SimpleMarkdownText
+                                      text={line.text}
+                                      className="day-list-preview-md whitespace-pre-wrap break-words"
                                     />
                                   ) : (
                                     <HighlightedText parts={line.parts} activeIndex={activeIndex} />

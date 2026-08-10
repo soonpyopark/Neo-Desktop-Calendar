@@ -13,7 +13,7 @@ import {
   COMPLETED_LABEL_COLOR,
   splitEventTitleRuns,
 } from '../../shared/mdcExport/eventTags.js'
-import { parseSimpleMarkdown, stripSimpleMarkdown } from '../../shared/simpleMarkdown.js'
+import { parseSimpleMarkdown } from '../../shared/simpleMarkdown.js'
 
 const FONT_NAME = 'Malgun Gothic'
 const THIN_BORDER = {
@@ -351,6 +351,72 @@ function getDetailImageAsset(assets, eventId, detail) {
 }
 
 /**
+ * Height of one markdown-rendered detail line (matches drawMarkdownDetailLine wrap).
+ * @param {import('pdfkit').default} doc
+ * @param {string} text
+ * @param {number} textWidth
+ */
+function measureMarkdownDetailLineHeight(doc, text, textWidth) {
+  const runs = parseSimpleMarkdown(text);
+  const maxWidth = Math.max(1, textWidth);
+  const right = textWidth; // relative
+  let x = 0;
+  let lines = 1;
+  doc.fontSize(PDF_EVENT_FONT_SIZE);
+  const lineHeight = () => {
+    doc.font('Body').fontSize(PDF_EVENT_FONT_SIZE);
+    return doc.currentLineHeight();
+  };
+
+  const ensureRoom = (runWidth) => {
+    if (x > 0 && x + runWidth > right) {
+      x = 0;
+      lines += 1;
+    }
+  };
+
+  for (const run of runs) {
+    const chunks = String(run.text ?? '').split(/(\n|\s+)/);
+    for (const chunk of chunks) {
+      if (!chunk) continue;
+      if (chunk === '\n') {
+        x = 0;
+        lines += 1;
+        continue;
+      }
+      doc.font(run.bold || run.code ? 'Bold' : 'Body').fontSize(PDF_EVENT_FONT_SIZE);
+      let remaining = chunk;
+      while (remaining.length > 0) {
+        let fit = remaining;
+        let fitWidth = doc.widthOfString(fit);
+        if (fitWidth > maxWidth && remaining.length > 1) {
+          let lo = 1;
+          let hi = remaining.length;
+          while (lo < hi) {
+            const mid = Math.ceil((lo + hi) / 2);
+            const w = doc.widthOfString(remaining.slice(0, mid));
+            if (x + w <= right || (x === 0 && w <= maxWidth)) lo = mid;
+            else hi = mid - 1;
+          }
+          fit = remaining.slice(0, Math.max(1, lo));
+          fitWidth = doc.widthOfString(fit);
+        }
+        ensureRoom(fitWidth);
+        x += fitWidth;
+        remaining = remaining.slice(fit.length);
+        if (remaining.length > 0) {
+          x = 0;
+          lines += 1;
+        }
+      }
+    }
+  }
+
+  doc.font('Body');
+  return Math.max(lineHeight(), lines * lineHeight());
+}
+
+/**
  * Height of the purple detail box (text lines + optional inline images).
  * @param {import('pdfkit').default} doc
  * @param {{ eventId?: string, details?: { text: string, kind?: string, attachmentId?: string }[] }} event
@@ -368,9 +434,11 @@ function measureDayListDetailBoxHeight(doc, event, textWidth, imageAssets) {
 
   for (const detail of details) {
     const raw = String(detail?.text ?? '');
-    const measureText =
-      detail?.kind === 'description' ? stripSimpleMarkdown(raw) : raw;
-    height += doc.heightOfString(measureText, { width: innerWidth });
+    if (detail?.kind === 'description') {
+      height += measureMarkdownDetailLineHeight(doc, raw, innerWidth);
+    } else {
+      height += doc.heightOfString(raw, { width: innerWidth });
+    }
     const asset = getDetailImageAsset(imageAssets, eventId, detail);
     if (asset) height += PDF_IMAGE_GAP + asset.drawH;
   }
@@ -378,7 +446,7 @@ function measureDayListDetailBoxHeight(doc, event, textWidth, imageAssets) {
 }
 
 /**
- * Draw one description line with **bold** / *italic* / ~~strike~~ / `code`.
+ * Draw one description line with **bold** / *italic* / ~~strike~~ / `code` / [label](url).
  * @param {import('pdfkit').default} doc
  * @param {string} text
  * @param {number} textX
@@ -412,10 +480,16 @@ function drawMarkdownDetailLine(doc, text, textX, y, textWidth) {
       : run.code
         ? EXPORT_COLORS.heading
         : EXPORT_COLORS.body;
-    const chunks = String(run.text ?? '').split(/(\s+)/);
+    const chunks = String(run.text ?? '').split(/(\n|\s+)/);
     for (const chunk of chunks) {
       if (!chunk) continue;
-      doc.font(run.bold || run.code ? 'Bold' : 'Body').fontSize(PDF_EVENT_FONT_SIZE);
+      if (chunk === '\n') {
+        x = textX;
+        lineY += lineHeight();
+        lines += 1;
+        continue;
+      }
+      doc.font(run.bold || run.code || run.italic ? 'Bold' : 'Body').fontSize(PDF_EVENT_FONT_SIZE);
       doc.fillColor(fill);
 
       // Soft-wrap long unbroken tokens.
@@ -436,12 +510,21 @@ function drawMarkdownDetailLine(doc, text, textX, y, textWidth) {
           fitWidth = doc.widthOfString(fit);
         }
         ensureRoom(fitWidth);
-        doc.text(fit, x, lineY, { lineBreak: false, continued: false });
-        if (run.href || run.strike) {
-          const mid = lineY + lineHeight() * (run.href ? 0.85 : 0.55);
+        if (run.code) {
           doc
             .save()
-            .lineWidth(0.7)
+            .fillColor('#eef1f4')
+            .roundedRect(x - 0.5, lineY - 0.5, fitWidth + 1, lineHeight() * 0.92, 1)
+            .fill()
+            .restore();
+          doc.fillColor(fill);
+        }
+        doc.text(fit, x, lineY, { lineBreak: false, continued: false });
+        if (run.href || run.strike || run.italic) {
+          const mid = lineY + lineHeight() * (run.href ? 0.85 : run.italic ? 0.92 : 0.55);
+          doc
+            .save()
+            .lineWidth(run.italic ? 0.45 : 0.7)
             .strokeColor(fill)
             .moveTo(x, mid)
             .lineTo(x + fitWidth, mid)
@@ -1161,38 +1244,59 @@ async function buildExcelDayListBuffer(layout) {
         if (eventIndex > 0) {
           richText.push({ text: '\n', font: { name: FONT_NAME, size: 9 } });
         }
-        const eventLines = String(event.line || '').split('\n');
-        eventLines.forEach((line, lineIndex) => {
-          if (lineIndex > 0) {
-            richText.push({ text: '\n', font: { name: FONT_NAME, size: 9 } });
-          }
-          if (lineIndex === 0) {
-            richText.push({
-              text: '▎ ',
-              font: { name: FONT_NAME, size: 9, color: { argb: hexToArgb(event.color) } },
-            });
-            for (const run of splitEventTitleRuns(line)) {
-              richText.push({
-                text: run.text,
-                font: {
-                  name: FONT_NAME,
-                  size: 9,
-                  bold: run.completed,
-                  color: {
-                    argb: hexToArgb(
-                      run.completed ? COMPLETED_LABEL_COLOR : EXPORT_COLORS.body
-                    ),
+        richText.push({
+          text: '▎ ',
+          font: { name: FONT_NAME, size: 9, color: { argb: hexToArgb(event.color) } },
+        });
+        for (const run of splitEventTitleRuns(event.head ?? event.line.split('\n')[0] ?? '')) {
+          richText.push({
+            text: run.text,
+            font: {
+              name: FONT_NAME,
+              size: 9,
+              bold: run.completed,
+              color: {
+                argb: hexToArgb(
+                  run.completed ? COMPLETED_LABEL_COLOR : EXPORT_COLORS.body
+                ),
+              },
+            },
+          });
+        }
+
+        const details = Array.isArray(event.details) ? event.details : [];
+        for (const detail of details) {
+          richText.push({ text: '\n', font: { name: FONT_NAME, size: 9 } });
+          richText.push({
+            text: '  ',
+            font: { name: FONT_NAME, size: 9 },
+          });
+          if (detail?.kind === 'description') {
+            for (const run of parseSimpleMarkdown(String(detail.text ?? ''))) {
+              const chunks = String(run.text ?? '').split('\n');
+              chunks.forEach((chunk, chunkIndex) => {
+                if (chunkIndex > 0) {
+                  richText.push({ text: '\n  ', font: { name: FONT_NAME, size: 9 } });
+                }
+                richText.push({
+                  text: chunk,
+                  font: {
+                    name: FONT_NAME,
+                    size: 9,
+                    bold: Boolean(run.bold || run.code),
+                    italic: Boolean(run.italic),
+                    strike: Boolean(run.strike),
+                    color: {
+                      argb: hexToArgb(run.href ? '#1a73e8' : EXPORT_COLORS.muted),
+                    },
+                    underline: Boolean(run.href),
                   },
-                },
+                });
               });
             }
           } else {
             richText.push({
-              text: '  ',
-              font: { name: FONT_NAME, size: 9 },
-            });
-            richText.push({
-              text: line,
+              text: String(detail?.text ?? ''),
               font: {
                 name: FONT_NAME,
                 size: 9,
@@ -1200,7 +1304,7 @@ async function buildExcelDayListBuffer(layout) {
               },
             });
           }
-        });
+        }
       });
       contentCell.value = { richText };
     }

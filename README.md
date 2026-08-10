@@ -1,4 +1,4 @@
-# Neo Desktop Calendar v1.2.0
+# Neo Desktop Calendar v1.2.1
 
 Lightweight Electron desktop wallpaper calendar with dynamic click-through.
 
@@ -70,13 +70,24 @@ npm run build
 npm run dist
 ```
 
-### MSI 설치판 (MDC와 동일 흐름)
+### MSI + 포터블 (동일 빌드 스탬프)
+
+```bash
+npm run build:release
+```
+
+Electron을 한 번만 빌드한 뒤 MSI와 portable zip을 **같은** `YYMMDD_HHMMSS`로 만듭니다
+(업데이트 확인 C — 같은 버전에서 자산 스탬프 비교용).
+
+개별 빌드:
 
 ```bash
 npm run build:msi
+npm run build:portable
 ```
 
 사전 요구: [WiX CLI 7+](https://wixtoolset.org/) (`winget install WiXToolset.WiXCLI`) 후 `wix eula accept wix7`  
+포터블 zip은 [7-Zip](https://www.7-zip.org/) 필요.  
 대한민국 공휴일은 커밋된 `src/shared/seed/holidays-kr.json`(현재 3년치)을 그대로 번들합니다.
 **빌드는 이 파일을 갱신하지 않습니다.** 갱신이 필요할 때만 `npm run seed:holidays`를 직접 실행하면
 실행 연도부터 3년치를 API에서 받아 다시 굽습니다. 이때만 `.env`(또는 환경 변수)의
@@ -84,14 +95,16 @@ npm run build:msi
 사용자는 휴일 데이터를 키 없이 그대로 받고, 최신화가 필요하면 설정에서 본인 키로 동기화합니다
 (「저장」을 직접 체크한 경우에만 그 키가 설정에 남습니다).  
 → `msi/Neo Desktop Calendar v{버전}_YYMMDD_HHMMSS.msi` (현재 사용자 설치, 관리자 권한 불필요)  
+→ `msi/Neo Desktop Calendar v{버전}_YYMMDD_HHMMSS_portable.zip`  
 설치 마법사에서 **설치 폴더 선택** 가능 (`WixUI_InstallDir`).  
 MSI에는 Electron 런타임이 포함됩니다 (`Neo Desktop Calendar.exe` + `resources/app.asar` + DLL). 별도 Electron 설치 불필요.
 
 | 스크립트 | 설명 |
 | --- | --- |
 | `npm run dist` | NSIS 설치 파일 (`release/`) |
-| `npm run build:msi` | WiX MSI 설치판 (`msi/*.msi`) |
-| `npm run build:portable` | 포터블 zip (`msi/*_portable.zip`, 7-Zip 필요) |
+| `npm run build:release` | MSI + portable (동일 스탬프, Electron 1회 빌드) |
+| `npm run build:msi` | WiX MSI 설치판만 (`msi/*.msi`) |
+| `npm run build:portable` | 포터블 zip만 (`msi/*_portable.zip`, 7-Zip 필요) |
 | `npm run sync-version` | `constants.ts` 버전 → package.json / License.rtf / 고지 동기화 |
 | `npm run update:all` | npm 의존성 업데이트 (+ desktop-hit 헬퍼 재빌드) |
 | `npm run build:update_all` | `update:all` 후 MSI 빌드 |

@@ -1,6 +1,6 @@
 {
   "name": "neo-desktop-calendar",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Neo Desktop Calendar — desktop wallpaper calendar with click-through",
   "main": "./out/main/main.js",
   "author": "Neo Desktop Calendar",
@@ -24,6 +24,7 @@
     "dist": "npm run build:desktop-hit && npm run build && electron-builder --win",
     "build:msi": "node scripts/build-msi.mjs",
     "build:portable": "node scripts/build-portable.mjs",
+    "build:release": "node scripts/build-release.mjs",
     "build:dist:msi": "node scripts/build-msi.mjs"
   },
   "dependencies": {
