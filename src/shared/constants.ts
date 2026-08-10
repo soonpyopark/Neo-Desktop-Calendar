@@ -3,6 +3,9 @@ export const APP_VERSION = '1.2.0'
 export const APP_NAME = 'Neo Desktop Calendar'
 export const APP_TITLE = `${APP_NAME} v${APP_VERSION}`
 export const SITE_URL = 'https://note4all.tistory.com'
+/** SPDX identifier — matches package.json / LICENSE. */
+export const APP_LICENSE = 'AGPL-3.0-only'
+export const APP_SOURCE_URL = 'https://github.com/soonpyopark/Neo-Desktop-Calendar'
 
 export const DEFAULT_ADMIN_ID = 'admin'
 export const DEFAULT_ADMIN_PW = 'admin1234'

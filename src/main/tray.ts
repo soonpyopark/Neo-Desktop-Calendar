@@ -3,7 +3,7 @@ import { existsSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { DesktopModeController } from './desktopMode'
 import { withNativeDialog } from './nativeDialogGuard'
-import { APP_NAME, APP_TITLE, SITE_URL } from '../shared/constants'
+import { APP_LICENSE, APP_NAME, APP_SOURCE_URL, APP_TITLE, SITE_URL } from '../shared/constants'
 import {
   RELEASES_PAGE_URL,
   isUpdateAvailable,
@@ -166,9 +166,11 @@ export function createAppTray(options: {
       message: APP_TITLE,
       detail:
         `Electron 데스크톱 셸\n${SITE_URL}\n\n`
-        + '제3자 고지: 설치 폴더 resources/notices/THIRD_PARTY_NOTICES.md\n'
+        + `라이선스: ${APP_LICENSE} (설치 폴더 resources/notices/LICENSE)\n`
+        + '제3자 고지: resources/notices/THIRD_PARTY_NOTICES.md\n'
         + '7-Zip(LGPL): resources/7zip/\n'
-        + '공휴일: 공공데이터 참고 · 공식 기관 제품 아님',
+        + '공휴일: 공공데이터 참고 · 공식 기관 제품 아님\n'
+        + `소스: ${APP_SOURCE_URL}`,
       buttons: ['확인', '사이트 열기'],
       defaultId: 0,
       cancelId: 0,

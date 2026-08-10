@@ -3,8 +3,9 @@
  * Sync display version into package.json / .env.example / MSI License.rtf / README.
  * Source of truth: src/shared/constants.ts → APP_VERSION
  *
- * MSI license body (third-party notices summary): legal/msi-license-body.txt
+ * MSI license body (AGPL-3.0 + third-party summary): legal/msi-license-body.txt
  * Full notices: legal/THIRD_PARTY_NOTICES.md (also shipped via extraResources)
+ * App license text: LICENSE (AGPL-3.0)
  */
 
 import fs from 'node:fs'

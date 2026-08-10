@@ -2,6 +2,13 @@
 
 Lightweight Electron desktop wallpaper calendar with dynamic click-through.
 
+## License
+
+**GNU Affero General Public License v3.0 (AGPL-3.0-only)** — see [`LICENSE`](LICENSE).
+
+소스·바이너리 재배포·개작 시 AGPL-3.0 의무(소스 제공 등)가 적용됩니다.  
+제3자 구성 요소 고지: [`legal/THIRD_PARTY_NOTICES.md`](legal/THIRD_PARTY_NOTICES.md)
+
 ## Stack
 
 - Electron (main)
@@ -89,8 +96,9 @@ MSI에는 Electron 런타임이 포함됩니다 (`Neo Desktop Calendar.exe` + `r
 | `npm run update:all` | npm 의존성 업데이트 (+ desktop-hit 헬퍼 재빌드) |
 | `npm run build:update_all` | `update:all` 후 MSI 빌드 |
 
-공개·유료 배포 시 제3자 고지 초안: [`legal/THIRD_PARTY_NOTICES.md`](legal/THIRD_PARTY_NOTICES.md)  
-(설치본에는 `resources/notices/THIRD_PARTY_NOTICES.md`로 포함)
+공개 배포 시 라이선스: **AGPL-3.0** ([`LICENSE`](LICENSE))  
+제3자 고지: [`legal/THIRD_PARTY_NOTICES.md`](legal/THIRD_PARTY_NOTICES.md)  
+(설치본: `resources/notices/LICENSE`, `resources/notices/THIRD_PARTY_NOTICES.md`)
 
 ### 의존성 업데이트
 

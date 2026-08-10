@@ -4,7 +4,7 @@
   "description": "Neo Desktop Calendar — desktop wallpaper calendar with click-through",
   "main": "./out/main/main.js",
   "author": "Neo Desktop Calendar",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "scripts": {
     "dev": "electron-vite dev",
     "dev:restart": "node scripts/dev-restart.mjs",
@@ -88,6 +88,10 @@
       {
         "from": "resources/7zip/NOTICE.txt",
         "to": "7zip/NOTICE.txt"
+      },
+      {
+        "from": "LICENSE",
+        "to": "notices/LICENSE"
       },
       {
         "from": "legal/THIRD_PARTY_NOTICES.md",

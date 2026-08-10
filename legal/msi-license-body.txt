@@ -1,8 +1,15 @@
 Neo Desktop Calendar
 https://note4all.tistory.com
 
-본 소프트웨어는 MIT 라이선스 하에 배포될 수 있습니다.
+본 소프트웨어(Neo Desktop Calendar)는 GNU Affero General Public License
+버전 3(AGPL-3.0)에 따라 배포됩니다.
+
+- 소스 코드: 저장소 루트 LICENSE (AGPL-3.0 전문)
+- 수정·재배포·네트워크(서버) 제공 시 AGPL-3.0 의무(소스 제공 등)가 적용됩니다.
+- GitHub: https://github.com/soonpyopark/Neo-Desktop-Calendar
+
 아래 오픈소스·공개 데이터·런타임을 포함하거나 사용합니다.
+(각각 고유 라이선스가 있으며, 앱 본체 AGPL과 별개입니다.)
 
 1) 7-Zip (7za.exe) — Copyright (C) Igor Pavlov — GNU LGPL
    백업 ZIP용 별도 실행 파일. 설치 폴더 resources/7zip/ 참고.
@@ -21,3 +28,4 @@ https://note4all.tistory.com
    본 앱은 정부·공공기관의 공식 제품이 아닙니다.
 
 전체 제3자 고지: notices/THIRD_PARTY_NOTICES.md
+앱 라이선스 전문: LICENSE (AGPL-3.0)
