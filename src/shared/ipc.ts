@@ -489,6 +489,7 @@ export type NeoCalendarApi = {
     includeCompleted?: boolean
     includeHolidays?: boolean
     excludeHiddenCalendars?: boolean
+    dayListSortDesc?: boolean
     asAdmin?: boolean
   }) => Promise<{ ok: boolean; canceled?: boolean; path?: string; error?: string }>
   getDataRoot: () => Promise<string>

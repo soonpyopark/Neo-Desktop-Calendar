@@ -667,6 +667,7 @@ export function DayListPreviewPanel({
           includeCompleted: true,
           includeHolidays: true,
           excludeHiddenCalendars: true,
+          dayListSortDesc: sortDir === 'desc',
           asAdmin: true
         })
         if (result.canceled) return
@@ -683,7 +684,7 @@ export function DayListPreviewPanel({
         setExporting(false)
       }
     },
-    [alert, exporting, shownMonth, shownYear]
+    [alert, exporting, shownMonth, shownYear, sortDir]
   )
 
   const closeFind = useCallback((): void => {

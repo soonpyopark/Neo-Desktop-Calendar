@@ -20,6 +20,11 @@ export type ExportCalendarRequest = {
   /** Default false for API back-compat; UI defaults to true. */
   excludeHiddenCalendars?: boolean
   /**
+   * Day-list date order. Default false (1일 → 말일) for back-compat.
+   * Ignored for month-grid.
+   */
+  dayListSortDesc?: boolean
+  /**
    * Legacy published/admin gate used by filterEventsForViewer.
    * Prefer excludeHiddenCalendars for eye-toggle calendars.
    */

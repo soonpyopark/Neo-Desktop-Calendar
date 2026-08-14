@@ -12,6 +12,7 @@ export function normalizeExportRequest(input?: Record<string, unknown>): {
   includeCompleted: boolean
   includeHolidays: boolean
   excludeHiddenCalendars: boolean
+  dayListSortDesc: boolean
   asAdmin: boolean
 }
 

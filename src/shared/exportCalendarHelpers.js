@@ -73,6 +73,7 @@ export function normalizeExportRequest(input = {}) {
     includeCompleted: input.includeCompleted !== false,
     includeHolidays: input.includeHolidays !== false,
     excludeHiddenCalendars: Boolean(input.excludeHiddenCalendars),
+    dayListSortDesc: Boolean(input.dayListSortDesc),
     asAdmin: input.asAdmin !== false
   }
 }

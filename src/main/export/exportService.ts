@@ -52,7 +52,8 @@ export async function buildCalendarExportBuffer(input: ExportCalendarInput): Pro
     asAdmin: request.asAdmin !== false,
     includeCompleted: request.includeCompleted !== false,
     includeHolidays: request.includeHolidays !== false,
-    excludeHiddenCalendars: Boolean(request.excludeHiddenCalendars)
+    excludeHiddenCalendars: Boolean(request.excludeHiddenCalendars),
+    dayListSortDesc: Boolean(request.dayListSortDesc)
   }
   const format = request.format
   const buffer = Buffer.from(

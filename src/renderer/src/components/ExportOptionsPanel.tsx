@@ -61,6 +61,7 @@ export function ExportOptionsPanel({
   const [includeCompleted, setIncludeCompleted] = useState(true)
   const [includeHolidays, setIncludeHolidays] = useState(true)
   const [excludeHiddenCalendars, setExcludeHiddenCalendars] = useState(true)
+  const [dayListSortDesc, setDayListSortDesc] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -73,6 +74,7 @@ export function ExportOptionsPanel({
     setIncludeCompleted(true)
     setIncludeHolidays(true)
     setExcludeHiddenCalendars(true)
+    setDayListSortDesc(false)
   }, [open, reference, weekStartsOn])
 
   if (!open) return null
@@ -98,6 +100,7 @@ export function ExportOptionsPanel({
       includeCompleted,
       includeHolidays,
       excludeHiddenCalendars,
+      dayListSortDesc: layout === 'dayList' ? dayListSortDesc : false,
       asAdmin: true
     })
   }
@@ -125,7 +128,7 @@ export function ExportOptionsPanel({
         </InteractionUI>
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto px-5 py-3 text-sm text-gcal-body">
+      <div className="flex-1 space-y-3 overflow-hidden px-5 py-3 text-sm text-gcal-body">
         <section>
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gcal-muted">
             형식
@@ -186,6 +189,36 @@ export function ExportOptionsPanel({
             </InteractionUI>
           </div>
         </section>
+
+        {layout === 'dayList' ? (
+          <section>
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gcal-muted">
+              날짜 정렬
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <InteractionUI
+                as="button"
+                type="button"
+                className={radioClass(!dayListSortDesc)}
+                disabled={busy}
+                title="1일 → 말일"
+                onClick={() => setDayListSortDesc(false)}
+              >
+                오름차순
+              </InteractionUI>
+              <InteractionUI
+                as="button"
+                type="button"
+                className={radioClass(dayListSortDesc)}
+                disabled={busy}
+                title="말일 → 1일"
+                onClick={() => setDayListSortDesc(true)}
+              >
+                내림차순
+              </InteractionUI>
+            </div>
+          </section>
+        ) : null}
 
         <section>
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gcal-muted">

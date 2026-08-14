@@ -56,6 +56,7 @@ function collectHolidayDateKeys(store, startDate, endDate, options) {
  *   includeHolidays?: boolean
  *   excludeHiddenCalendars?: boolean
  *   asAdmin?: boolean
+ *   dayListSortDesc?: boolean
  * }} [options]
  */
 export function prepareDayListExportLayout(store, range, options = {}) {
@@ -99,7 +100,7 @@ export function prepareDayListExportLayout(store, range, options = {}) {
   const holidayKeys = collectHolidayDateKeys(store, startDate, endDate, options)
 
   const dateKeys = listDateKeysInRange(startDate, endDate)
-  const rows = dateKeys.map((dayKey) => {
+  const rowsAsc = dateKeys.map((dayKey) => {
     const dayEvents = [...(byDay.get(dayKey) ?? [])]
       .sort((a, b) => compareEventsForDayDisplay(a, b, dayKey))
       .map((event) => {
@@ -128,6 +129,7 @@ export function prepareDayListExportLayout(store, range, options = {}) {
       contentText: dayEvents.map((event) => event.line).join('\n'),
     }
   })
+  const rows = options.dayListSortDesc ? [...rowsAsc].reverse() : rowsAsc
 
   const title =
     startDate === endDate

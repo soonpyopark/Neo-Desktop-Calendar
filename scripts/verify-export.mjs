@@ -194,6 +194,22 @@ function assertDayListMultiDay() {
   assert.ok(detail.details?.some((d) => d.kind === 'description' && d.text.includes('회의실 A')))
   assert.ok(detail.line.includes('링크: 회의 링크 — https://example.com/meet'))
   assert.ok(detail.line.includes('첨부: 자료.pdf'))
+  assert.equal(layout.rows[0].dayKey, '2026-07-01')
+  assert.equal(layout.rows[layout.rows.length - 1].dayKey, '2026-07-07')
+
+  const desc = prepareDayListExportLayout(
+    store,
+    { startDate: '2026-07-01', endDate: '2026-07-07' },
+    {
+      includeCompleted: true,
+      includeHolidays: true,
+      excludeHiddenCalendars: true,
+      asAdmin: true,
+      dayListSortDesc: true
+    }
+  )
+  assert.equal(desc.rows[0].dayKey, '2026-07-07')
+  assert.equal(desc.rows[desc.rows.length - 1].dayKey, '2026-07-01')
 
   const html = buildHtmlDocument(layout)
   assert.ok(html.startsWith('<!DOCTYPE html>'))

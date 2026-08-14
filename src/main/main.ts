@@ -1089,6 +1089,7 @@ function registerIpc(): void {
         includeCompleted?: boolean
         includeHolidays?: boolean
         excludeHiddenCalendars?: boolean
+        dayListSortDesc?: boolean
         asAdmin?: boolean
       }
     ) => {
@@ -1126,6 +1127,7 @@ function registerIpc(): void {
           includeCompleted: input?.includeCompleted !== false,
           includeHolidays: input?.includeHolidays !== false,
           excludeHiddenCalendars: excludeHidden,
+          dayListSortDesc: Boolean(input?.dayListSortDesc),
           asAdmin: isSuperAdminUser(user) && input?.asAdmin !== false
         },
         parent && !parent.isDestroyed() ? parent : null

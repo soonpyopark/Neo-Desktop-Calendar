@@ -48,5 +48,6 @@ export function prepareDayListExportLayout(
     includeHolidays?: boolean
     excludeHiddenCalendars?: boolean
     asAdmin?: boolean
+    dayListSortDesc?: boolean
   }
 ): DayListExportLayout

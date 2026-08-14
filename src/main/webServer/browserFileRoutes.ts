@@ -170,6 +170,7 @@ export async function tryHandleBrowserFileRequest(options: {
         includeCompleted: body.includeCompleted !== false,
         includeHolidays: body.includeHolidays !== false,
         excludeHiddenCalendars,
+        dayListSortDesc: Boolean(body.dayListSortDesc),
         asAdmin: isSuperAdminUser(user) && body.asAdmin !== false
       })
       sendFile(res, built)

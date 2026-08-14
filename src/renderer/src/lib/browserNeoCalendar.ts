@@ -704,6 +704,7 @@ export function installBrowserNeoCalendar(): void {
           includeCompleted: input.includeCompleted !== false,
           includeHolidays: input.includeHolidays !== false,
           excludeHiddenCalendars: Boolean(input.excludeHiddenCalendars),
+          dayListSortDesc: Boolean(input.dayListSortDesc),
           asAdmin: input.asAdmin !== false
         }),
         'application/json'
