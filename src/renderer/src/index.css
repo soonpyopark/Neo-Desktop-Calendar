@@ -115,7 +115,7 @@
   --gcal-muted: #bdc1c6;
   --gcal-border: #5f6368;
   --gcal-border-light: #3c4043;
-  --gcal-grid-line: #3c4043;
+  --gcal-grid-line: #6b7075;
   --gcal-blue: #a89188;
   --gcal-blue-soft: #3b312f;
   --gcal-blue-dark: #b5a29a;
@@ -1374,6 +1374,7 @@ input[type='search']::-ms-clear,
 
 .dark .day-list-preview-detail-thumb {
   background: color-mix(in srgb, #000 25%, var(--day-list-detail-bg));
+  border-color: color-mix(in srgb, var(--day-list-detail-border) 90%, #e8eaed);
 }
 
 .day-list-preview-dot {
@@ -2072,7 +2073,11 @@ body.is-resizing-window {
 }
 
 /* —— In-app image attachment viewer —— */
-/* Fills its surface like the 세로보기 panel — no frame of its own. */
+.attachment-viewer-shell {
+  border: 1px solid var(--gcal-border);
+  background-color: var(--gcal-page-solid);
+}
+
 .attachment-viewer-header {
   border-bottom: 1px solid var(--neo-panel-divider);
   color: var(--gcal-heading);
@@ -2569,6 +2574,7 @@ html.neo-panel-window.dark .export-confirm-shell,
 html.neo-panel-window.dark .login-panel-shell,
 html.neo-panel-window.dark .recurrence-scope-shell,
 html.neo-panel-window.dark .header-title-editor-panel,
+html.neo-panel-window.dark .attachment-viewer-shell,
 html.neo-panel-window.dark form.shell-solid-surface,
 html.neo-panel-window.dark .neo-modal-shell,
 html.neo-quick-edit-window.dark .day-quick-edit,
