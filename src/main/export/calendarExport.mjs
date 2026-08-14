@@ -346,6 +346,23 @@ function loadDayListPdfImages(store, layout, attachmentsRoot, innerWidth) {
  * @param {string} eventId
  * @param {{ kind?: string, attachmentId?: string }} detail
  */
+/**
+ * JPEG bytes from loadDayListPdfImages → data URLs for a standalone HTML file.
+ * @param {Map<string, { buffer: Buffer }>} assets
+ * @returns {Map<string, string>}
+ */
+function imageAssetsToDataUrls(assets) {
+  /** @type {Map<string, string>} */
+  const urls = new Map();
+  for (const [key, asset] of assets ?? []) {
+    const bytes = asset?.buffer;
+    if (!bytes?.byteLength) continue;
+    const base64 = Buffer.from(bytes).toString('base64');
+    urls.set(key, `data:image/jpeg;base64,${base64}`);
+  }
+  return urls;
+}
+
 function getDetailImageAsset(assets, eventId, detail) {
   if (!assets || detail?.kind !== 'attachment' || !detail.attachmentId) return null;
   return assets.get(`${eventId}::${detail.attachmentId}`) ?? null;
@@ -1617,9 +1634,20 @@ export function getPdfExportFileName(period) {
  *   includeCompleted?: boolean
  *   includeHolidays?: boolean
  *   excludeHiddenCalendars?: boolean
+ *   attachmentsRoot?: string
  * }} [options]
  */
 export async function buildHtmlBuffer(store, period, options = {}) {
+  const encode = (layout) => {
+    const imageSrcs =
+      layout?.layout === 'dayList' && store
+        ? imageAssetsToDataUrls(
+            loadDayListPdfImages(store, layout, options.attachmentsRoot, 400),
+          )
+        : undefined;
+    return new TextEncoder().encode(buildHtmlDocument(layout, imageSrcs));
+  };
+
   if (period?.startDate && period?.endDate) {
     const layout = prepareExportLayout(
       store,
@@ -1630,14 +1658,14 @@ export async function buildHtmlBuffer(store, period, options = {}) {
       },
       options,
     );
-    return new TextEncoder().encode(buildHtmlDocument(layout));
+    return encode(layout);
   }
 
   const layout = prepareMonthExportLayout(store, period, options);
   if (!layout) {
     throw new Error('연간 내보내기는 아직 지원하지 않습니다.');
   }
-  return new TextEncoder().encode(buildHtmlDocument(layout));
+  return encode(layout);
 }
 
 export function getHtmlExportFileName(period) {

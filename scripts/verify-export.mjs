@@ -201,6 +201,14 @@ function assertDayListMultiDay() {
   assert.ok(html.includes('날짜'))
   assert.ok(html.includes('https://example.com/meet'))
   assert.ok(html.includes('첨부: 자료.pdf'))
+  assert.ok(!html.includes('class="detail-thumb"'))
+
+  const withImage = buildHtmlDocument(
+    layout,
+    new Map([['e1::a1', 'data:image/jpeg;base64,QQ==']])
+  )
+  assert.ok(withImage.includes('class="detail-thumb"'))
+  assert.ok(withImage.includes('data:image/jpeg;base64,QQ=='))
 }
 
 function assertMonthGridRange() {

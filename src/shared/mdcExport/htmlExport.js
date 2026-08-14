@@ -90,7 +90,14 @@ function renderTitleHtml(head) {
     .join('')
 }
 
-function renderDayListDetails(details) {
+function attachmentImageSrc(imageSrcs, eventId, detail) {
+  if (!imageSrcs || detail?.kind !== 'attachment' || !detail.attachmentId) return ''
+  const key = `${eventId}::${detail.attachmentId}`
+  if (imageSrcs instanceof Map) return imageSrcs.get(key) || ''
+  return String(imageSrcs[key] ?? '')
+}
+
+function renderDayListDetails(details, eventId, imageSrcs) {
   if (!Array.isArray(details) || details.length === 0) return ''
   const lines = details
     .map((detail) => {
@@ -101,7 +108,10 @@ function renderDayListDetails(details) {
       if (detail?.kind === 'link' && href) {
         return `<div class="detail-line"><a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(detail.text)}</a></div>`
       }
-      return `<div class="detail-line">${escapeHtml(detail?.text ?? '')}</div>`
+      const line = `<div class="detail-line">${escapeHtml(detail?.text ?? '')}</div>`
+      const src = attachmentImageSrc(imageSrcs, eventId, detail)
+      if (!src) return line
+      return `${line}<img class="detail-thumb" src="${src}" alt="">`
     })
     .join('')
   return `<div class="details">${lines}</div>`
@@ -120,7 +130,7 @@ function renderDayListHtml(layout) {
             <span class="stripe" style="background:${escapeHtml(event.color || '#f6bf26')}"></span>
             <div class="event-body">
               <div class="head">${renderTitleHtml(event.head ?? event.line ?? '')}</div>
-              ${renderDayListDetails(event.details)}
+              ${renderDayListDetails(event.details, event.eventId, layout.imageSrcs)}
             </div>
           </div>`
         )
@@ -293,6 +303,15 @@ function documentCss(isDayList) {
       font-size: 12px;
     }
     .detail-line + .detail-line { margin-top: 4px; }
+    .detail-thumb {
+      display: block;
+      width: auto;
+      max-width: 100%;
+      max-height: 270px;
+      margin-top: 4px;
+      object-fit: contain;
+      object-position: left top;
+    }
     .month-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
     .lunar-month { margin: 0; color: ${EXPORT_COLORS.lunarBlue}; }
     .month-grid th, .month-grid td {
@@ -335,12 +354,16 @@ function documentCss(isDayList) {
 }
 
 /**
- * @param {{ layout?: string, title?: string }} layout
+ * @param {{ layout?: string, title?: string, imageSrcs?: Map<string, string> | Record<string, string> }} layout
+ * @param {Map<string, string> | Record<string, string>} [imageSrcs]
  * @returns {string}
  */
-export function buildHtmlDocument(layout) {
+export function buildHtmlDocument(layout, imageSrcs) {
   const isDayList = layout?.layout === 'dayList'
-  const body = isDayList ? renderDayListHtml(layout) : renderMonthGridHtml(layout)
+  const withImages = imageSrcs
+    ? { ...layout, imageSrcs }
+    : layout
+  const body = isDayList ? renderDayListHtml(withImages) : renderMonthGridHtml(layout)
   const title = escapeHtml(layout?.title || '캘린더 내보내기')
   return `<!DOCTYPE html>
 <html lang="ko">

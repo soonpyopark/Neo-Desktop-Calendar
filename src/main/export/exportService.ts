@@ -59,7 +59,10 @@ export async function buildCalendarExportBuffer(input: ExportCalendarInput): Pro
     format === 'excel'
       ? await buildExcelBuffer(input.store, period, options)
       : format === 'html'
-        ? await buildHtmlBuffer(input.store, period, options)
+        ? await buildHtmlBuffer(input.store, period, {
+            ...options,
+            attachmentsRoot: join(resolveDataRoot(), 'attachments')
+          })
         : await buildPdfBuffer(input.store, period, {
             ...options,
             attachmentsRoot: join(resolveDataRoot(), 'attachments')
