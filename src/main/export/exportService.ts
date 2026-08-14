@@ -4,6 +4,7 @@ import { BrowserWindow, dialog } from 'electron'
 import { withNativeDialog } from '../nativeDialogGuard'
 import type { CalendarStoreSnapshot } from '../../shared/calendarTypes'
 import {
+  exportFormatLabel,
   formatExportRangeLabel,
   normalizeExportRequest
 } from '../../shared/exportCalendarHelpers.js'
@@ -16,8 +17,10 @@ import type {
 import { resolveDataRoot } from '../calendarStore/paths'
 import {
   buildExcelBuffer,
+  buildHtmlBuffer,
   buildPdfBuffer,
   getExcelExportFileName,
+  getHtmlExportFileName,
   getPdfExportFileName
 } from './calendarExport.mjs'
 
@@ -51,23 +54,35 @@ export async function buildCalendarExportBuffer(input: ExportCalendarInput): Pro
     includeHolidays: request.includeHolidays !== false,
     excludeHiddenCalendars: Boolean(request.excludeHiddenCalendars)
   }
-  const isExcel = request.format === 'excel'
+  const format = request.format
   const buffer = Buffer.from(
-    isExcel
+    format === 'excel'
       ? await buildExcelBuffer(input.store, period, options)
-      : await buildPdfBuffer(input.store, period, {
-          ...options,
-          attachmentsRoot: join(resolveDataRoot(), 'attachments')
-        })
+      : format === 'html'
+        ? await buildHtmlBuffer(input.store, period, options)
+        : await buildPdfBuffer(input.store, period, {
+            ...options,
+            attachmentsRoot: join(resolveDataRoot(), 'attachments')
+          })
   )
+  const filename =
+    format === 'excel'
+      ? getExcelExportFileName(period)
+      : format === 'html'
+        ? getHtmlExportFileName(period)
+        : getPdfExportFileName(period)
+  const contentType =
+    format === 'excel'
+      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      : format === 'html'
+        ? 'text/html; charset=utf-8'
+        : 'application/pdf'
   return {
     buffer,
-    filename: isExcel ? getExcelExportFileName(period) : getPdfExportFileName(period),
-    contentType: isExcel
-      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      : 'application/pdf',
+    filename,
+    contentType,
     rangeLabel: formatExportRangeLabel(request.startDate, request.endDate),
-    formatLabel: isExcel ? 'Excel' : 'PDF',
+    formatLabel: exportFormatLabel(format),
     layoutLabel: request.layout === 'dayList' ? '일간 목록' : '월간 달력'
   }
 }
@@ -78,14 +93,15 @@ export async function exportCalendarMonth(
 ): Promise<ExportCalendarResult> {
   try {
     const built = await buildCalendarExportBuffer(input)
-    const isExcel = built.formatLabel === 'Excel'
-
     const dialogOpts = {
       title: `${built.formatLabel}로 내보내기`,
       defaultPath: built.filename,
-      filters: isExcel
-        ? [{ name: 'Excel', extensions: ['xlsx'] }]
-        : [{ name: 'PDF', extensions: ['pdf'] }]
+      filters:
+        built.formatLabel === 'Excel'
+          ? [{ name: 'Excel', extensions: ['xlsx'] }]
+          : built.formatLabel === 'HTML'
+            ? [{ name: 'HTML', extensions: ['html'] }]
+            : [{ name: 'PDF', extensions: ['pdf'] }]
     }
     const result = await withNativeDialog(async () =>
       parent ? dialog.showSaveDialog(parent, dialogOpts) : dialog.showSaveDialog(dialogOpts)

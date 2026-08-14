@@ -1,6 +1,6 @@
-/** Shared Excel/PDF export request contract (native IPC + browser HTTP). */
+/** Shared Excel/PDF/HTML export request contract (native IPC + browser HTTP). */
 
-export type ExportCalendarFormat = 'excel' | 'pdf'
+export type ExportCalendarFormat = 'excel' | 'pdf' | 'html'
 
 export type ExportCalendarLayout = 'monthGrid' | 'dayList'
 
@@ -34,7 +34,9 @@ export type ExportCalendarResult = {
 }
 
 export {
+  exportFormatLabel,
   formatExportRangeLabel,
   isValidExportDateKey,
+  normalizeExportFormat,
   normalizeExportRequest
 } from './exportCalendarHelpers.js'

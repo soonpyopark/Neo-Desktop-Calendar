@@ -32,4 +32,12 @@ declare module './calendarExport.mjs' {
   export function getExcelExportFileName(period: ExportPeriod): string
 
   export function getPdfExportFileName(period: ExportPeriod): string
+
+  export function buildHtmlBuffer(
+    store: unknown,
+    period: ExportPeriod,
+    options?: ExportOptions
+  ): Promise<Uint8Array | ArrayBuffer>
+
+  export function getHtmlExportFileName(period: ExportPeriod): string
 }

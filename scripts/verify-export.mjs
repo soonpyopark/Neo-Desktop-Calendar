@@ -10,10 +10,14 @@ import { filterEventsForExport } from '../src/shared/mdcExport/exportFilters.js'
 import { normalizeExportRequest } from '../src/shared/exportCalendarHelpers.js'
 import {
   buildExcelBuffer,
+  buildHtmlBuffer,
   buildPdfBuffer,
   getExcelExportFileName,
+  getHtmlExportFileName,
   getPdfExportFileName
 } from '../src/main/export/calendarExport.mjs'
+import { exportFormatLabel, normalizeExportFormat } from '../src/shared/exportCalendarHelpers.js'
+import { buildHtmlDocument } from '../src/shared/mdcExport/htmlExport.js'
 
 const HOLIDAYS = 'holidays-kr'
 
@@ -111,6 +115,14 @@ function assertNormalize() {
   })
   assert.equal(swapped.startDate, '2026-07-01')
   assert.equal(swapped.endDate, '2026-07-10')
+  assert.equal(normalizeExportFormat('html'), 'html')
+  assert.equal(normalizeExportRequest({
+    format: 'html',
+    layout: 'dayList',
+    startDate: '2026-07-01',
+    endDate: '2026-07-31'
+  }).format, 'html')
+  assert.equal(exportFormatLabel('html'), 'HTML')
 
   assert.throws(() => normalizeExportRequest({ format: 'excel' }))
 }
@@ -182,6 +194,13 @@ function assertDayListMultiDay() {
   assert.ok(detail.details?.some((d) => d.kind === 'description' && d.text.includes('회의실 A')))
   assert.ok(detail.line.includes('링크: 회의 링크 — https://example.com/meet'))
   assert.ok(detail.line.includes('첨부: 자료.pdf'))
+
+  const html = buildHtmlDocument(layout)
+  assert.ok(html.startsWith('<!DOCTYPE html>'))
+  assert.ok(html.includes('하루 일정'))
+  assert.ok(html.includes('날짜'))
+  assert.ok(html.includes('https://example.com/meet'))
+  assert.ok(html.includes('첨부: 자료.pdf'))
 }
 
 function assertMonthGridRange() {
@@ -219,11 +238,20 @@ async function assertBuffers() {
   assert.ok(excelList.byteLength > 1000)
   const pdfList = await buildPdfBuffer(store, { ...year, layout: 'dayList' }, options)
   assert.ok(pdfList.byteLength > 1000)
+  const htmlList = await buildHtmlBuffer(store, { ...year, layout: 'dayList' }, options)
+  const htmlText = new TextDecoder().decode(htmlList)
+  assert.ok(htmlText.startsWith('<!DOCTYPE html>'))
+  assert.ok(htmlText.includes('하루 일정'))
+  assert.ok(htmlText.includes('날짜'))
+  const htmlMonth = await buildHtmlBuffer(store, short, options)
+  assert.ok(new TextDecoder().decode(htmlMonth).includes('2026년 7월') || htmlMonth.byteLength > 200)
 
   const name = getExcelExportFileName(short)
   assert.match(name, /calendar_monthGrid_20260701-20260731_/)
   const pdfName = getPdfExportFileName(year)
   assert.match(pdfName, /calendar_dayList_20260101-20261231_/)
+  const htmlName = getHtmlExportFileName(year)
+  assert.match(htmlName, /calendar_dayList_20260101-20261231_.*\.html$/)
 }
 
 async function main() {

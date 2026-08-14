@@ -295,6 +295,22 @@ export function ExcelIcon(): ReactElement {
   )
 }
 
+/** HTML export icon (document + markup chevrons). */
+export function HtmlIcon(): ReactElement {
+  return (
+    <DocumentOutlineIcon>
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M10.2 12.2 8.4 14.5 10.2 16.8M13.8 12.2 15.6 14.5 13.8 16.8"
+      />
+    </DocumentOutlineIcon>
+  )
+}
+
 /** MDC PDF export icon. */
 export function PdfIcon(): ReactElement {
   return (

@@ -149,6 +149,15 @@ export function ExportOptionsPanel({
             >
               PDF
             </InteractionUI>
+            <InteractionUI
+              as="button"
+              type="button"
+              className={radioClass(format === 'html')}
+              disabled={busy}
+              onClick={() => setFormat('html')}
+            >
+              HTML
+            </InteractionUI>
           </div>
         </section>
 

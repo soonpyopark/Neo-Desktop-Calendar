@@ -118,7 +118,7 @@ export const PERIOD_TOOLBAR_ACTIONS = {
 export const CHROME_TOOLBAR_ACTIONS = {
   search: 'search',
   settings: 'settings',
-  /** Unified export options (Excel/PDF + layout/range). */
+  /** Unified export options (Excel/PDF/HTML + layout/range). */
   export: 'export',
   /** All footer hints in a search-sized help panel. */
   footerHelp: 'footer-help',
@@ -478,7 +478,7 @@ export type NeoCalendarApi = {
   saveMembers: (members: MemberSaveInput[]) => Promise<MemberRecord[]>
   syncHolidays: (input?: SyncHolidaysInput) => Promise<SyncHolidaysResult>
   exportCalendar: (input: {
-    format: 'excel' | 'pdf'
+    format: 'excel' | 'pdf' | 'html'
     layout?: 'monthGrid' | 'dayList'
     startDate?: string
     endDate?: string

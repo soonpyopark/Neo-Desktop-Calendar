@@ -2,7 +2,7 @@ import { useCallback, useState, type ReactElement } from 'react'
 import { useAppDialog } from '../../components/AppDialogProvider'
 import { ExportOptionsPanel } from '../../components/ExportOptionsPanel'
 import { useCalendarStore } from '../../hooks/useCalendarStore'
-import { formatExportRangeLabel } from '../../../../shared/exportCalendarHelpers.js'
+import { exportFormatLabel, formatExportRangeLabel } from '../../../../shared/exportCalendarHelpers.js'
 import type { ExportCalendarRequest } from '../../../../shared/exportCalendar'
 import type { PanelWindowInit } from '../../../../shared/panelWindows'
 import { usePanelRouter, usePanelTheme } from '../usePanelEventHelpers'
@@ -31,7 +31,7 @@ export function ExportOptionsPanelHost({ init }: { init: Init }): ReactElement |
     async (request: ExportCalendarRequest): Promise<void> => {
       if (busy) return
       setBusy(true)
-      const formatLabel = request.format === 'excel' ? 'Excel' : 'PDF'
+      const formatLabel = exportFormatLabel(request.format)
       const layoutLabel = request.layout === 'dayList' ? '일간 목록' : '월간 달력'
       const rangeLabel = formatExportRangeLabel(request.startDate, request.endDate)
       try {

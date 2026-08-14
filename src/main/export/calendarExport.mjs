@@ -14,6 +14,7 @@ import {
   splitEventTitleRuns,
 } from '../../shared/mdcExport/eventTags.js'
 import { parseSimpleMarkdown } from '../../shared/simpleMarkdown.js'
+import { buildHtmlDocument } from '../../shared/mdcExport/htmlExport.js'
 
 const FONT_NAME = 'Malgun Gothic'
 const THIN_BORDER = {
@@ -1567,6 +1568,7 @@ export async function buildExcelBuffer(store, period, options = {}) {
  *   includeCompleted?: boolean
  *   includeHolidays?: boolean
  *   excludeHiddenCalendars?: boolean
+ *   attachmentsRoot?: string
  * }} [options]
  */
 export async function buildPdfBuffer(store, period, options = {}) {
@@ -1598,4 +1600,46 @@ export function getExcelExportFileName(period) {
 
 export function getPdfExportFileName(period) {
   return getExportFileName(period, 'pdf');
+}
+
+/**
+ * @param {object} store
+ * @param {{
+ *   scope?: 'month' | 'year'
+ *   year?: number
+ *   month?: number
+ *   layout?: 'monthGrid' | 'dayList'
+ *   startDate?: string
+ *   endDate?: string
+ * }} period
+ * @param {{
+ *   asAdmin?: boolean
+ *   includeCompleted?: boolean
+ *   includeHolidays?: boolean
+ *   excludeHiddenCalendars?: boolean
+ * }} [options]
+ */
+export async function buildHtmlBuffer(store, period, options = {}) {
+  if (period?.startDate && period?.endDate) {
+    const layout = prepareExportLayout(
+      store,
+      {
+        layout: period.layout === 'dayList' ? 'dayList' : 'monthGrid',
+        startDate: period.startDate,
+        endDate: period.endDate,
+      },
+      options,
+    );
+    return new TextEncoder().encode(buildHtmlDocument(layout));
+  }
+
+  const layout = prepareMonthExportLayout(store, period, options);
+  if (!layout) {
+    throw new Error('연간 내보내기는 아직 지원하지 않습니다.');
+  }
+  return new TextEncoder().encode(buildHtmlDocument(layout));
+}
+
+export function getHtmlExportFileName(period) {
+  return getExportFileName(period, 'html');
 }

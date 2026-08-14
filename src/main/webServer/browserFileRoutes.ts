@@ -6,6 +6,7 @@ import {
 } from '../calendarStore/backupZip'
 import type { CalendarStore } from '../calendarStore/CalendarStore'
 import { buildCalendarExportBuffer } from '../export/exportService'
+import { normalizeExportFormat } from '../../shared/exportCalendarHelpers.js'
 import { can, isSuperAdminUser } from '../../shared/members'
 import {
   contentTypeOf,
@@ -44,7 +45,7 @@ function sendFile(
 }
 
 /**
- * Browser file download/upload routes (ZIP backup + Excel/PDF export).
+ * Browser file download/upload routes (ZIP backup + Excel/PDF/HTML export).
  */
 export async function tryHandleBrowserFileRequest(options: {
   req: IncomingMessage
@@ -134,7 +135,7 @@ export async function tryHandleBrowserFileRequest(options: {
       const raw = await readRawBody(req)
       const text = raw.toString('utf8').trim()
       const body = text ? (JSON.parse(text) as Record<string, unknown>) : {}
-      const format = body.format === 'pdf' ? 'pdf' : 'excel'
+      const format = normalizeExportFormat(body.format)
       const layout = body.layout === 'dayList' ? 'dayList' : 'monthGrid'
       const startDate = typeof body.startDate === 'string' ? body.startDate : undefined
       const endDate = typeof body.endDate === 'string' ? body.endDate : undefined

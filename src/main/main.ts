@@ -28,6 +28,7 @@ import {
 } from './calendarStore/backupZip'
 import { forgetEnvHolidayKey, syncKoreanHolidays } from './calendarStore/holidaySync'
 import { exportCalendarMonth } from './export/exportService'
+import { normalizeExportFormat } from '../shared/exportCalendarHelpers.js'
 import { SettingsStore } from './settingsStore'
 import { createAppTray, type AppTray } from './tray'
 import { focusWindowForTextInput } from './windowFocus'
@@ -1079,7 +1080,7 @@ function registerIpc(): void {
     async (
       event,
       input: {
-        format: 'excel' | 'pdf'
+        format: 'excel' | 'pdf' | 'html'
         layout?: 'monthGrid' | 'dayList'
         startDate?: string
         endDate?: string
@@ -1116,7 +1117,7 @@ function registerIpc(): void {
       return exportCalendarMonth(
         {
           store,
-          format: input?.format === 'pdf' ? 'pdf' : 'excel',
+          format: normalizeExportFormat(input?.format),
           layout: input?.layout === 'dayList' ? 'dayList' : 'monthGrid',
           startDate: input?.startDate,
           endDate: input?.endDate,

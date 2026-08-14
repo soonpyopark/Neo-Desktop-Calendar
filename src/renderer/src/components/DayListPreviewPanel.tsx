@@ -17,11 +17,12 @@ import {
   DoubleChevronLeftIcon,
   DoubleChevronRightIcon,
   ExcelIcon,
+  HtmlIcon,
   PdfIcon
 } from './CalendarHeaderIcons'
 import type { CalendarStoreSnapshot } from '../../../shared/calendarTypes'
 import { HOLIDAYS_KR_CALENDAR_ID } from '../../../shared/calendarDefaults'
-import { formatExportRangeLabel } from '../../../shared/exportCalendarHelpers.js'
+import { exportFormatLabel, formatExportRangeLabel } from '../../../shared/exportCalendarHelpers.js'
 import type { ExportCalendarFormat } from '../../../shared/exportCalendar'
 import { splitLinkifySegments } from '../lib/linkify'
 import { readEventAttachmentImage } from '../lib/eventAttachments'
@@ -654,7 +655,7 @@ export function DayListPreviewPanel({
         shownMonth,
         new Date(shownYear, shownMonth + 1, 0).getDate()
       )
-      const formatLabel = format === 'excel' ? 'Excel' : 'PDF'
+      const formatLabel = exportFormatLabel(format)
       const rangeLabel = formatExportRangeLabel(startDate, endDate)
       setExporting(true)
       try {
@@ -857,6 +858,16 @@ export function DayListPreviewPanel({
                 title="PDF로 저장 (일자별 목록)"
               >
                 <PdfIcon />
+              </button>
+              <button
+                type="button"
+                className="day-quick-edit-close"
+                disabled={exporting}
+                onClick={() => void exportShownMonth('html')}
+                aria-label="HTML로 저장"
+                title="HTML로 저장 (일자별 목록)"
+              >
+                <HtmlIcon />
               </button>
             </div>
             <div className="flex shrink-0 items-center gap-1">

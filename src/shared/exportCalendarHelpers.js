@@ -1,6 +1,25 @@
-/** Shared Excel/PDF export request helpers (native IPC + browser HTTP). */
+/** Shared Excel/PDF/HTML export request helpers (native IPC + browser HTTP). */
 
 const DATE_KEY_RE = /^(\d{4})-(\d{2})-(\d{2})$/
+
+/**
+ * @param {unknown} value
+ * @returns {'excel' | 'pdf' | 'html'}
+ */
+export function normalizeExportFormat(value) {
+  if (value === 'pdf' || value === 'html') return value
+  return 'excel'
+}
+
+/**
+ * @param {unknown} format
+ * @returns {string}
+ */
+export function exportFormatLabel(format) {
+  if (format === 'pdf') return 'PDF'
+  if (format === 'html') return 'HTML'
+  return 'Excel'
+}
 
 /**
  * @param {unknown} value
@@ -21,7 +40,7 @@ export function isValidExportDateKey(value) {
  * @param {Record<string, unknown>} input
  */
 export function normalizeExportRequest(input = {}) {
-  const format = input.format === 'pdf' ? 'pdf' : 'excel'
+  const format = normalizeExportFormat(input.format)
   const layout = input.layout === 'dayList' ? 'dayList' : 'monthGrid'
 
   let startDate = typeof input.startDate === 'string' ? input.startDate : ''

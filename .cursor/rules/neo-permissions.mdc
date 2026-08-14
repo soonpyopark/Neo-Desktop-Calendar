@@ -43,6 +43,6 @@ Prefer passing `isSuperAdmin` from `AuthUser.role === 'super_admin'` rather than
 
 ## Member UX
 
-Members keep: 일반, 내 계정(비밀번호), 새 캘린더, 태그, 내/고정 캘린더 설정, 검색·일정 편집·Excel/PDF 내보내기(본인 스냅샷).
+Members keep: 일반, 내 계정(비밀번호), 새 캘린더, 태그, 내/고정 캘린더 설정, 검색·일정 편집·Excel/PDF/HTML 내보내기(본인 스냅샷).
 
 Members lose: 가져오기/내보내기(전체), 보안, 서버 관리, 회원 관리, 회원 캘린더 관리, 공휴일 API 동기화.

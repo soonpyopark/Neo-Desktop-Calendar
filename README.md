@@ -55,7 +55,7 @@ Admin login credentials come from `.env` (`MYCALENDAR_ADMIN_ID` / `MYCALENDAR_AD
 | Role | Can do |
 | --- | --- |
 | `super_admin` (총괄관리자) | Full calendar store, members, security/IP, **서버 관리**, holiday API sync, ZIP backup/import |
-| `member` (일반사용자) | Own calendars & events, tags, account password change, Excel/PDF export of own data, view holidays |
+| `member` (일반사용자) | Own calendars & events, tags, account password change, Excel/PDF/HTML export of own data, view holidays |
 | Guest (logged out) | Empty store; must log in to edit |
 
 - Session role is loaded from `data/members.json` on login/restore.

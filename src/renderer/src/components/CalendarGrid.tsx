@@ -68,7 +68,7 @@ import { FooterHelpPanel } from './FooterHelpPanel'
 import { HeaderTitleEditorPanel } from './HeaderTitleEditorPanel'
 import { normalizeHeaderTitle } from '../../../shared/headerTitle'
 import { DayListPreviewPanel } from './DayListPreviewPanel'
-import { formatExportRangeLabel } from '../../../shared/exportCalendarHelpers.js'
+import { exportFormatLabel, formatExportRangeLabel } from '../../../shared/exportCalendarHelpers.js'
 import type { ExportCalendarRequest } from '../../../shared/exportCalendar'
 import { useEventLayoutCssVars, useMaxVisibleEvents } from '../hooks/useMaxVisibleEvents'
 import {
@@ -2193,7 +2193,7 @@ export function CalendarGrid({
 
   const runExportRequest = async (request: ExportCalendarRequest): Promise<void> => {
     if (exporting) return
-    const formatLabel = request.format === 'excel' ? 'Excel' : 'PDF'
+    const formatLabel = exportFormatLabel(request.format)
     const layoutLabel = request.layout === 'dayList' ? '일간 목록' : '월간 달력'
     const rangeLabel = formatExportRangeLabel(request.startDate, request.endDate)
     setExporting(true)
