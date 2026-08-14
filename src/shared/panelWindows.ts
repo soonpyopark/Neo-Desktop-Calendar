@@ -1,5 +1,4 @@
 import {
-  computeQuickEditPanelSize,
   computeQuickEditWindowBounds,
   type QuickEditAnchorRect,
   type QuickEditViewMode
@@ -127,14 +126,8 @@ export const EVENT_DETAIL_PANEL_HEIGHT = 336
 /** Settings + search panel width — 90% of main calendar / shell width. */
 export const MAIN_PANEL_WIDTH_RATIO = 0.9
 
-/** @deprecated Use {@link MAIN_PANEL_WIDTH_RATIO} */
-export const SEARCH_PANEL_WIDTH_RATIO = MAIN_PANEL_WIDTH_RATIO
-
 /** Main panel height — 80% of main calendar / shell height (settings + search). */
 export const MAIN_PANEL_HEIGHT_RATIO = 0.8
-
-/** @deprecated Use {@link computeMainPanelWidth} — kept as upper hint for legacy layouts. */
-export const SEARCH_PANEL_WIDTH = 880
 
 export function computeMainPanelWidth(containerWidth: number): number {
   const inner = Math.max(0, containerWidth)
@@ -144,11 +137,6 @@ export function computeMainPanelWidth(containerWidth: number): number {
 export function computeMainPanelHeight(containerHeight: number): number {
   const inner = Math.max(0, containerHeight)
   return Math.max(240, Math.round(inner * MAIN_PANEL_HEIGHT_RATIO))
-}
-
-/** @deprecated Use {@link computeMainPanelWidth} */
-export function computeSearchPanelWidth(containerWidth: number): number {
-  return computeMainPanelWidth(containerWidth)
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -460,19 +448,5 @@ export function computePanelWindowBounds(options: {
     workArea,
     width: 320,
     height: 280
-  })
-}
-
-export function panelInitUsesAnchorClient(init: PanelWindowInit): boolean {
-  return init.kind === 'quickEdit' || init.kind === 'eventDetail'
-}
-
-export function quickEditPanelSizeForInit(init: Extract<PanelWindowInit, { kind: 'quickEdit' }>): {
-  width: number
-  height: number
-} {
-  return computeQuickEditPanelSize({
-    viewMode: init.viewMode,
-    anchor: init.anchor ?? null
   })
 }

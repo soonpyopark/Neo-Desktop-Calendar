@@ -167,13 +167,6 @@ export function compareEventsForDisplay(a, b) {
 }
 
 /**
- * @param {object[]} events
- */
-export function sortEventsForDisplay(events) {
-  return [...events].sort(compareEventsForDisplay);
-}
-
-/**
  * @param {object} a
  * @param {object} b
  * @param {string} dayKey
@@ -192,14 +185,6 @@ export function compareEventsForDayDisplay(a, b, dayKey) {
   if (continuingA !== continuingB) return continuingA ? -1 : 1;
 
   return compareEventsForDisplay(a, b);
-}
-
-/**
- * @param {object[]} events
- * @param {string} dayKey
- */
-export function sortEventsForDayDisplay(events, dayKey) {
-  return [...events].sort((a, b) => compareEventsForDayDisplay(a, b, dayKey));
 }
 
 /**
@@ -304,15 +289,4 @@ export function formatDayListExportEventParts(event, dayKey, tags) {
   }
 
   return { head, details };
-}
-
-/**
- * Day-list export text: title line plus description / links / attachments when present.
- * @param {object} event
- * @param {string} dayKey
- * @param {object[]} [tags]
- */
-export function formatDayListExportEventText(event, dayKey, tags) {
-  const { head, details } = formatDayListExportEventParts(event, dayKey, tags);
-  return [head, ...details.map((item) => item.text)].join('\n');
 }

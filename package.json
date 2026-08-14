@@ -24,8 +24,7 @@
     "dist": "npm run build:desktop-hit && npm run build && electron-builder --win",
     "build:msi": "node scripts/build-msi.mjs",
     "build:portable": "node scripts/build-portable.mjs",
-    "build:release": "node scripts/build-release.mjs",
-    "build:dist:msi": "node scripts/build-msi.mjs"
+    "build:release": "node scripts/build-release.mjs"
   },
   "dependencies": {
     "7zip-bin": "^5.2.0",

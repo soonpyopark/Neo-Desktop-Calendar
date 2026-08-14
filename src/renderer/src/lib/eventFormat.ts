@@ -114,22 +114,6 @@ export function formatEventBarLabel(
   }
 }
 
-export function formatEventPopoverSchedule(
-  event: {
-    startDate: string
-    endDate?: string
-    allDay?: boolean
-    startTime?: string | null
-    endTime?: string | null
-  },
-  dayKey?: string
-): string {
-  const parts = formatEventScheduleParts(event, dayKey)
-  if (!parts.timeLine) return parts.dateLine
-  if (parts.timeLine === '종일') return `${parts.dateLine} · 종일`
-  return `${parts.dateLine} · ${parts.timeLine.replace(' ~ ', '~')}`
-}
-
 export function formatRepeatLabel(
   event: { repeat?: string | null; repeatUntil?: string | null; repeatCount?: number | null } | string | null | undefined
 ): string | null {

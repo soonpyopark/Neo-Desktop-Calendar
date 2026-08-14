@@ -122,6 +122,3 @@ export async function exportCalendarMonth(
     return { ok: false, error: message }
   }
 }
-
-/** Alias used by newer call sites. */
-export const exportCalendar = exportCalendarMonth
