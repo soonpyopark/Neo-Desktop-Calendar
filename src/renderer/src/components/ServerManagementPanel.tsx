@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react'
 import type { StoreSettings } from '../../../shared/calendarTypes'
+import { emptyTlsStatus, type WebServerSyncInfo } from '../../../shared/httpsConfig'
 import {
   DEFAULT_WEB_SERVER_PORT,
   normalizeWebServerMode,
@@ -9,18 +10,7 @@ import {
 } from '../../../shared/webServerPort'
 import { useAppDialog } from './AppDialogProvider'
 
-type SyncInfo = {
-  running: boolean
-  port: number | null
-  configuredPort: number
-  preferredMode: WebServerMode
-  hostname: string | null
-  lanMode: boolean
-  addresses: string[]
-  editorUrl: string | null
-}
-
-const emptySync = (configuredPort = DEFAULT_WEB_SERVER_PORT): SyncInfo => ({
+const emptySync = (configuredPort = DEFAULT_WEB_SERVER_PORT): WebServerSyncInfo => ({
   running: false,
   port: null,
   configuredPort,
@@ -28,16 +18,21 @@ const emptySync = (configuredPort = DEFAULT_WEB_SERVER_PORT): SyncInfo => ({
   hostname: null,
   lanMode: false,
   addresses: [],
-  editorUrl: null
+  editorUrl: null,
+  httpsEnabled: false,
+  tls: emptyTlsStatus()
 })
 
-function modeLabel(info: SyncInfo): string {
+function modeLabel(info: WebServerSyncInfo): string {
   if (!info.running) {
-    return info.preferredMode === 'lan'
-      ? '중지됨 · 다음 기동 Web (LAN)'
-      : '중지됨 · 다음 기동 Local'
+    const scope =
+      info.preferredMode === 'lan'
+        ? '중지됨 · 다음 기동 Web (LAN)'
+        : '중지됨 · 다음 기동 Local'
+    return info.httpsEnabled ? `${scope} · HTTPS` : scope
   }
-  return info.lanMode ? 'Web (LAN)' : 'Local (127.0.0.1)'
+  const scope = info.lanMode ? 'Web (LAN)' : 'Local (127.0.0.1)'
+  return info.httpsEnabled ? `${scope} · HTTPS` : scope
 }
 
 export type ServerManagementPanelProps = {
@@ -52,7 +47,7 @@ export function ServerManagementPanel({
 }: ServerManagementPanelProps): ReactElement {
   const { alert, confirm } = useAppDialog()
   const initialPort = resolveWebServerPort(settings.webServerPort, null)
-  const [sync, setSync] = useState<SyncInfo>(() => emptySync(initialPort))
+  const [sync, setSync] = useState<WebServerSyncInfo>(() => emptySync(initialPort))
   const [portDraft, setPortDraft] = useState(String(initialPort))
   const [busy, setBusy] = useState(false)
   const api = typeof window !== 'undefined' ? window.neoCalendar : null
@@ -66,27 +61,29 @@ export function ServerManagementPanel({
     setPortDraft(String(sync.configuredPort || DEFAULT_WEB_SERVER_PORT))
   }, [settings.webServerPort, sync.configuredPort])
 
-  const refresh = useCallback(async (): Promise<SyncInfo> => {
+  const refresh = useCallback(async (): Promise<WebServerSyncInfo> => {
     if (!api?.getSyncInfo) {
       const fallback = emptySync(resolveWebServerPort(settings.webServerPort, null))
       const preferred = normalizeWebServerMode(settings.webServerMode)
       if (preferred) fallback.preferredMode = preferred
+      fallback.httpsEnabled = settings.httpsEnabled === true
       setSync(fallback)
       return fallback
     }
     const info = await api.getSyncInfo()
     setSync(info)
     return info
-  }, [api, settings.webServerMode, settings.webServerPort])
+  }, [api, settings.httpsEnabled, settings.webServerMode, settings.webServerPort])
 
   useEffect(() => {
     void refresh().catch(() => {
       const fallback = emptySync(resolveWebServerPort(settings.webServerPort, null))
       const preferred = normalizeWebServerMode(settings.webServerMode)
       if (preferred) fallback.preferredMode = preferred
+      fallback.httpsEnabled = settings.httpsEnabled === true
       setSync(fallback)
     })
-  }, [refresh, settings.webServerMode, settings.webServerPort])
+  }, [refresh, settings.httpsEnabled, settings.webServerMode, settings.webServerPort])
 
   const run = async (action: () => Promise<void>): Promise<void> => {
     if (busy) return
@@ -190,6 +187,96 @@ export function ServerManagementPanel({
     })
   }
 
+  const toggleHttps = (): void => {
+    void run(async () => {
+      if (!api?.setWebServerHttps) {
+        await alert('Electron 앱에서만 사용할 수 있습니다.')
+        return
+      }
+      const enable = !sync.httpsEnabled
+      if (enable) {
+        const ok = await confirm(
+          'HTTPS를 켜면 서버가 다시 시작됩니다. 다른 기기 브라우저는 CA 인증서를 설치해야 자물쇠가 정상입니다. 계속할까요?',
+          { confirmLabel: '켜기' }
+        )
+        if (!ok) return
+      }
+      try {
+        const result = await api.setWebServerHttps(enable)
+        setSync(result.sync)
+        await alert(result.message)
+      } catch (err) {
+        await alert(err instanceof Error ? err.message : 'HTTPS 설정을 바꾸지 못했습니다.')
+        await refresh()
+      }
+    })
+  }
+
+  const regenerateTls = (): void => {
+    void run(async () => {
+      if (!api?.regenerateWebServerTls) {
+        await alert('Electron 앱에서만 사용할 수 있습니다.')
+        return
+      }
+      const ok = await confirm(
+        '현재 LAN IP를 넣어 서버 인증서를 다시 만듭니다. HTTPS가 켜져 있으면 서버를 재시작합니다.',
+        { confirmLabel: '다시 만들기' }
+      )
+      if (!ok) return
+      try {
+        const result = await api.regenerateWebServerTls()
+        setSync(result.sync)
+        await alert(result.message)
+      } catch (err) {
+        await alert(err instanceof Error ? err.message : '인증서를 다시 만들지 못했습니다.')
+        await refresh()
+      }
+    })
+  }
+
+  const exportCa = (): void => {
+    void run(async () => {
+      if (!api?.exportWebServerCa) {
+        await alert('Electron 앱에서만 사용할 수 있습니다.')
+        return
+      }
+      try {
+        const result = await api.exportWebServerCa()
+        if (result.canceled) return
+        setSync(result.sync)
+        await alert(
+          result.message ??
+            (result.path
+              ? `저장했습니다.\n${result.path}`
+              : 'CA 인증서를 내보냈습니다.')
+        )
+      } catch (err) {
+        await alert(err instanceof Error ? err.message : '내보내지 못했습니다.')
+      }
+    })
+  }
+
+  const revealTlsFolder = (): void => {
+    void run(async () => {
+      if (!api?.revealWebServerTlsFolder) {
+        await alert('Electron 앱에서만 사용할 수 있습니다.')
+        return
+      }
+      try {
+        await api.revealWebServerTlsFolder()
+      } catch (err) {
+        const folder = sync.tls.dir
+        await alert(
+          err instanceof Error
+            ? err.message
+            : folder
+              ? `폴더를 열지 못했습니다.\n${folder}`
+              : '폴더를 열지 못했습니다.'
+        )
+      }
+    })
+  }
+
   const allowFirewall = (): void => {
     void run(async () => {
       if (!api?.allowWebServerFirewall) {
@@ -243,7 +330,7 @@ export function ServerManagementPanel({
         <div className="rounded-lg border border-gcal-border bg-gcal-surface p-5">
           <h3 className="mb-2 text-base font-medium text-gcal-heading">포트</h3>
           <p className="mb-4 text-sm leading-relaxed text-gcal-muted">
-            HTTP 웹 서버 TCP 포트입니다. 저장·서버 시작 시{' '}
+            HTTP(S) 웹 서버 TCP 포트입니다. 저장·서버 시작 시{' '}
             <code className="rounded bg-gcal-page px-1 text-[12px]">settings.json</code>에 남으며,{' '}
             <code className="rounded bg-gcal-page px-1 text-[12px]">.env</code>의{' '}
             <code className="rounded bg-gcal-page px-1 text-[12px]">PORT</code>보다 항상 우선합니다.
@@ -279,10 +366,11 @@ export function ServerManagementPanel({
         </div>
 
         <div className="rounded-lg border border-gcal-border bg-gcal-surface p-5">
-          <h3 className="mb-2 text-base font-medium text-gcal-heading">HTTP 웹 서버</h3>
+          <h3 className="mb-2 text-base font-medium text-gcal-heading">HTTP(S) 웹 서버</h3>
           <p className="mb-4 text-sm leading-relaxed text-gcal-muted">
             Local / Web 시작 시 포트와 모드가 설정에 저장되어 다음 실행에도 유지됩니다 (.env
-            HOSTNAME보다 우선). 트레이 Start Server도 동일하게 모드를 기억합니다.
+            HOSTNAME보다 우선). 트레이 Start Server도 동일하게 모드를 기억합니다. HTTPS는 아래
+            항목에서 같은 포트에 적용됩니다.
           </p>
 
           <dl className="mb-4 grid gap-2 text-sm text-gcal-heading sm:grid-cols-[7rem_1fr]">
@@ -334,6 +422,68 @@ export function ServerManagementPanel({
               onClick={() => void refresh()}
             >
               상태 새로고침
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-gcal-border bg-gcal-surface p-5">
+          <h3 className="mb-2 text-base font-medium text-gcal-heading">HTTPS</h3>
+          <p className="mb-4 text-sm leading-relaxed text-gcal-muted">
+            같은 포트에서 TLS로 암호화합니다. 이 앱 창은 자체 인증서를 자동으로 신뢰합니다. 다른
+            PC·휴대폰 브라우저는 아래 CA 인증서를 한 번 설치해야 경고가 사라집니다. LAN IP가 바뀌면
+            서버 인증서를 다시 만드세요. 인증서는 데이터 폴더의{' '}
+            <code className="rounded bg-gcal-page px-1 text-[12px]">tls</code>에 저장됩니다.
+          </p>
+          <dl className="mb-4 grid gap-2 text-sm text-gcal-heading sm:grid-cols-[7rem_1fr]">
+            <dt className="text-gcal-muted">상태</dt>
+            <dd>{sync.httpsEnabled ? '켜짐' : '꺼짐'}</dd>
+            <dt className="text-gcal-muted">SAN</dt>
+            <dd className="break-all">
+              {sync.tls.sans.length > 0 ? sync.tls.sans.join(', ') : '—'}
+            </dd>
+            <dt className="text-gcal-muted">만료</dt>
+            <dd>
+              {sync.tls.notAfter
+                ? new Date(sync.tls.notAfter).toLocaleString('ko-KR')
+                : '—'}
+            </dd>
+            <dt className="text-gcal-muted">폴더</dt>
+            <dd className="break-all font-mono text-xs">{sync.tls.dir || '—'}</dd>
+          </dl>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className={`${
+                sync.httpsEnabled ? 'settings-btn-danger' : 'settings-btn-secondary'
+              } rounded-full px-4 py-2 text-sm font-medium disabled:opacity-60`}
+              disabled={busy}
+              onClick={toggleHttps}
+            >
+              {sync.httpsEnabled ? 'HTTPS 끄기' : 'HTTPS 켜기'}
+            </button>
+            <button
+              type="button"
+              className="settings-btn-secondary rounded-full px-4 py-2 text-sm font-medium disabled:opacity-60"
+              disabled={busy}
+              onClick={regenerateTls}
+            >
+              인증서 다시 만들기
+            </button>
+            <button
+              type="button"
+              className="settings-btn-secondary rounded-full px-4 py-2 text-sm font-medium disabled:opacity-60"
+              disabled={busy}
+              onClick={exportCa}
+            >
+              CA 인증서 내보내기
+            </button>
+            <button
+              type="button"
+              className="settings-btn-secondary rounded-full px-4 py-2 text-sm font-medium disabled:opacity-60"
+              disabled={busy}
+              onClick={revealTlsFolder}
+            >
+              인증서 폴더 열기
             </button>
           </div>
         </div>

@@ -1797,7 +1797,10 @@ export function CalendarGrid({
         const info = await window.neoCalendar.getSyncInfo?.()
         if (cancelled) return
         if (info?.running && (info.editorUrl || info.port)) {
-          setWebEditUrl(info.editorUrl || `http://127.0.0.1:${info.port}/`)
+          setWebEditUrl(
+            info.editorUrl ||
+              `${info.httpsEnabled ? 'https' : 'http'}://127.0.0.1:${info.port}/`
+          )
         } else {
           setWebEditUrl(null)
         }

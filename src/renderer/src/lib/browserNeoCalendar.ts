@@ -440,6 +440,18 @@ export function installBrowserNeoCalendar(): void {
     stopWebServer: async () => {
       throw new Error('서버 관리는 Electron 앱에서만 사용할 수 있습니다.')
     },
+    setWebServerHttps: async () => {
+      throw new Error('서버 관리는 Electron 앱에서만 사용할 수 있습니다.')
+    },
+    regenerateWebServerTls: async () => {
+      throw new Error('서버 관리는 Electron 앱에서만 사용할 수 있습니다.')
+    },
+    exportWebServerCa: async () => {
+      throw new Error('서버 관리는 Electron 앱에서만 사용할 수 있습니다.')
+    },
+    revealWebServerTlsFolder: async () => {
+      throw new Error('서버 관리는 Electron 앱에서만 사용할 수 있습니다.')
+    },
     allowWebServerFirewall: async () => {
       throw new Error('방화벽 설정은 Electron 앱에서만 사용할 수 있습니다.')
     },

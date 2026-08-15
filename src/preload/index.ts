@@ -215,20 +215,25 @@ const api: NeoCalendarApi = {
   changePassword: (input) =>
     ipcRenderer.invoke('auth:change-password', input) as Promise<{ ok: true }>,
   getSyncInfo: () =>
-    ipcRenderer.invoke('get-sync-info') as Promise<{
-      running: boolean
-      port: number | null
-      configuredPort: number
-      preferredMode: 'local' | 'lan'
-      hostname: string | null
-      lanMode: boolean
-      addresses: string[]
-      editorUrl: string | null
-    }>,
+    ipcRenderer.invoke('get-sync-info') as ReturnType<NeoCalendarApi['getSyncInfo']>,
   startWebServer: (mode) =>
     ipcRenderer.invoke('web-server:start', mode) as ReturnType<NeoCalendarApi['startWebServer']>,
   stopWebServer: () =>
     ipcRenderer.invoke('web-server:stop') as ReturnType<NeoCalendarApi['stopWebServer']>,
+  setWebServerHttps: (enabled) =>
+    ipcRenderer.invoke('web-server:set-https', enabled) as ReturnType<
+      NeoCalendarApi['setWebServerHttps']
+    >,
+  regenerateWebServerTls: () =>
+    ipcRenderer.invoke('web-server:regenerate-tls') as ReturnType<
+      NeoCalendarApi['regenerateWebServerTls']
+    >,
+  exportWebServerCa: () =>
+    ipcRenderer.invoke('web-server:export-ca') as ReturnType<NeoCalendarApi['exportWebServerCa']>,
+  revealWebServerTlsFolder: () =>
+    ipcRenderer.invoke('web-server:reveal-tls-folder') as ReturnType<
+      NeoCalendarApi['revealWebServerTlsFolder']
+    >,
   allowWebServerFirewall: (port) =>
     ipcRenderer.invoke('web-server:allow-firewall', port) as ReturnType<
       NeoCalendarApi['allowWebServerFirewall']

@@ -76,6 +76,7 @@ Neo Desktop Calendar는 아래 오픈소스·공개 데이터·런타임을 포�
 | pdfkit | PDF 내보내기 | MIT |
 | koffi | 네이티브 FFI | MIT |
 | ws | WebSocket | MIT |
+| node-forge | 로컬 HTTPS CA·서버 인증서 | BSD-3-Clause |
 | 7zip-bin | `7za` 바이너리 경로 | MIT (바이너리 본체는 7-Zip LGPL) |
 | solarlunar | 음력·절기 | ISC |
 | kor-lunar | 한국 음력 | 저장소 LICENSE 확인 / npm 라이선스 배지 |

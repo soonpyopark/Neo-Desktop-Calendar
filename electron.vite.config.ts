@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
@@ -31,8 +31,23 @@ function resolveDevApiPort(): number {
   return Number.isFinite(port) && port > 0 ? port : 3010
 }
 
+function resolveDevHttpsEnabled(): boolean {
+  const env = process.env.HTTPS_ENABLED || process.env.NEOCALENDAR_HTTPS || process.env.MYCALENDAR_HTTPS
+  if (env === '1' || env === 'true') return true
+  if (env === '0' || env === 'false') return false
+  try {
+    const settingsPath = resolve('data/settings.json')
+    if (!existsSync(settingsPath)) return false
+    const raw = JSON.parse(readFileSync(settingsPath, 'utf8')) as { httpsEnabled?: unknown }
+    return raw?.httpsEnabled === true
+  } catch {
+    return false
+  }
+}
+
 function resolveApiProxyTarget(): string {
-  return `http://127.0.0.1:${resolveDevApiPort()}`
+  const scheme = resolveDevHttpsEnabled() ? 'https' : 'http'
+  return `${scheme}://127.0.0.1:${resolveDevApiPort()}`
 }
 
 const devApiPort = resolveDevApiPort()
@@ -48,7 +63,7 @@ function devBrowserHintPlugin(): Plugin {
         console.log('')
         console.log('[dev:browser] Browser UI (use while `npm run dev` is running):')
         console.log(`  → http://127.0.0.1:${port}/`)
-        console.log(`  → API proxy → http://127.0.0.1:${devApiPort}/api`)
+        console.log(`  → API proxy → ${apiProxyTarget}/api`)
         console.log('[dev:browser] Or run: npm run browser:dev')
         console.log('')
       })
@@ -103,12 +118,14 @@ export default defineConfig({
       proxy: {
         '/api': {
           target: apiProxyTarget,
-          changeOrigin: true
+          changeOrigin: true,
+          secure: false
         },
         '/ws': {
           target: apiProxyTarget,
           ws: true,
-          changeOrigin: true
+          changeOrigin: true,
+          secure: false
         }
       }
     }

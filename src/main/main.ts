@@ -1,7 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, powerMonitor, screen, shell } from 'electron'
-import { readFile } from 'node:fs/promises'
-import { basename } from 'node:path'
-import { join } from 'node:path'
+import { copyFile, mkdir, readFile } from 'node:fs/promises'
+import { basename, join } from 'node:path'
 import { AuthService } from './auth'
 import { CalendarStore } from './calendarStore/CalendarStore'
 import { EventAttachmentService } from './calendarStore/eventAttachments'
@@ -41,8 +40,19 @@ import { snapToTen } from './displayGeometry'
 import { APP_NAME, DEFAULT_WIDGET_BOUNDS, MIN_WIDGET_HEIGHT, MIN_WIDGET_WIDTH } from '../shared/constants'
 import {
   CalendarWebServer,
+  resolveHttpsEnabledFromStore,
   resolveLaunchServerMode
 } from './webServer/CalendarWebServer'
+import {
+  ensureTlsMaterial,
+  getCaCertificatePath,
+  getTlsDir,
+  isTrustedElectronCertificate,
+  isTrustedServerFingerprint,
+  tlsStatusOrEmpty
+} from './webServer/tlsCerts'
+import { type WebServerSyncInfo } from '../shared/httpsConfig'
+import { resolveDataRoot } from './calendarStore/paths'
 import {
   allowFirewallInbound,
   removeFirewallInbound
@@ -166,6 +176,58 @@ let desktopQuickEditContext: DesktopQuickEditContext = {
 let panelWindowManager: PanelWindowManager | null = null
 /** Period toolbar footprints for WorkerW embedded click → action (stay embedded). */
 let clickForwardHitZones: ClickForwardClientZone[] = []
+
+function tlsDataRoot(): string {
+  try {
+    return calendarStore.dataRoot
+  } catch {
+    return resolveDataRoot()
+  }
+}
+
+function stoppedSyncInfo(): WebServerSyncInfo {
+  const settings = calendarStore.getSnapshot().settings
+  const port = resolveWebServerPort(
+    settings.webServerPort,
+    getEnvValue('PORT', 'MYCALENDAR_PORT', 'NEOCALENDAR_PORT')
+  )
+  return {
+    running: false,
+    port: null,
+    configuredPort: port,
+    preferredMode: resolveLaunchServerMode(settings.webServerMode),
+    hostname: null,
+    lanMode: false,
+    addresses: [],
+    editorUrl: null,
+    httpsEnabled: resolveHttpsEnabledFromStore(settings.httpsEnabled),
+    tls: tlsStatusOrEmpty(tlsDataRoot())
+  }
+}
+
+function currentSyncInfo(): WebServerSyncInfo {
+  return webServer?.getSyncInfo() ?? stoppedSyncInfo()
+}
+
+app.on('certificate-error', (event, _webContents, _url, _error, certificate, callback) => {
+  try {
+    const root = tlsDataRoot()
+    if (
+      isTrustedElectronCertificate(certificate, root) ||
+      isTrustedServerFingerprint(
+        (certificate as { fingerprint256?: string }).fingerprint256,
+        root
+      )
+    ) {
+      event.preventDefault()
+      callback(true)
+      return
+    }
+  } catch {
+    /* store may not be ready */
+  }
+  callback(false)
+})
 
 function notifyAuthChanged(): void {
   try {
@@ -684,21 +746,7 @@ function registerIpc(): void {
       return { ok: true as const }
     }
   )
-  ipcMain.handle('get-sync-info', () => webServer?.getSyncInfo() ?? {
-    running: false,
-    port: null,
-    configuredPort: resolveWebServerPort(
-      calendarStore.getSnapshot().settings.webServerPort,
-      getEnvValue('PORT', 'MYCALENDAR_PORT', 'NEOCALENDAR_PORT')
-    ),
-    preferredMode: resolveLaunchServerMode(
-      calendarStore.getSnapshot().settings.webServerMode
-    ),
-    hostname: null,
-    lanMode: false,
-    addresses: [],
-    editorUrl: null
-  })
+  ipcMain.handle('get-sync-info', () => currentSyncInfo())
   ipcMain.handle('web-server:start', async (_event, mode: unknown) => {
     requireCap('manageWebServer')
     if (!webServer) throw new Error('웹 서버를 사용할 수 없습니다.')
@@ -713,6 +761,92 @@ function registerIpc(): void {
     const result = webServer.stop()
     tray?.rebuildMenu?.()
     return { ...result, sync: webServer.getSyncInfo() }
+  })
+  ipcMain.handle('web-server:set-https', async (_event, enabled: unknown) => {
+    requireCap('manageWebServer')
+    if (!webServer) throw new Error('웹 서버를 사용할 수 없습니다.')
+    const httpsEnabled = Boolean(enabled)
+    calendarStore.patchStoreSettings({ httpsEnabled }, auth.getUser()?.loginId, 'native')
+    notifyStoreChanged()
+    if (httpsEnabled) {
+      await ensureTlsMaterial({ root: tlsDataRoot() })
+    }
+    if (!webServer.isRunning) {
+      return {
+        ok: true,
+        message: httpsEnabled
+          ? 'HTTPS를 켰습니다. 서버를 시작하면 TLS로 접속합니다.'
+          : 'HTTPS를 껐습니다. 서버를 시작하면 HTTP로 접속합니다.',
+        sync: currentSyncInfo()
+      }
+    }
+    const mode = webServer.lanMode ? 'lan' : 'local'
+    const result = await webServer.tryStart({ mode, requirePortInEnv: false })
+    tray?.rebuildMenu?.()
+    return {
+      ...result,
+      message: result.ok
+        ? httpsEnabled
+          ? `HTTPS를 켰습니다.\n${result.message}`
+          : `HTTPS를 껐습니다. HTTP로 다시 시작합니다.\n${result.message}`
+        : result.message,
+      sync: webServer.getSyncInfo()
+    }
+  })
+  ipcMain.handle('web-server:regenerate-tls', async () => {
+    requireCap('manageWebServer')
+    if (!webServer) throw new Error('웹 서버를 사용할 수 없습니다.')
+    await ensureTlsMaterial({ root: tlsDataRoot(), forceServer: true })
+    if (!webServer.isRunning || !webServer.resolveHttpsEnabled()) {
+      return {
+        ok: true,
+        message: '서버 인증서를 다시 만들었습니다.',
+        sync: currentSyncInfo()
+      }
+    }
+    const mode = webServer.lanMode ? 'lan' : 'local'
+    const result = await webServer.tryStart({ mode, requirePortInEnv: false })
+    tray?.rebuildMenu?.()
+    return {
+      ...result,
+      message: result.ok
+        ? `서버 인증서를 다시 만들었습니다.\n${result.message}`
+        : result.message,
+      sync: webServer.getSyncInfo()
+    }
+  })
+  ipcMain.handle('web-server:export-ca', async () => {
+    requireCap('manageWebServer')
+    const root = tlsDataRoot()
+    await ensureTlsMaterial({ root })
+    const caPath = getCaCertificatePath(root)
+    const saveOpts = {
+      title: 'CA 인증서 내보내기',
+      defaultPath: 'Neo-Desktop-Calendar-Local-CA.crt',
+      filters: [{ name: '인증서', extensions: ['crt', 'pem'] }]
+    }
+    const owner = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null
+    const result = await withNativeDialog(async () =>
+      owner ? dialog.showSaveDialog(owner, saveOpts) : dialog.showSaveDialog(saveOpts)
+    )
+    if (result.canceled || !result.filePath) {
+      return { ok: false, canceled: true, sync: currentSyncInfo() }
+    }
+    await copyFile(caPath, result.filePath)
+    return {
+      ok: true,
+      path: result.filePath,
+      message: `저장했습니다.\n${result.filePath}\n\nWindows: 인증서 가져오기 → 로컬 컴퓨터 → 신뢰할 수 있는 루트 인증 기관`,
+      sync: currentSyncInfo()
+    }
+  })
+  ipcMain.handle('web-server:reveal-tls-folder', async () => {
+    requireCap('manageWebServer')
+    const dir = getTlsDir(tlsDataRoot())
+    await mkdir(dir, { recursive: true })
+    const error = await shell.openPath(dir)
+    if (error) throw new Error(error)
+    return { ok: true, path: dir }
   })
   ipcMain.handle('web-server:allow-firewall', async (_event, port?: unknown) => {
     requireCap('manageWebServer')
@@ -1243,6 +1377,9 @@ function bootApp(): void {
     attachments: attachmentService,
     getWwwroot: () => join(__dirname, '../renderer'),
     getViteOrigin: () => process.env.ELECTRON_RENDERER_URL?.trim() || null,
+    getDataRoot: () => calendarStore.dataRoot,
+    getHttpsEnabled: () =>
+      resolveHttpsEnabledFromStore(calendarStore.getSnapshot().settings.httpsEnabled),
     getListenPort: () =>
       resolveWebServerPort(
         calendarStore.getSnapshot().settings.webServerPort,

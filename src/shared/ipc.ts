@@ -20,6 +20,8 @@ import type {
 } from './calendarTypes'
 import type { UpdateCheckResult } from './updateCheck'
 export type { UpdateCheckResult }
+import type { WebServerSyncInfo } from './httpsConfig'
+export type { WebServerSyncInfo, WebServerTlsStatus } from './httpsConfig'
 
 export type SetIgnoreMouseOptions = {
   /** Electron native option mapped in main */
@@ -321,48 +323,42 @@ export type NeoCalendarApi = {
     currentPassword: string
     nextPassword: string
   }) => Promise<{ ok: true }>
-  /** Local/LAN HTTP editor status (MDC /api/sync-info). */
-  getSyncInfo: () => Promise<{
-    running: boolean
-    port: number | null
-    configuredPort: number
-    preferredMode: 'local' | 'lan'
-    hostname: string | null
-    lanMode: boolean
-    addresses: string[]
-    /** Browser editor URL (Vite in dev, local server when packaged). */
-    editorUrl: string | null
-  }>
-  /** Super-admin: start HTTP server (local = loopback, lan = 0.0.0.0). Electron only. */
+  /** Local/LAN HTTP(S) editor status (MDC /api/sync-info). */
+  getSyncInfo: () => Promise<WebServerSyncInfo>
+  /** Super-admin: start HTTP(S) server (local = loopback, lan = 0.0.0.0). Electron only. */
   startWebServer: (mode: 'local' | 'lan') => Promise<{
     ok: boolean
     message: string
-    sync: {
-      running: boolean
-      port: number | null
-      configuredPort: number
-      preferredMode: 'local' | 'lan'
-      hostname: string | null
-      lanMode: boolean
-      addresses: string[]
-      editorUrl: string | null
-    }
+    sync: WebServerSyncInfo
   }>
-  /** Super-admin: stop HTTP server. Electron only. */
+  /** Super-admin: stop HTTP(S) server. Electron only. */
   stopWebServer: () => Promise<{
     ok: boolean
     message: string
-    sync: {
-      running: boolean
-      port: number | null
-      configuredPort: number
-      preferredMode: 'local' | 'lan'
-      hostname: string | null
-      lanMode: boolean
-      addresses: string[]
-      editorUrl: string | null
-    }
+    sync: WebServerSyncInfo
   }>
+  /** Super-admin: persist HTTPS and restart if the server is running. Electron only. */
+  setWebServerHttps: (enabled: boolean) => Promise<{
+    ok: boolean
+    message: string
+    sync: WebServerSyncInfo
+  }>
+  /** Super-admin: rebuild server cert for current LAN IPs. Electron only. */
+  regenerateWebServerTls: () => Promise<{
+    ok: boolean
+    message: string
+    sync: WebServerSyncInfo
+  }>
+  /** Super-admin: save ca.crt via native dialog. Electron only. */
+  exportWebServerCa: () => Promise<{
+    ok: boolean
+    canceled?: boolean
+    path?: string
+    message?: string
+    sync: WebServerSyncInfo
+  }>
+  /** Super-admin: open `{dataRoot}/tls` in Explorer. Electron only. */
+  revealWebServerTlsFolder: () => Promise<{ ok: boolean; path: string }>
   /** Super-admin: Windows firewall inbound TCP allow (optional port). Electron only. */
   allowWebServerFirewall: (port?: number) => Promise<{
     ok: boolean

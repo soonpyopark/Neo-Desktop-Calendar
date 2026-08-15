@@ -22,7 +22,7 @@ Lightweight Electron desktop wallpaper calendar with dynamic click-through.
 - Desktop embed under icons via WorkerW `SetParent` (바탕화면 모드)
 - Empty space clicks pass through to the OS desktop
 - Interactive controls (nav, events, add) capture mouse on hover (`.interaction-ui`)
-- Settings → **서버 관리** (super_admin): HTTP port, Local/Web start·stop, firewall inbound
+- Settings → **서버 관리** (super_admin): HTTP(S) port, Local/Web start·stop, HTTPS/TLS (`data/tls`), firewall inbound
 - Month toolbar `[-]`/`[+]` event density scales main bars and quick-edit list titles together
 - Calendar / backup ZIP import·export via bundled `7za` (UTF-8 filenames, `-mcu=on`)
 
@@ -45,7 +45,7 @@ Electron 앱(`npm run dev`)이 실행 중일 때 HTTP API(기본 `:3010`)와 Vit
    또는 직접 **[http://127.0.0.1:5173/](http://127.0.0.1:5173/)** 접속
 
 - UI는 **Vite(5173)** 에서 제공하고, `/api`·`/ws`는 Vite가 **CalendarWebServer(3010)** 로 프록시합니다.
-- `:3010`만 열면 dev 모드에서 Vite(5173)로 리다이렉트됩니다.
+- `:3010`만 열면 HTTP일 때 Vite(5173)로 리다이렉트됩니다. HTTPS를 켠 뒤에는 `:3010`이 TLS로 직접 응답합니다.
 - `.env`에 `PORT=3010`이 있어야 합니다 (`.env.example` 참고).
 
 Admin login credentials come from `.env` (`MYCALENDAR_ADMIN_ID` / `MYCALENDAR_ADMIN_PW`), with `NEOCALENDAR_*` / `ADMIN_*` aliases and built-in defaults as fallback.

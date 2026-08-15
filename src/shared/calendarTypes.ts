@@ -228,6 +228,11 @@ export type StoreSettings = {
    * When set, always wins over .env.
    */
   webServerMode?: 'local' | 'lan' | null
+  /**
+   * HTTPS on the same listen port (settings → 서버 관리).
+   * null/undefined → fall back to .env HTTPS_ENABLED, then off.
+   */
+  httpsEnabled?: boolean | null
   /** Neo chrome extensions */
   headerOpacity: number
   shellOpacity: number

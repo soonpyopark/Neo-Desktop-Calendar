@@ -1,10 +1,9 @@
 import {
-  createServer,
   type IncomingMessage,
-  type Server,
+  type Server as HttpServer,
   type ServerResponse
 } from 'node:http'
-import { networkInterfaces } from 'node:os'
+import type { Server as HttpsServer } from 'node:https'
 import { createReadStream, existsSync, statSync } from 'node:fs'
 import { extname, join, normalize, sep } from 'node:path'
 import { WebSocketServer, type WebSocket } from 'ws'
@@ -24,6 +23,15 @@ import {
   parseAllowedHosts
 } from './ipAccess'
 import { resolveWebServerMode, resolveWebServerPort } from '../../shared/webServerPort'
+import {
+  formatAccessUrl,
+  normalizeHttpsEnabled,
+  type WebServerSyncInfo
+} from '../../shared/httpsConfig'
+import { getLocalIPv4Addresses } from './lanAddresses'
+import { createAppHttpServer, tlsStatusOrEmpty } from './tlsCerts'
+
+type Server = HttpServer | HttpsServer
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -40,23 +48,7 @@ const MIME: Record<string, string> = {
   '.map': 'application/json'
 }
 
-export type WebServerSyncInfo = {
-  running: boolean
-  port: number | null
-  /** Resolved listen port (settings → .env → default), even when stopped. */
-  configuredPort: number
-  /** Preferred Local/Web mode (settings → .env), even when stopped. */
-  preferredMode: 'local' | 'lan'
-  hostname: string | null
-  lanMode: boolean
-  addresses: string[]
-  /**
-   * Preferred URL for the browser editor.
-   * Dev: Vite origin (127.0.0.1) so UI is not double-proxied.
-   * Packaged: http://127.0.0.1:{port}/
-   */
-  editorUrl: string | null
-}
+export type { WebServerSyncInfo }
 
 export type CalendarWebServerOptions = {
   auth: AuthService
@@ -69,6 +61,10 @@ export type CalendarWebServerOptions = {
   getViteOrigin: () => string | null
   /** Prefer store/UI port over .env when set. */
   getListenPort?: () => number
+  /** Data root — TLS files live in `{dataRoot}/tls`. */
+  getDataRoot: () => string
+  /** Prefer store HTTPS flag over .env. */
+  getHttpsEnabled?: () => boolean
   /** Called after a successful listen (tray + settings start). */
   onServerStarted?: (info: { mode: 'local' | 'lan'; port: number }) => void
   /**
@@ -86,6 +82,7 @@ export class CalendarWebServer {
   hostname = '127.0.0.1'
   lanMode = false
   addresses: string[] = []
+  httpsEnabled = false
   private allowedHosts: string[] = ['127.0.0.1', 'localhost']
 
   constructor(private readonly options: CalendarWebServerOptions) {}
@@ -94,11 +91,21 @@ export class CalendarWebServer {
     return this.server !== null && this.server.listening
   }
 
+  resolveHttpsEnabled(): boolean {
+    if (this.options.getHttpsEnabled) {
+      return this.options.getHttpsEnabled()
+    }
+    return resolveHttpsEnabledFromStore(
+      this.options.calendarStore.getSnapshot().settings.httpsEnabled
+    )
+  }
+
   getSyncInfo(): WebServerSyncInfo {
     const running = this.isRunning
     const port = running ? this.port : null
+    const httpsOn = running ? this.httpsEnabled : this.resolveHttpsEnabled()
     const vite = preferLoopbackOrigin(this.options.getViteOrigin())
-    const local = port ? `http://127.0.0.1:${port}/` : null
+    const local = port ? `${formatAccessUrl('127.0.0.1', port, httpsOn)}/` : null
     const preferredMode = resolveLaunchServerMode(
       this.options.calendarStore.getSnapshot().settings.webServerMode
     )
@@ -110,8 +117,10 @@ export class CalendarWebServer {
       hostname: running ? this.hostname : null,
       lanMode: running ? this.lanMode : false,
       addresses: running ? [...this.addresses] : [],
-      // Prefer Vite in dev — opening :3010 proxied every module and felt "stuck".
-      editorUrl: running ? vite ?? local : null
+      // HTTPS: stay on this server (self-signed). HTTP dev: prefer Vite.
+      editorUrl: running ? (httpsOn ? local : vite ?? local) : null,
+      httpsEnabled: httpsOn,
+      tls: tlsStatusOrEmpty(this.options.getDataRoot())
     }
   }
 
@@ -179,17 +188,32 @@ export class CalendarWebServer {
     }
 
     const loopbackOnly = isLoopbackOnlyHosts(allowedHosts)
+    const httpsOn = this.resolveHttpsEnabled()
     this.port = port
     this.hostname = hostname
     this.lanMode = !loopbackOnly
+    this.httpsEnabled = httpsOn
     this.allowedHosts = allowedHosts
     this.addresses = loopbackOnly
-      ? [`http://127.0.0.1:${port}/`]
-      : buildAddressList(hostname, port)
+      ? [`${formatAccessUrl('127.0.0.1', port, httpsOn)}/`]
+      : buildAddressList(hostname, port, httpsOn)
 
-    const server = createServer((req, res) => {
-      void this.handleRequest(req, res)
-    })
+    let server: Server
+    try {
+      server = await createAppHttpServer(
+        httpsOn,
+        (req, res) => {
+          void this.handleRequest(req, res)
+        },
+        this.options.getDataRoot()
+      )
+    } catch (err) {
+      this.httpsEnabled = false
+      this.port = 0
+      this.addresses = []
+      const message = err instanceof Error ? err.message : String(err)
+      return { ok: false, message: `TLS 인증서를 준비하지 못했습니다 (${message}).` }
+    }
 
     // LAN: wildcard bind; Local: loopback only.
     const listenHost = this.lanMode ? '0.0.0.0' : '127.0.0.1'
@@ -213,8 +237,9 @@ export class CalendarWebServer {
     })
 
     const modeLabel = this.lanMode ? 'LAN' : 'local'
+    const proto = httpsOn ? 'https' : 'http'
     const aclHint = this.lanMode
-      ? `관리자 PowerShell에서 URL ACL이 필요할 수 있습니다:\nnetsh http add urlacl url=http://+:${port}/ user=Everyone`
+      ? `관리자 PowerShell에서 URL ACL이 필요할 수 있습니다:\nnetsh http add urlacl url=${proto}://+:${port}/ user=Everyone`
       : '다른 프로그램이 포트를 사용 중이거나 권한이 없습니다.'
 
     return await new Promise((resolve) => {
@@ -223,10 +248,11 @@ export class CalendarWebServer {
         this.server = null
         this.wss = null
         this.port = 0
+        this.httpsEnabled = false
         this.addresses = []
         resolve({
           ok: false,
-          message: `HTTP listen failed (${err.message}). ${aclHint}`
+          message: `${httpsOn ? 'HTTPS' : 'HTTP'} listen failed (${err.message}). ${aclHint}`
         })
       }
       const onListening = (): void => {
@@ -246,7 +272,7 @@ export class CalendarWebServer {
         }
         resolve({
           ok: true,
-          message: `HTTP server started (${modeLabel}) — ${this.addresses[0] ?? `port ${port}`}`
+          message: `${httpsOn ? 'HTTPS' : 'HTTP'} server started (${modeLabel}) — ${this.addresses[0] ?? `port ${port}`}`
         })
       }
       server.once('error', onError)
@@ -258,10 +284,11 @@ export class CalendarWebServer {
         server.off('listening', onListening)
         this.server = null
         this.wss = null
+        this.httpsEnabled = false
         const message = err instanceof Error ? err.message : String(err)
         resolve({
           ok: false,
-          message: `HTTP listen failed (${message}). ${aclHint}`
+          message: `${httpsOn ? 'HTTPS' : 'HTTP'} listen failed (${message}). ${aclHint}`
         })
       }
     })
@@ -269,7 +296,7 @@ export class CalendarWebServer {
 
   stop(): { ok: boolean; message: string } {
     if (!this.isRunning) {
-      return { ok: false, message: 'HTTP server is not running.' }
+      return { ok: false, message: '웹 서버가 실행 중이 아닙니다.' }
     }
     for (const ws of this.sockets) {
       try {
@@ -287,10 +314,11 @@ export class CalendarWebServer {
     this.port = 0
     this.hostname = '127.0.0.1'
     this.lanMode = false
+    this.httpsEnabled = false
     this.addresses = []
     this.allowedHosts = ['127.0.0.1', 'localhost']
     console.log('[web-server] Stopped')
-    return { ok: true, message: 'HTTP server stopped.' }
+    return { ok: true, message: '웹 서버를 중지했습니다.' }
   }
 
   broadcastStoreChanged(): void {
@@ -382,7 +410,7 @@ export class CalendarWebServer {
       }
 
       const vite = preferLoopbackOrigin(this.options.getViteOrigin())
-      if (vite) {
+      if (vite && !this.httpsEnabled) {
         // Redirect UI to Vite instead of proxying (proxy made localhost feel slow).
         // /api and /ws are handled above; Vite proxies those back to this server.
         const dest = new URL(req.url ?? '/', vite).toString()
@@ -489,18 +517,15 @@ async function serveStatic(
   createReadStream(filePath).pipe(res)
 }
 
-function buildAddressList(hostname: string, port: number): string[] {
+function buildAddressList(hostname: string, port: number, httpsEnabled: boolean): string[] {
   const urls = new Set<string>()
-  urls.add(`http://127.0.0.1:${port}/`)
+  urls.add(`${formatAccessUrl('127.0.0.1', port, httpsEnabled)}/`)
   if (hostname === '0.0.0.0' || hostname === '*' || hostname === '+') {
-    for (const nets of Object.values(networkInterfaces())) {
-      for (const net of nets ?? []) {
-        if (net.family !== 'IPv4' || net.internal) continue
-        urls.add(`http://${net.address}:${port}/`)
-      }
+    for (const address of getLocalIPv4Addresses()) {
+      urls.add(`${formatAccessUrl(address, port, httpsEnabled)}/`)
     }
   } else if (hostname !== '127.0.0.1') {
-    urls.add(`http://${hostname}:${port}/`)
+    urls.add(`${formatAccessUrl(hostname, port, httpsEnabled)}/`)
   }
   return [...urls]
 }
@@ -514,5 +539,15 @@ export function resolveLaunchServerMode(preferredMode?: unknown): 'local' | 'lan
   return resolveWebServerMode(
     preferredMode,
     getEnvValue('HOSTNAME', 'MYCALENDAR_HOSTNAME', 'NEOCALENDAR_HOSTNAME')
+  )
+}
+
+/** Prefer store httpsEnabled, then .env HTTPS_ENABLED. */
+export function resolveHttpsEnabledFromStore(preferred?: unknown): boolean {
+  if (preferred != null && preferred !== '') {
+    return normalizeHttpsEnabled(preferred)
+  }
+  return normalizeHttpsEnabled(
+    getEnvValue('HTTPS_ENABLED', 'NEOCALENDAR_HTTPS', 'MYCALENDAR_HTTPS')
   )
 }

@@ -147,6 +147,7 @@ export function createDefaultSettings(): StoreSettings {
     allowedIpCidrs: [],
     webServerPort: null,
     webServerMode: null,
+    httpsEnabled: null,
     headerOpacity: DEFAULT_HEADER_OPACITY,
     shellOpacity: DEFAULT_SHELL_OPACITY
   }
