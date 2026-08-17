@@ -5,7 +5,12 @@ import {
   memberRoleToLabel,
   normalizeMemberRole
 } from '../../../shared/members'
-import type { MemberRecord, MemberRole, MemberSaveInput } from '../../../shared/calendarTypes'
+import type {
+  MemberRecord,
+  MemberRole,
+  MemberSaveInput,
+  StoreSettings
+} from '../../../shared/calendarTypes'
 import { cn } from '../lib/cn'
 import { useAppDialog } from './AppDialogProvider'
 
@@ -73,9 +78,16 @@ function buildPayloadFromDraft(draftMembers: MemberDraft[]): MemberSaveInput[] {
 export type MembersPanelProps = {
   listMembers: () => Promise<MemberRecord[]>
   saveMembers: (members: MemberSaveInput[]) => Promise<MemberRecord[]>
+  settings: StoreSettings
+  onSaveSettings: (patch: Partial<StoreSettings>) => Promise<void>
 }
 
-export function MembersPanel({ listMembers, saveMembers }: MembersPanelProps): ReactElement {
+export function MembersPanel({
+  listMembers,
+  saveMembers,
+  settings,
+  onSaveSettings
+}: MembersPanelProps): ReactElement {
   const { alert, confirm } = useAppDialog()
   const [tab, setTab] = useState<MembersSubTab>('member-list')
   const [loading, setLoading] = useState(true)
@@ -256,6 +268,17 @@ export function MembersPanel({ listMembers, saveMembers }: MembersPanelProps): R
     await persistMembers(nextMembers, { silent: true })
   }
 
+  const persistLoginLockout = async (enabled: boolean): Promise<void> => {
+    try {
+      await onSaveSettings({ loginLockoutEnabled: enabled })
+    } catch (err) {
+      await alert(
+        err instanceof Error ? err.message : '로그인 제한 설정을 저장하지 못했습니다.',
+        { title: '회원 관리' }
+      )
+    }
+  }
+
   return (
     <div className="w-full max-w-full text-left">
       <h2 className="mb-2 text-[22px] font-normal text-gcal-heading">회원 관리</h2>
@@ -263,6 +286,23 @@ export function MembersPanel({ listMembers, saveMembers }: MembersPanelProps): R
         로그인할 수 있는 계정을 추가·수정합니다. 기본 관리자(admin)는 목록에 포함되며, 여기서 바꾼
         비밀번호가 .env 설정보다 우선합니다.
       </p>
+
+      <section className="mb-6 rounded-lg border border-gcal-border bg-gcal-surface px-4 py-3">
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-gcal-heading">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-gcal-border accent-gcal-blue"
+            checked={settings.loginLockoutEnabled === true}
+            disabled={loading || saving}
+            onChange={(event) => void persistLoginLockout(event.target.checked)}
+          />
+          로그인 3회 실패 시 5분간 제한
+        </label>
+        <p className="mt-1 pl-6 text-xs text-gcal-muted">
+          같은 아이디로 비밀번호를 3번 틀리면 5분간 로그인을 막습니다. 이 PC(127.0.0.1)는
+          제한되지 않습니다.
+        </p>
+      </section>
 
       <div
         className="mb-4 flex gap-1 border-b border-gcal-border-light"

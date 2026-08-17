@@ -77,7 +77,7 @@ export type AuthUser = {
 
 export type LoginResult =
   | { ok: true; user: AuthUser }
-  | { ok: false; error: string }
+  | { ok: false; error: string; locked?: boolean; retryAfterSec?: number }
 
 export type ModeStatus = {
   mode: LaunchMode

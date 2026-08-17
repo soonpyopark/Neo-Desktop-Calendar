@@ -57,7 +57,7 @@ export async function handleApiRequest(
   path: string,
   body: unknown,
   token: string | null,
-  _req: IncomingMessage
+  req: IncomingMessage
 ): Promise<ApiResult> {
   const { auth, calendarStore, membersStore, getSyncInfo, onStoreMutated } = deps
   const m = method.toUpperCase()
@@ -85,10 +85,15 @@ export async function handleApiRequest(
 
   if (p === '/api/auth/login' && m === 'POST') {
     const payload = (body ?? {}) as { loginId?: string; password?: string; remember?: boolean }
+    const proxied = Boolean(req.headers['x-forwarded-for'] || req.headers['x-real-ip'])
     const result = auth.loginBrowser(
       String(payload.loginId ?? ''),
       String(payload.password ?? ''),
-      Boolean(payload.remember)
+      Boolean(payload.remember),
+      {
+        clientIp: req.socket.remoteAddress ?? '',
+        proxied
+      }
     )
     if (!result.ok) return { status: 401, body: result }
     onStoreMutated()

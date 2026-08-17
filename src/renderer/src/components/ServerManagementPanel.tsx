@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react'
 import type { StoreSettings } from '../../../shared/calendarTypes'
 import { emptyTlsStatus, type WebServerSyncInfo } from '../../../shared/httpsConfig'
+import { isTailscaleIpv4 } from '../../../shared/ipCidrCore'
 import {
   DEFAULT_WEB_SERVER_PORT,
   normalizeWebServerMode,
@@ -22,6 +23,18 @@ const emptySync = (configuredPort = DEFAULT_WEB_SERVER_PORT): WebServerSyncInfo 
   httpsEnabled: false,
   tls: emptyTlsStatus()
 })
+
+function hostFromAddress(url: string): string {
+  try {
+    return new URL(url).hostname
+  } catch {
+    return ''
+  }
+}
+
+function formatServerAddress(url: string): string {
+  return isTailscaleIpv4(hostFromAddress(url)) ? `${url} (Tailscale)` : url
+}
 
 function modeLabel(info: WebServerSyncInfo): string {
   if (!info.running) {
@@ -380,7 +393,9 @@ export function ServerManagementPanel({
             <dd>{displayPort}</dd>
             <dt className="text-gcal-muted">주소</dt>
             <dd className="break-all">
-              {sync.addresses.length > 0 ? sync.addresses.join(', ') : '—'}
+              {sync.addresses.length > 0
+                ? sync.addresses.map(formatServerAddress).join(', ')
+                : '—'}
             </dd>
             {sync.editorUrl ? (
               <>

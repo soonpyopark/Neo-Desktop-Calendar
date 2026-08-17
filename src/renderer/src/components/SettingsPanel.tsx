@@ -1407,7 +1407,12 @@ export function SettingsPanel({
           )}
 
           {section === 'members' && isSuperAdmin && (
-            <MembersPanel listMembers={onListMembers} saveMembers={onSaveMembers} />
+            <MembersPanel
+              listMembers={onListMembers}
+              saveMembers={onSaveMembers}
+              settings={store.settings}
+              onSaveSettings={onPatchStore}
+            />
           )}
 
           {section === 'member-calendars' && isSuperAdmin && (

@@ -217,6 +217,11 @@ export type StoreSettings = {
   hiddenCalendarIdsByLoginId?: Record<string, string[]>
   allowedIpCidrs: Array<{ cidr: string; description?: string }>
   /**
+   * When true, 3 failed passwords for the same loginId lock that id for 5 minutes.
+   * Direct 127.0.0.1 (Electron / same-PC browser) is exempt.
+   */
+  loginLockoutEnabled?: boolean
+  /**
    * HTTP web server listen port (Local / LAN).
    * null/undefined → fall back to .env PORT, then 3010.
    * When set, always wins over .env.

@@ -1344,7 +1344,10 @@ function bootApp(): void {
   forgetEnvHolidayKey(calendarStore, getEnvValue('DATA_GO_KR_SERVICE_KEY', 'HOLIDAY_API_KEY') ?? '')
   membersStore = new MembersStore(calendarStore.dataRoot)
   settingsStore = new SettingsStore(calendarStore)
-  auth = new AuthService(settingsStore, membersStore)
+  auth = new AuthService(settingsStore, membersStore, {
+    isLoginLockoutEnabled: () =>
+      calendarStore.getSnapshot().settings.loginLockoutEnabled === true
+  })
   try {
     const adminId = resolveAdminCredentials().id
     const memberIds = membersStore

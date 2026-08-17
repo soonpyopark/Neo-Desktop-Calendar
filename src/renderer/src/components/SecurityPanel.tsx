@@ -175,7 +175,9 @@ export function SecurityPanel({ settings, onSaveSettings }: SecurityPanelProps):
             <code className="rounded bg-gcal-page px-1 text-[12px]">221.168.1.0-221.168.12.255</code>
             ) 형식을 지원합니다. 서버 PC의{' '}
             <code className="rounded bg-gcal-page px-1 text-[12px]">127.0.0.1</code> 은 항상
-            허용됩니다. 설치 폴더
+            허용됩니다. Tailscale 기기는 서버 IP가 아니라 각 기기의 주소로 들어오므로 대역{' '}
+            <code className="rounded bg-gcal-page px-1 text-[12px]">100.64.0.0/10</code> 을
+            등록하세요. 설치 폴더
             <code className="rounded bg-gcal-page px-1 text-[12px]">.env</code>의{' '}
             <code className="rounded bg-gcal-page px-1 text-[12px]">HOSTNAME=0.0.0.0</code>과 URL
             ACL·방화벽도 함께 필요합니다. 목록이 비어 있으면 모든 IP가 허용되고, 항목이 있으면

@@ -130,6 +130,20 @@ export function getAllowedIpCidrStrings(list) {
  * @param {string} ipString
  * @param {string} cidrRule
  */
+/** Tailscale CGNAT (100.64.0.0/10). Clients connect from their own 100.x, not the server IP. */
+export const TAILSCALE_CGNAT_CIDR = '100.64.0.0/10';
+
+/**
+ * @param {string} ipString
+ */
+export function isTailscaleIpv4(ipString) {
+  return ipMatchesCidrRule(String(ipString ?? '').trim(), TAILSCALE_CGNAT_CIDR);
+}
+
+/**
+ * @param {string} ipString
+ * @param {string} cidrRule
+ */
 export function ipMatchesCidrRule(ipString, cidrRule) {
   const ipNum = parseIPv4(ipString);
   if (ipNum === null) return false;

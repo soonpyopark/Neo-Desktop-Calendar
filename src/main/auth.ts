@@ -1,6 +1,11 @@
 import { randomBytes } from 'node:crypto'
 import type { AuthUser, LoginResult } from '../shared/ipc'
 import {
+  formatLoginLockoutMessage,
+  LOGIN_LOCKOUT_MAX_FAILURES,
+  LOGIN_LOCKOUT_MS
+} from '../shared/loginLockout'
+import {
   authUserFromMember,
   can,
   isSuperAdminUser,
@@ -9,10 +14,71 @@ import {
 import type { MembersStore } from './calendarStore/membersStore'
 import type { SettingsStore } from './settingsStore'
 import { resolveAdminCredentials } from './dotEnv'
+import { normalizeClientIp } from './webServer/ipAccess'
 
 export type BrowserLoginResult =
   | { ok: true; user: AuthUser; token: string }
-  | { ok: false; error: string }
+  | { ok: false; error: string; locked?: boolean; retryAfterSec?: number }
+
+export type LoginAttemptContext = {
+  clientIp?: string | null
+  proxied?: boolean
+}
+
+type LoginAttemptState = { failCount: number; lockedUntil: number | null }
+
+const loginAttempts = new Map<string, LoginAttemptState>()
+
+function normalizeLoginAttemptKey(id: string): string {
+  return String(id ?? '').trim().toLowerCase()
+}
+
+/** Direct 127.0.0.1 only. Proxied requests are not exempt. */
+function isLoginLockoutExempt(
+  clientIp: string | null | undefined,
+  proxied = false
+): boolean {
+  if (proxied) return false
+  return normalizeClientIp(clientIp ?? '') === '127.0.0.1'
+}
+
+function getLoginAttemptState(key: string): LoginAttemptState | null {
+  const state = loginAttempts.get(key)
+  if (!state) return null
+  if (state.lockedUntil && state.lockedUntil <= Date.now()) {
+    loginAttempts.delete(key)
+    return null
+  }
+  return state
+}
+
+function lockedLoginResult(state: LoginAttemptState): {
+  ok: false
+  error: string
+  locked: true
+  retryAfterSec: number
+} {
+  const remainingMs = (state.lockedUntil ?? 0) - Date.now()
+  const retryAfterSec = Math.max(1, Math.ceil(remainingMs / 1000))
+  return {
+    ok: false,
+    error: formatLoginLockoutMessage(retryAfterSec),
+    locked: true,
+    retryAfterSec
+  }
+}
+
+function recordLoginFailure(key: string): LoginAttemptState {
+  const now = Date.now()
+  const state = getLoginAttemptState(key) ?? { failCount: 0, lockedUntil: null }
+  if (state.lockedUntil && state.lockedUntil > now) return state
+  state.failCount += 1
+  if (state.failCount >= LOGIN_LOCKOUT_MAX_FAILURES) {
+    state.lockedUntil = now + LOGIN_LOCKOUT_MS
+  }
+  loginAttempts.set(key, state)
+  return state
+}
 
 /**
  * Desktop shell keeps a single IPC session; browser HTTP uses a separate token map
@@ -25,7 +91,10 @@ export class AuthService {
 
   constructor(
     private readonly store: SettingsStore,
-    private readonly members: MembersStore
+    private readonly members: MembersStore,
+    private readonly options: {
+      isLoginLockoutEnabled?: () => boolean
+    } = {}
   ) {
     const saved = store.getAuthSession()
     if (saved) {
@@ -60,7 +129,10 @@ export class AuthService {
   }
 
   login(loginId: string, password: string, remember = false): LoginResult {
-    const member = this.authenticate(loginId, password)
+    const member = this.authenticate(loginId, password, {
+      clientIp: '127.0.0.1',
+      proxied: false
+    })
     if (!member.ok) return member
 
     const user = member.user
@@ -77,8 +149,13 @@ export class AuthService {
   }
 
   /** HTTP/browser login — returns Bearer token (separate from shell session). */
-  loginBrowser(loginId: string, password: string, remember = false): BrowserLoginResult {
-    const member = this.authenticate(loginId, password)
+  loginBrowser(
+    loginId: string,
+    password: string,
+    remember = false,
+    context: LoginAttemptContext = {}
+  ): BrowserLoginResult {
+    const member = this.authenticate(loginId, password, context)
     if (!member.ok) return member
 
     const token = randomBytes(24).toString('hex')
@@ -183,17 +260,42 @@ export class AuthService {
 
   private authenticate(
     loginId: string,
-    password: string
-  ): { ok: true; user: AuthUser } | { ok: false; error: string } {
+    password: string,
+    context: LoginAttemptContext = {}
+  ): { ok: true; user: AuthUser } | Extract<LoginResult, { ok: false }> {
     const id = String(loginId ?? '').trim()
     const pw = String(password ?? '')
     if (!id || !pw) {
       return { ok: false, error: '아이디와 비밀번호를 입력하세요.' }
     }
-    const member = this.members.verifyLogin(id, pw)
-    if (!member) {
-      return { ok: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' }
+
+    const attemptKey = normalizeLoginAttemptKey(id)
+    const lockoutEnabled = this.options.isLoginLockoutEnabled?.() === true
+    const enforceLockout =
+      lockoutEnabled &&
+      Boolean(attemptKey) &&
+      !isLoginLockoutExempt(context.clientIp, Boolean(context.proxied))
+
+    if (enforceLockout) {
+      const locked = getLoginAttemptState(attemptKey)
+      if (locked?.lockedUntil && locked.lockedUntil > Date.now()) {
+        return lockedLoginResult(locked)
+      }
     }
-    return { ok: true, user: authUserFromMember(member) }
+
+    const member = this.members.verifyLogin(id, pw)
+    if (member) {
+      if (attemptKey) loginAttempts.delete(attemptKey)
+      return { ok: true, user: authUserFromMember(member) }
+    }
+
+    if (enforceLockout) {
+      const state = recordLoginFailure(attemptKey)
+      if (state.lockedUntil && state.lockedUntil > Date.now()) {
+        return lockedLoginResult(state)
+      }
+    }
+
+    return { ok: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' }
   }
 }

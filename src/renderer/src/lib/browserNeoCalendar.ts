@@ -459,23 +459,37 @@ export function installBrowserNeoCalendar(): void {
       throw new Error('방화벽 설정은 Electron 앱에서만 사용할 수 있습니다.')
     },
     login: async (loginId, password, remember) => {
-      const result = await http<{
-        ok: boolean
-        user?: { loginId: string; role: 'super_admin' | 'member' }
-        token?: string
-        error?: string
-      }>('POST', '/api/auth/login', {
-        loginId,
-        password,
-        remember: Boolean(remember)
-      })
-      if (!result.ok || !result.user || !result.token) {
-        return { ok: false, error: result.error ?? '로그인에 실패했습니다.' }
+      try {
+        const result = await http<{
+          ok: boolean
+          user?: { loginId: string; role: 'super_admin' | 'member' }
+          token?: string
+          error?: string
+          locked?: boolean
+          retryAfterSec?: number
+        }>('POST', '/api/auth/login', {
+          loginId,
+          password,
+          remember: Boolean(remember)
+        })
+        if (!result.ok || !result.user || !result.token) {
+          return {
+            ok: false,
+            error: result.error ?? '로그인에 실패했습니다.',
+            locked: result.locked,
+            retryAfterSec: result.retryAfterSec
+          }
+        }
+        setToken(result.token, Boolean(remember))
+        // Full reload so toolbar/auth/store state matches Electron after login.
+        window.location.reload()
+        return { ok: true, user: result.user }
+      } catch (err) {
+        return {
+          ok: false,
+          error: err instanceof Error ? err.message : '로그인에 실패했습니다.'
+        }
       }
-      setToken(result.token, Boolean(remember))
-      // Full reload so toolbar/auth/store state matches Electron after login.
-      window.location.reload()
-      return { ok: true, user: result.user }
     },
     logout: async () => {
       try {
