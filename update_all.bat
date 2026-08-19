@@ -2,7 +2,7 @@
 chcp 949 >nul 2>&1
 
 REM ============================================================================
-REM  Neo Desktop Calendar - Update npm dependencies (+ optional build / MSI)
+REM  Neo Desktop Calendar - Update npm dependencies (+ optional build / MSI / release)
 REM ============================================================================
 
 if /I not "%~1"=="_inner" if /I not "%~1"=="_quiet" (
@@ -40,6 +40,11 @@ if /I "%~1"=="msi" (
     shift
     goto parse_args
 )
+if /I "%~1"=="release" (
+    set "EXTRA_ARGS=%EXTRA_ARGS% -Release"
+    shift
+    goto parse_args
+)
 if /I "%~1"=="skip-git" (
     set "EXTRA_ARGS=%EXTRA_ARGS% -SkipGit"
     shift
@@ -67,7 +72,7 @@ echo ============================================================
 echo  Root : %APP_ROOT%
 echo  Log  : .cache\logs\update-all.log
 echo.
-echo  Options: build msi skip-git skip-npm skip-hit
+echo  Options: build msi release skip-git skip-npm skip-hit
 echo ============================================================
 echo.
 

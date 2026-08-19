@@ -107,7 +107,7 @@ MSI에는 Electron 런타임이 포함됩니다 (`Neo Desktop Calendar.exe` + `r
 | `npm run build:portable` | 포터블 zip만 (`msi/*_portable.zip`, 7-Zip 필요) |
 | `npm run sync-version` | `constants.ts` 버전 → package.json / License.rtf / 고지 동기화 |
 | `npm run update:all` | npm 의존성 업데이트 (+ desktop-hit 헬퍼 재빌드) |
-| `npm run build:update_all` | `update:all` 후 MSI 빌드 |
+| `npm run build:update_all` | `update:all` 후 `build:release` (MSI + portable, 동일 스탬프) |
 
 공개 배포 시 라이선스: **AGPL-3.0** ([`LICENSE`](LICENSE))  
 제3자 고지: [`legal/THIRD_PARTY_NOTICES.md`](legal/THIRD_PARTY_NOTICES.md)  
@@ -121,8 +121,9 @@ NAS4USB와 같은 흐름입니다.
 npm run update:all
 ```
 
-옵션: `--skip-git` `--skip-npm` `--skip-hit` `--build` `--msi`  
+옵션: `--skip-git` `--skip-npm` `--skip-hit` `--build` `--msi` `--release`  
 예: `npm run update:all -- --build`  
+`npm run build:update_all` 은 `--release` 와 같습니다.  
 Windows: `update_all.bat` (로그: `.cache/logs/update-all.log`)
 
 ## Click-through model

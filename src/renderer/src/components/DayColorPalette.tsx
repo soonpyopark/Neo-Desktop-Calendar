@@ -50,7 +50,7 @@ export function DayColorPalette({
         className
       )}
       role="listbox"
-      aria-label="날짜 배경 색상"
+      aria-label="날짜 칸 테두리 색상"
     >
       {DAY_COLOR_PALETTE.map((color) => {
         const isActive = selected === color.toLowerCase()

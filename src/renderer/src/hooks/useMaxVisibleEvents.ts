@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type RefObject } from 'react'
 import {
+  fitEventLayout,
   getEventLayoutCssVars,
   getEventRowCapacity,
   normalizeEventDensity,
@@ -16,6 +17,7 @@ export {
 /**
  * Measure month-body height / weeks-in-viewport → how many event bars fit
  * before showing "N개 더보기" (MDC useMaxVisibleEvents).
+ * 6-week months shrink lanes so 5 bars + more still fit.
  * `density` scales bar/day-number metrics (lower → more bars visible).
  */
 export function useMaxVisibleEvents(
@@ -24,10 +26,10 @@ export function useMaxVisibleEvents(
   density = 1,
   /** Bump when chrome height changes so row capacity remeasures without a window resize. */
   layoutKey?: unknown
-): { maxAll: number; maxWithMore: number } {
+): { maxAll: number; maxWithMore: number; cssVars: Record<string, string> } {
   const normalizedDensity = normalizeEventDensity(density)
-  const [capacity, setCapacity] = useState(() =>
-    getEventRowCapacity(0, normalizedDensity)
+  const [layout, setLayout] = useState(() =>
+    fitEventLayout(0, normalizedDensity, weeksInViewport)
   )
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export function useMaxVisibleEvents(
     let raf = 0
     const update = (): void => {
       const rowHeight = container.clientHeight / weeksInViewport
-      setCapacity(getEventRowCapacity(rowHeight, normalizedDensity))
+      setLayout(fitEventLayout(rowHeight, normalizedDensity, weeksInViewport))
     }
     const schedule = (): void => {
       if (raf) return
@@ -59,7 +61,7 @@ export function useMaxVisibleEvents(
     }
   }, [containerRef, weeksInViewport, normalizedDensity, layoutKey])
 
-  return capacity
+  return layout
 }
 
 export function useEventLayoutCssVars(density = 1): Record<string, string> {

@@ -1,5 +1,5 @@
 /**
- * Day-cell background colors — soft pastels (low saturation, high lightness).
+ * Day-cell frame colors — soft pastels (low saturation, high lightness).
  * Hues span the wheel evenly (plus one neutral) and every swatch is solved to the
  * same relative luminance (~0.70) so the grid reads as one family, whichever color
  * is picked. 19 presets + 색상 제거 + 사용자 정의 fill a 7 × 3 grid exactly.

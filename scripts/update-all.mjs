@@ -8,6 +8,7 @@
  *   --skip-hit   Skip desktop-hit helper rebuild
  *   --build      Run production build (desktop-hit + electron-vite)
  *   --msi        Run npm run build:msi after updates
+ *   --release    Run npm run build:release (MSI + portable, same stamp)
  */
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs/promises'
@@ -21,12 +22,14 @@ const root = path.resolve(__dirname, '..')
  * @param {string[]} argv
  */
 function parseArgs(argv) {
+  const release = argv.includes('--release')
   return {
     skipGit: argv.includes('--skip-git'),
     skipNpm: argv.includes('--skip-npm'),
     skipHit: argv.includes('--skip-hit'),
     build: argv.includes('--build'),
-    msi: argv.includes('--msi')
+    msi: argv.includes('--msi'),
+    release
   }
 }
 
@@ -84,15 +87,17 @@ async function main() {
     run('npm update', 'npm', ['update'])
   }
 
-  if (!opts.skipHit) {
+  if (!opts.skipHit && !opts.release) {
     run('build desktop-hit helper', 'npm', ['run', 'build:desktop-hit'])
   }
 
-  if (opts.build) {
+  if (opts.build && !opts.release) {
     run('production build', 'npm', ['run', 'build'])
   }
 
-  if (opts.msi) {
+  if (opts.release) {
+    run('build release (MSI + portable)', 'npm', ['run', 'build:release'])
+  } else if (opts.msi) {
     run('build MSI', 'npm', ['run', 'build:msi'])
   }
 

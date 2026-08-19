@@ -61,17 +61,29 @@
    */
   --neo-opacity-fill: #fafbfc;
   --gcal-in-month-fill: var(--neo-opacity-fill);
-  --gcal-other-month-fill: #f2f4f6;
+  --gcal-other-month-fill: #f7f8fa;
   --gcal-week-chrome-fill: #e8eaed;
-  --gcal-other-month-text: #9aa0a6;
+  --gcal-other-month-text: #c4c7ca;
   --gcal-in-month-bg: color-mix(
     in srgb,
     var(--gcal-in-month-fill) calc(var(--neo-shell-opacity) * 100%),
     transparent
   );
+  --gcal-sunday-fill: color-mix(in srgb, var(--gcal-sunday) 12%, var(--neo-opacity-fill));
+  --gcal-saturday-fill: color-mix(in srgb, var(--gcal-saturday) 12%, var(--neo-opacity-fill));
+  --gcal-sunday-col-bg: color-mix(
+    in srgb,
+    var(--gcal-sunday-fill) calc(var(--neo-shell-opacity) * 100%),
+    transparent
+  );
+  --gcal-saturday-col-bg: color-mix(
+    in srgb,
+    var(--gcal-saturday-fill) calc(var(--neo-shell-opacity) * 100%),
+    transparent
+  );
   --gcal-other-month-bg: color-mix(
     in srgb,
-    var(--gcal-other-month-fill) calc(var(--neo-shell-opacity) * 100%),
+    var(--gcal-other-month-fill) calc(var(--neo-shell-opacity) * 96%),
     transparent
   );
   --gcal-week-chrome-bg: color-mix(
@@ -88,8 +100,8 @@
   --event-density: 1;
   --event-lane-height: 18px;
   --event-lane-step: 20px;
-  --day-event-gap: 6px;
-  --event-more-offset: 4px;
+  --day-event-gap: 1px;
+  --event-more-offset: 2px;
   --neo-header-opacity: 1;
   --neo-shell-opacity: 1;
   /* Window-mode resize grips / frame (Neo-only) */
@@ -124,9 +136,11 @@
   --gcal-yellow-soft: #4a4330;
   --gcal-input-bg: #35363a;
   --neo-opacity-fill: #303134;
-  --gcal-other-month-fill: #35363a;
+  --gcal-sunday-fill: color-mix(in srgb, var(--gcal-sunday) 20%, var(--neo-opacity-fill));
+  --gcal-saturday-fill: color-mix(in srgb, var(--gcal-saturday) 20%, var(--neo-opacity-fill));
+  --gcal-other-month-fill: #3a3b3f;
   --gcal-week-chrome-fill: #45474b;
-  --gcal-other-month-text: #80868b;
+  --gcal-other-month-text: #9aa0a6;
   --gcal-hover-panel: #3c4043;
   --gcal-day-number-muted: #9aa0a6;
   --gcal-day-number-dim: #5f6368;
@@ -358,6 +372,9 @@ textarea {
 
 .week-view .month-body {
   flex: 1;
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 /* MDC completed event bars — muted chip, gray accent, struck title */
@@ -392,7 +409,9 @@ textarea {
   grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: 14px;
   padding: 14px 16px;
-  overflow: auto;
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: none;
   background: transparent;
   color: var(--gcal-body);
 }
@@ -524,6 +543,7 @@ textarea {
 
 .month-weekdays {
   flex-shrink: 0;
+  border-top: 1px solid var(--gcal-grid-line);
   border-bottom: 1px solid var(--gcal-grid-line);
   background-color: var(--gcal-week-chrome-bg);
 }
@@ -534,10 +554,15 @@ textarea {
   text-align: center;
   font-size: clamp(10px, 1.4vh, 11px);
   color: var(--gcal-muted);
+  border-right: 1px solid var(--gcal-grid-line);
 }
 
 .month-weekdays > div {
   font-weight: 700;
+}
+
+.month-weekdays > div:last-child {
+  border-right: none;
 }
 
 .week-number-header {
@@ -563,10 +588,12 @@ textarea {
 
 .month-weekdays > div.is-sunday {
   color: var(--gcal-sunday);
+  background-color: var(--gcal-sunday-col-bg);
 }
 
 .month-weekdays > div.is-saturday {
   color: var(--gcal-saturday);
+  background-color: var(--gcal-saturday-col-bg);
 }
 
 .month-body {
@@ -578,11 +605,13 @@ textarea {
 }
 
 /* MDC infinite month: week rows inside a fixed viewport.
- * No mandatory scroll-snap — it fought programmatic month align and jumped one
- * week early (e.g. 2029-07 Sun-start → viewport stuck on Jun 24…Jul 28). */
+ * User pan/wheel must not change month — header prev/next/today only.
+ * Programmatic scrollTop (scrollToMonth) still works with overflow hidden. */
 .month-view:not(.week-view) .month-body {
   position: relative;
-  overflow-y: auto;
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: none;
   scroll-snap-type: none;
   /* Prevent browser scroll anchoring from fighting day-1 pin when the next
      month's 1st is already on the bottom row (Aug→Sep style forward nav). */
@@ -624,12 +653,11 @@ textarea {
   align-items: stretch;
   overflow: hidden;
   border-right: 1px solid var(--gcal-grid-line);
-  padding: 4px 6px;
+  padding: 4px 6px 2px;
   background-color: var(--gcal-in-month-bg);
   /*
-   * No background-color transition: has-day-color uses transparent + ::before tint.
-   * Animating transparent → in-month fill (e.g. 「모든 일정 숨기기」) briefly punches
-   * through to the desktop wallpaper.
+   * No background-color transition: animating the in-month fill (e.g. 「모든 일정
+   * 숨기기」) can briefly punch through to the desktop wallpaper.
    */
   cursor: pointer;
 }
@@ -654,56 +682,26 @@ textarea {
   border-right: none;
 }
 
-.day-cell.has-day-color {
-  background-color: transparent;
-}
-
 /*
- * Day tint uses the same --neo-shell-opacity as in-month cells (settings
- * 「캘린더 불투명도」), not a fixed wash — so colored days match the shell.
+ * Quick-edit palette color is a cell frame (not a fill), same 2px inset as today.
+ * In-month / weekend backgrounds stay visible inside the frame.
  */
 .day-cell.has-day-color::before {
   content: '';
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: 4;
   pointer-events: none;
-  background-color: color-mix(
-    in srgb,
-    var(--day-cell-bg) calc(var(--neo-shell-opacity) * 100%),
-    transparent
-  );
-  opacity: 1;
+  box-shadow: inset 0 0 0 2px var(--day-cell-bg);
 }
 
-.day-cell.has-day-color:hover::before,
-.day-cell.has-day-color.selected::before {
-  background-color: color-mix(
-    in srgb,
-    var(--day-cell-bg) calc(min(1, var(--neo-shell-opacity) + 0.12) * 100%),
-    transparent
-  );
-}
-
-.day-cell.has-day-color > * {
-  position: relative;
-  z-index: 1;
-}
-
+/* Adjacent-month pads — same content as before, washed lighter than in-month. */
 .day-cell.other-month {
   background-color: var(--gcal-other-month-bg);
 }
 
-.day-cell.other-month.has-day-color {
-  background-color: var(--gcal-other-month-bg);
-}
-
 .day-cell.other-month.has-day-color::before {
-  background-color: color-mix(
-    in srgb,
-    var(--day-cell-bg) calc(var(--neo-shell-opacity) * 67%),
-    transparent
-  );
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--day-cell-bg) 70%, transparent);
 }
 
 .day-cell.other-month .day-number .solar,
@@ -714,7 +712,27 @@ textarea {
 
 .day-cell.other-month .event-bar,
 .day-cell.other-month .event-more {
-  opacity: 0.45;
+  opacity: 0.52;
+}
+
+/* Weekend columns — same opacity mix as weekday cells; in-month only. */
+.day-cell.sunday:not(.other-month) {
+  background-color: var(--gcal-sunday-col-bg);
+}
+
+.day-cell.saturday:not(.other-month) {
+  background-color: var(--gcal-saturday-col-bg);
+}
+
+.day-cell.sunday:not(.other-month):hover,
+.day-cell.saturday:not(.other-month):hover,
+.day-cell.sunday:not(.other-month).selected,
+.day-cell.saturday:not(.other-month).selected {
+  background-color: color-mix(
+    in srgb,
+    var(--gcal-blue-soft) calc(var(--neo-shell-opacity) * 100%),
+    transparent
+  );
 }
 
 .day-cell.sunday:not(.other-month) .day-number .solar {
@@ -730,22 +748,15 @@ textarea {
   color: var(--gcal-sunday);
 }
 
-/* 오늘 표시(파란 원)는 요일/공휴일 글자색보다 항상 우선 — 선택자 개수를 늘려
-   위 규칙들(specificity 5)보다 강하게 만들어 흰 글씨가 항상 보이게 한다. */
-.day-cell.today.saturday:not(.other-month) .day-number .solar,
-.day-cell.today.sunday:not(.other-month) .day-number .solar,
-.day-cell.today.holiday:not(.other-month) .day-number .solar {
-  color: #fff;
-}
-
 .day-number {
   position: relative;
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
-  gap: calc(clamp(4px, 0.65vh, 8px) * var(--event-density, 1));
-  min-height: calc(clamp(20px, 3vh, 30px) * var(--event-density, 1));
+  gap: max(0px, calc(clamp(4px, 0.65vh, 8px) * var(--event-density, 1) - 4px));
+  min-height: 0;
   max-width: 100%;
+  margin-left: -4px;
   overflow: hidden;
 }
 
@@ -753,9 +764,11 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: calc(clamp(22px, 3vh, 30px) * var(--event-density, 1));
-  height: calc(clamp(22px, 3vh, 30px) * var(--event-density, 1));
-  font-size: calc(clamp(12px, 1.8vh, 15px) * var(--event-density, 1));
+  min-width: calc(clamp(16px, 2.1vh, 22px) * var(--event-density, 1));
+  height: calc(clamp(15px, 1.95vh, 18px) * var(--event-density, 1));
+  padding: 0 2px;
+  border-radius: 4px;
+  font-size: calc(clamp(10px, 1.45vh, 12px) * var(--event-density, 1));
   font-weight: 500;
   line-height: 1;
   color: var(--gcal-heading);
@@ -781,7 +794,7 @@ textarea {
   white-space: nowrap;
 }
 
-/* 날짜 강조 — filled circle behind the date number, like the today/selected chips. */
+/* 날짜 강조 — rounded rect behind the 양력 number (not a circle). */
 .day-number.has-highlight .solar {
   position: relative;
   isolation: isolate;
@@ -790,40 +803,35 @@ textarea {
 .day-number.has-highlight .solar::after {
   content: '';
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: -1px;
+  bottom: 0;
+  left: 1px;
   z-index: -1;
-  border-radius: 999px;
+  border-radius: 4px;
   background: color-mix(in srgb, var(--day-highlight, #ded074) 85%, transparent);
 }
 
-/*
- * Today already owns the chip — draw the highlight as an inner ring so it
- * isn't clipped by .day-number's overflow. Selected focus stays on the cell
- * background; keep the filled highlight circle above the soft-blue chip.
- */
-.day-cell.today .day-number.has-highlight .solar::after {
-  inset: 1px;
-  background: none;
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--day-highlight, #ded074) 95%, transparent);
+.day-cell.today {
+  z-index: 1;
 }
 
-.day-cell.today .day-number .solar {
-  border-radius: 999px;
-  background: var(--gcal-blue);
-  color: #fff;
-  box-shadow: 0 1px 3px rgba(26, 115, 232, 0.35);
+/* Today frame sits above hover and event bars; palette color frame stacks above it. */
+.day-cell.today::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 2px var(--gcal-blue);
 }
 
 .day-cell.today .day-number .lunar {
   color: var(--gcal-muted);
 }
 
-.day-cell.other-month.today .day-number .solar {
-  color: #fff;
-}
-
 .day-cell.selected:not(.today) .day-number .solar {
-  border-radius: 999px;
+  border-radius: 4px;
   background: var(--gcal-blue-soft);
   color: var(--gcal-blue-dark);
 }
@@ -853,7 +861,10 @@ textarea {
   padding: 0 1px 0 0;
   border: 0;
   border-radius: 4px;
-  font-size: calc(clamp(8.5px, 1.25vh, 11.5px) * var(--event-density, 1));
+  font-size: min(
+    calc(clamp(8.5px, 1.25vh, 11.5px) * var(--event-density, 1)),
+    calc(var(--event-lane-height) - 2px)
+  );
   font-weight: 500;
   letter-spacing: -0.06em;
   text-align: left;
@@ -3331,12 +3342,10 @@ html.neo-panel-window.dark form.shell-solid-surface.rounded-lg {
   position: absolute;
   left: 1px;
   right: 1px;
-  top: calc(
-    var(--day-event-gap, 6px) + var(--event-lane, 0) * var(--event-lane-step, 20px) +
-      var(--event-more-offset, 4px)
-  );
-  height: var(--event-lane-height, 18px);
-  line-height: var(--event-lane-height, 18px);
+  top: auto;
+  bottom: var(--event-more-offset, 2px);
+  height: calc(clamp(10px, 1.35vh, 13px) * var(--event-density, 1));
+  line-height: calc(clamp(10px, 1.35vh, 13px) * var(--event-density, 1));
   padding: 0;
   border: 0;
   border-radius: 0;

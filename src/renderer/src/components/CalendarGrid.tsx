@@ -71,7 +71,7 @@ import { normalizeHeaderTitle } from '../../../shared/headerTitle'
 import { DayListPreviewPanel } from './DayListPreviewPanel'
 import { exportFormatLabel, formatExportRangeLabel } from '../../../shared/exportCalendarHelpers.js'
 import type { ExportCalendarRequest } from '../../../shared/exportCalendar'
-import { useEventLayoutCssVars, useMaxVisibleEvents } from '../hooks/useMaxVisibleEvents'
+import { useMaxVisibleEvents } from '../hooks/useMaxVisibleEvents'
 import {
   EVENT_DENSITY_MAX,
   EVENT_DENSITY_MIN,
@@ -116,16 +116,22 @@ import {
   ChevronUpIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  DesktopModeIcon,
   DoubleChevronLeftIcon,
   DoubleChevronRightIcon,
   DensityDownIcon,
   DensityUpIcon,
+  ExportIcon,
+  HelpIcon,
   HideCompletedCheckIcon,
   HideEventsEyeIcon,
   MonthViewIcon,
   PortraitPreviewIcon,
+  SearchIcon,
+  SettingsIcon,
   WebBrowserIcon,
   WeekViewIcon,
+  WindowModeIcon,
   YearViewIcon
 } from './CalendarHeaderIcons'
 import { useCalendarStore } from '../hooks/useCalendarStore'
@@ -141,6 +147,7 @@ import {
   densityIconBtnClass,
   softBlueIconBtnActiveClass,
   softBlueIconBtnClass,
+  softBlueIconBtnMutedClass,
   softRedIconBtnActiveClass,
   todayBtnClass,
   viewModeIconBtnActiveClass,
@@ -757,6 +764,21 @@ export function CalendarGrid({
     setSearchOpen(true)
   }, [eventsHidden, floatingPanels, openEmbeddedPanel])
 
+  const openSettingsPanel = useCallback((): void => {
+    if (!requireEdit()) return
+    if (isBrowserNeoCalendarHost()) {
+      setSearchOpen(false)
+      setSettingsOpen(true)
+      return
+    }
+    if (floatingPanels) {
+      openEmbeddedPanel({ kind: 'settings' })
+      return
+    }
+    setSearchOpen(false)
+    setSettingsOpen(true)
+  }, [floatingPanels, openEmbeddedPanel, requireEdit])
+
   // WorkerW-embedded: publish period-toolbar + visible day-cell hit zones.
   useLayoutEffect(() => {
     const api = window.neoCalendar
@@ -781,7 +803,10 @@ export function CalendarGrid({
               if (
                 !action ||
                 (!PERIOD_TOOLBAR_ACTION_ID_SET.has(action) &&
-                  !EMBEDDED_HEADER_CHROME_ACTIONS.has(action))
+                  !EMBEDDED_HEADER_CHROME_ACTIONS.has(action) &&
+                  !EMBEDDED_FLOATING_CHROME_ACTIONS.has(action) &&
+                  !EMBEDDED_MODE_CHROME_ACTIONS.has(action) &&
+                  !EMBEDDED_EXPORT_CHROME_ACTIONS.has(action))
               )
                 return []
               const r = el.getBoundingClientRect()
@@ -1109,13 +1134,14 @@ export function CalendarGrid({
     viewMode === 'week' ? 1 : viewMode === 'month' ? getWeeksInMonth(year, month, weekStartsOn) : 0
 
   /** MDC: row height ÷ weeks → how many bars fit before "더보기". */
-  const eventCapacity = useMaxVisibleEvents(
+  const eventLayout = useMaxVisibleEvents(
     monthBodyRef,
     effectiveWeeksInViewport,
     eventDensity,
     headerCollapsed
   )
-  const eventLayoutCssVars = useEventLayoutCssVars(eventDensity)
+  const eventCapacity = eventLayout
+  const eventLayoutCssVars = eventLayout.cssVars
 
   const layoutEvents = useMemo(
     () => (completedHidden ? visibleEvents.filter((event) => !event.completed) : visibleEvents),
@@ -1174,7 +1200,7 @@ export function CalendarGrid({
       if (cur.getFullYear() === nextYear && cur.getMonth() === nextMonth1 - 1) return
       setViewDate(new Date(nextYear, nextMonth1 - 1, 1))
     },
-    // Desktop / window mode: never navigate month/week by wheel (wallpaper layer).
+    // Desktop / window / browser (tablet): never navigate month/week by wheel or swipe.
     wheelLocked: wheelLocked || mode === 'desktop' || mode === 'window' || !canEdit
   })
 
@@ -2480,35 +2506,8 @@ export function CalendarGrid({
           user={user}
           loggedIn={canEdit}
           headerTitle={store.settings.viewOptions.headerTitle}
-          searchOpen={searchOpen}
-          settingsOpen={settingsOpen}
-          exporting={exporting}
-          modeBusy={modeBusy}
-          switchReady={switchReady}
           chromeRef={chromeRef}
           onHeaderTitleEdit={openHeaderTitleEditor}
-          onOpenSearch={() => {
-            if (!requireEdit()) return
-            openSearch()
-          }}
-          onOpenSettings={() => {
-            if (!requireEdit()) return
-            if (isBrowserNeoCalendarHost()) {
-              setSearchOpen(false)
-              setSettingsOpen(true)
-              return
-            }
-            if (floatingPanels) {
-              openEmbeddedPanel({ kind: 'settings' })
-              return
-            }
-            setSearchOpen(false)
-            setSettingsOpen(true)
-          }}
-          onExport={handleOpenExport}
-          onOpenFooterHelp={openFooterHelp}
-          onEnterDesktop={() => void enterDesktop()}
-          onEnterWindow={() => void enterWindow()}
           onAuthToggle={handleAuthToggle}
           onLoginRequired={promptLogin}
         />
@@ -2595,7 +2594,7 @@ export function CalendarGrid({
               </h1>
               {lunarMonthLabel ? (
                 <span
-                  className="hidden shrink-0 rounded-full bg-gcal-blue-soft px-1.5 py-0.5 text-[14px] text-gcal-blue-dark xl:inline-block"
+                  className="hidden shrink-0 rounded-full bg-gcal-blue-soft px-1.5 py-0.5 text-[13px] text-gcal-blue-dark xl:inline-block"
                   title={lunarMonthLabel}
                 >
                   {lunarMonthLabel}
@@ -2783,7 +2782,138 @@ export function CalendarGrid({
             </InteractionUI>
             <InteractionUI
               as="button"
+              className={cn(
+                desktopModeIconBtnClass,
+                densityIconBtnClass,
+                (!canEdit || settingsOpen) && LOGIN_MUTED_CLASS
+              )}
+              captureOnHover={captureToolbarOnHover}
+              data-toolbar-action={CHROME_TOOLBAR_ACTIONS.search}
+              aria-label="검색"
+              title={
+                !canEdit
+                  ? LOGIN_REQUIRED_TITLE
+                  : settingsOpen
+                    ? '설정을 닫은 후 검색할 수 있습니다'
+                    : '검색'
+              }
+              disabled={canEdit ? settingsOpen : false}
+              onClick={() => {
+                if (!requireEdit()) return
+                if (settingsOpen) return
+                openSearch()
+              }}
+            >
+              <SearchIcon />
+            </InteractionUI>
+            <InteractionUI
+              as="button"
+              className={cn(
+                desktopModeIconBtnClass,
+                densityIconBtnClass,
+                (!canEdit || searchOpen) && LOGIN_MUTED_CLASS
+              )}
+              captureOnHover={captureToolbarOnHover}
+              data-toolbar-action={CHROME_TOOLBAR_ACTIONS.settings}
+              aria-label="설정"
+              title={
+                !canEdit
+                  ? LOGIN_REQUIRED_TITLE
+                  : searchOpen
+                    ? '검색을 닫은 후 설정할 수 있습니다'
+                    : '설정'
+              }
+              disabled={canEdit ? searchOpen : false}
+              onClick={openSettingsPanel}
+            >
+              <SettingsIcon />
+            </InteractionUI>
+            <InteractionUI
+              as="button"
+              className={cn(
+                desktopModeIconBtnClass,
+                densityIconBtnClass,
+                iconBtnDisabledClass,
+                (!canEdit || exporting || settingsOpen || searchOpen) && LOGIN_MUTED_CLASS
+              )}
+              captureOnHover={captureToolbarOnHover}
+              data-toolbar-action={CHROME_TOOLBAR_ACTIONS.export}
+              aria-label="내려받기"
+              title={!canEdit ? LOGIN_REQUIRED_TITLE : '내려받기'}
+              disabled={canEdit ? exporting || settingsOpen || searchOpen : false}
+              onClick={() => {
+                if (!requireEdit()) return
+                handleOpenExport()
+              }}
+            >
+              <ExportIcon />
+            </InteractionUI>
+            <InteractionUI
+              as="button"
               className={cn(desktopModeIconBtnClass, densityIconBtnClass)}
+              captureOnHover={captureToolbarOnHover}
+              data-toolbar-action={CHROME_TOOLBAR_ACTIONS.footerHelp}
+              aria-label="도움말"
+              title="도움말 — 모든 푸터 힌트"
+              onClick={openFooterHelp}
+            >
+              <HelpIcon />
+            </InteractionUI>
+            <InteractionUI
+              as="button"
+              className={cn(
+                desktopModeIconBtnClass,
+                densityIconBtnClass,
+                iconBtnDisabledClass,
+                mode === 'desktop' && softBlueIconBtnMutedClass
+              )}
+              captureOnHover={captureToolbarOnHover}
+              data-toolbar-action={CHROME_TOOLBAR_ACTIONS.enterDesktop}
+              aria-label="바탕화면모드"
+              aria-pressed={mode === 'desktop'}
+              title={
+                mode === 'desktop'
+                  ? '바탕화면 모드 — 아이콘 아래'
+                  : !switchReady
+                    ? '잠시만 기다려 주세요'
+                    : '바탕화면에 고정 (아이콘 아래로 들어감)'
+              }
+              disabled={modeBusy || mode === 'desktop' || !switchReady}
+              onClick={() => {
+                if (!switchReady || modeBusy) return
+                void enterDesktop()
+              }}
+            >
+              <DesktopModeIcon />
+            </InteractionUI>
+            <InteractionUI
+              as="button"
+              className={cn(
+                desktopModeIconBtnClass,
+                densityIconBtnClass,
+                iconBtnDisabledClass,
+                mode === 'window' && softBlueIconBtnMutedClass
+              )}
+              captureOnHover={captureToolbarOnHover}
+              data-toolbar-action={CHROME_TOOLBAR_ACTIONS.enterWindow}
+              aria-label="창모드"
+              aria-pressed={mode === 'window'}
+              title={!switchReady ? '잠시만 기다려 주세요' : '창 모드 — 이동·크기조절 가능'}
+              disabled={modeBusy || mode === 'window' || !switchReady}
+              onClick={() => {
+                if (!switchReady || modeBusy) return
+                void enterWindow()
+              }}
+            >
+              <WindowModeIcon />
+            </InteractionUI>
+            <InteractionUI
+              as="button"
+              className={cn(
+                desktopModeIconBtnClass,
+                dayListPreviewIconBtnClass,
+                headerCollapsed && dayListPreviewIconBtnActiveClass
+              )}
               captureOnHover={captureToolbarOnHover}
               data-toolbar-action={CHROME_TOOLBAR_ACTIONS.toggleHeader}
               aria-label={headerCollapsed ? '헤더 펼치기' : '헤더 접기'}

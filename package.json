@@ -20,7 +20,7 @@
     "verify:export": "node scripts/verify-export.mjs",
     "sync-version": "node scripts/sync-version.mjs",
     "update:all": "node scripts/update-all.mjs",
-    "build:update_all": "node scripts/update-all.mjs --msi",
+    "build:update_all": "node scripts/update-all.mjs --release",
     "dist": "npm run build:desktop-hit && npm run build && electron-builder --win",
     "build:msi": "node scripts/build-msi.mjs",
     "build:portable": "node scripts/build-portable.mjs",

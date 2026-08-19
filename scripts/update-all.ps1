@@ -17,13 +17,17 @@
 
 .PARAMETER Msi
   Run npm run build:msi after updates.
+
+.PARAMETER Release
+  Run npm run build:release (MSI + portable zip, same stamp).
 #>
 param(
     [switch]$SkipGit,
     [switch]$SkipNpm,
     [switch]$SkipHit,
     [switch]$Build,
-    [switch]$Msi
+    [switch]$Msi,
+    [switch]$Release
 )
 
 $ErrorActionPreference = 'Stop'
@@ -48,6 +52,7 @@ if ($SkipNpm) { $nodeArgs += '--skip-npm' }
 if ($SkipHit) { $nodeArgs += '--skip-hit' }
 if ($Build) { $nodeArgs += '--build' }
 if ($Msi) { $nodeArgs += '--msi' }
+if ($Release) { $nodeArgs += '--release' }
 
 Write-UpdateLog '===== update-all started ====='
 Write-UpdateLog "Project root: $Root"

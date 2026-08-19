@@ -1098,8 +1098,8 @@ export function DayQuickEditPopover({
               type="button"
               className={`day-quick-edit-color-trigger${displayDayColor ? ' has-color' : ''}`}
               style={displayDayColor ? { backgroundColor: displayDayColor } : undefined}
-              title="날짜 배경 색상"
-              aria-label="날짜 배경 색상"
+              title="날짜 칸 테두리 색상"
+              aria-label="날짜 칸 테두리 색상"
               aria-expanded={paletteOpen}
               disabled={!canEdit}
               onClick={(e) => {

@@ -2,10 +2,10 @@
 export const EVENT_LAYOUT = {
   laneHeight: 18,
   laneGap: 2,
-  dayEventGap: 6,
-  moreOffset: 4,
-  cellPaddingY: 8,
-  dayNumberHeight: 28
+  dayEventGap: 1,
+  moreOffset: 2,
+  cellPaddingY: 6,
+  dayNumberHeight: 22
 } as const
 
 export const EVENT_DENSITY_MIN = 0.75
@@ -42,8 +42,8 @@ export function getScaledEventLayout(density: unknown = EVENT_DENSITY_DEFAULT): 
   return {
     laneHeight: scale(EVENT_LAYOUT.laneHeight, 12),
     laneGap: scale(EVENT_LAYOUT.laneGap, 1),
-    dayEventGap: scale(EVENT_LAYOUT.dayEventGap, 3),
-    moreOffset: scale(EVENT_LAYOUT.moreOffset, 2),
+    dayEventGap: scale(EVENT_LAYOUT.dayEventGap, 0),
+    moreOffset: EVENT_LAYOUT.moreOffset,
     cellPaddingY: scale(EVENT_LAYOUT.cellPaddingY, 4),
     dayNumberHeight: scale(EVENT_LAYOUT.dayNumberHeight, 18),
     density: d
@@ -55,27 +55,25 @@ export function getEventLaneStep(density: unknown = EVENT_DENSITY_DEFAULT): numb
   return layout.laneHeight + layout.laneGap
 }
 
-export function getEventRowCapacity(
+function moreTailPx(layout: ScaledEventLayout): number {
+  return Math.max(10, Math.round(12 * layout.density)) + layout.moreOffset
+}
+
+function capacityFromLayout(
   rowHeight: number,
-  density: unknown = EVENT_DENSITY_DEFAULT
-): {
-  maxAll: number
-  maxWithMore: number
-} {
+  layout: ScaledEventLayout
+): { maxAll: number; maxWithMore: number } {
   if (rowHeight <= 0) return { maxAll: 0, maxWithMore: 0 }
 
-  const layout = getScaledEventLayout(density)
   const laneStep = layout.laneHeight + layout.laneGap
-
   const available =
     rowHeight - layout.cellPaddingY - layout.dayNumberHeight - layout.dayEventGap
   if (available <= 0) return { maxAll: 0, maxWithMore: 0 }
 
   const maxAll = Math.max(0, Math.floor(available / laneStep))
-  const moreTail = layout.moreOffset + layout.laneHeight
   const maxWithMore = Math.max(
     0,
-    Math.min(maxAll - 1, Math.floor((available - moreTail) / laneStep))
+    Math.min(maxAll - 1, Math.floor((available - moreTailPx(layout)) / laneStep))
   )
 
   return { maxAll, maxWithMore }
@@ -84,7 +82,10 @@ export function getEventRowCapacity(
 export function getEventLayoutCssVars(
   density: unknown = EVENT_DENSITY_DEFAULT
 ): Record<string, string> {
-  const layout = getScaledEventLayout(density)
+  return cssVarsFromLayout(getScaledEventLayout(density))
+}
+
+export function cssVarsFromLayout(layout: ScaledEventLayout): Record<string, string> {
   const laneStep = layout.laneHeight + layout.laneGap
   return {
     '--event-density': String(layout.density),
@@ -93,6 +94,65 @@ export function getEventLayoutCssVars(
     '--day-event-gap': `${layout.dayEventGap}px`,
     '--event-more-offset': `${layout.moreOffset}px`
   }
+}
+
+/** 6-week months: pack 5 event bars + "N개 더보기" into each day cell. */
+export const SIX_WEEK_VISIBLE_WITH_MORE = 5
+
+export function fitEventLayout(
+  rowHeight: number,
+  density: unknown = EVENT_DENSITY_DEFAULT,
+  weeksInViewport = 5
+): {
+  maxAll: number
+  maxWithMore: number
+  cssVars: Record<string, string>
+} {
+  const layout = { ...getScaledEventLayout(density) }
+
+  if (weeksInViewport === 6 && rowHeight > 0) {
+    const target = SIX_WEEK_VISIBLE_WITH_MORE
+    const fits = (next: ScaledEventLayout): boolean => {
+      const available =
+        rowHeight - next.cellPaddingY - next.dayNumberHeight - next.dayEventGap
+      const laneStep = next.laneHeight + next.laneGap
+      return available - moreTailPx(next) >= target * laneStep
+    }
+
+    if (!fits(layout) && layout.dayNumberHeight > 22) {
+      layout.dayNumberHeight = 22
+    }
+    while (!fits(layout) && layout.laneHeight > 10) {
+      layout.laneHeight -= 1
+    }
+    if (!fits(layout) && layout.laneGap > 1) {
+      layout.laneGap = 1
+    }
+
+    const capacity = capacityFromLayout(rowHeight, layout)
+    if (fits(layout)) {
+      return {
+        maxAll: Math.max(capacity.maxAll, target + 1),
+        maxWithMore: Math.max(capacity.maxWithMore, target),
+        cssVars: cssVarsFromLayout(layout)
+      }
+    }
+    return { ...capacity, cssVars: cssVarsFromLayout(layout) }
+  }
+
+  const capacity = capacityFromLayout(rowHeight, layout)
+  return { ...capacity, cssVars: cssVarsFromLayout(layout) }
+}
+
+export function getEventRowCapacity(
+  rowHeight: number,
+  density: unknown = EVENT_DENSITY_DEFAULT
+): {
+  maxAll: number
+  maxWithMore: number
+} {
+  const { maxAll, maxWithMore } = fitEventLayout(rowHeight, density, 5)
+  return { maxAll, maxWithMore }
 }
 
 export function resolveDayVisibleEventLimit(

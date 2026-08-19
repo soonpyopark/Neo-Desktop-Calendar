@@ -356,6 +356,7 @@ export function useMonthWeekScroll({
       if (event.deltaY === 0) return
 
       event.preventDefault()
+      // Period nav is header buttons only (desktop, window, tablet/browser).
       if (
         wheelLocked ||
         wheelLockRef.current ||
@@ -374,9 +375,16 @@ export function useMonthWeekScroll({
       }, WHEEL_UNLOCK_MS)
     }
 
+    const onTouchMove = (event) => {
+      if (!wheelLocked) return
+      event.preventDefault()
+    }
+
     container.addEventListener('wheel', onWheel, { passive: false })
+    container.addEventListener('touchmove', onTouchMove, { passive: false })
     return () => {
       container.removeEventListener('wheel', onWheel)
+      container.removeEventListener('touchmove', onTouchMove)
     }
   }, [scrollByViewport, scrollRef, wheelLocked])
 
@@ -414,6 +422,7 @@ export function useMonthWeekScroll({
     }
 
     const onPointerDown = (event) => {
+      if (wheelLocked) return
       if (event.pointerType === 'mouse' && event.button !== 0) return
       activePointer = {
         id: event.pointerId,
