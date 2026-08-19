@@ -1231,6 +1231,51 @@ export function CalendarGrid({
     headerCollapsed
   ])
 
+  // Window / browser resize changes `cqh` week-row height but leaves scrollTop in
+  // old pixels, so rows sit off the week grid until 「오늘」 re-pins. Re-pin the
+  // header month (not today) whenever the month body size actually changes.
+  useEffect(() => {
+    if (viewMode !== 'month') return undefined
+    const container = monthBodyRef.current
+    if (!container || typeof ResizeObserver === 'undefined') return undefined
+
+    let raf = 0
+    let lastH = container.clientHeight
+    let lastW = container.clientWidth
+
+    const realign = (): void => {
+      raf = 0
+      const el = monthBodyRef.current
+      if (!el) return
+      const h = el.clientHeight
+      const w = el.clientWidth
+      if (h < 8 || w < 8) return
+      if (h === lastH && w === lastW) return
+      lastH = h
+      lastW = w
+      consumeSkipScroll()
+      const current = viewDateRef.current
+      scrollToMonthRef.current(current.getFullYear(), current.getMonth(), weekStartsOn, 'auto')
+    }
+
+    const schedule = (): void => {
+      if (raf) return
+      raf = window.requestAnimationFrame(realign)
+    }
+
+    const observer = new ResizeObserver(schedule)
+    observer.observe(container)
+    window.addEventListener('resize', schedule)
+    window.visualViewport?.addEventListener('resize', schedule)
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', schedule)
+      window.visualViewport?.removeEventListener('resize', schedule)
+      if (raf) window.cancelAnimationFrame(raf)
+    }
+  }, [viewMode, weekStartsOn, consumeSkipScroll])
+
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>()
     for (const event of visibleEvents) {
