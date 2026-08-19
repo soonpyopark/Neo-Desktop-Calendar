@@ -47,6 +47,7 @@ import {
   EMBEDDED_FLOATING_CHROME_ACTIONS,
   EMBEDDED_FOOTER_HINT_ACTIONS,
   EMBEDDED_FOOTER_LINK_ACTIONS,
+  EMBEDDED_HEADER_CHROME_ACTIONS,
   EMBEDDED_MODE_CHROME_ACTIONS,
   EMBEDDED_RELOAD_CHROME_ACTIONS,
   FOOTER_HINT_ACTIONS,
@@ -111,6 +112,8 @@ import {
 import { normalizeTagIds } from '../../../shared/mdcExport/eventTags.js'
 import type { EventLink } from '../../../shared/calendarTypes'
 import {
+  ChevronDownIcon,
+  ChevronUpIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   DoubleChevronLeftIcon,
@@ -729,6 +732,10 @@ export function CalendarGrid({
 
   const eventsHidden = store.settings.viewOptions.eventsHidden
   const completedHidden = store.settings.viewOptions.completedHidden
+  const storedHeaderCollapsed = Boolean(store.settings.viewOptions.headerCollapsed)
+  const [guestHeaderCollapsed, setGuestHeaderCollapsed] = useState(false)
+  const headerCollapsed = canEdit ? storedHeaderCollapsed : guestHeaderCollapsed
+  const prevHeaderCollapsedRef = useRef<boolean | null>(null)
   const eventDensity = normalizeEventDensity(store.settings.viewOptions.eventDensity)
   const showWeekNumbers = store.settings.viewOptions.showWeekNumbers !== false
   const roundedCorners = Boolean(store.settings.viewOptions.roundedCorners)
@@ -771,7 +778,12 @@ export function CalendarGrid({
             (el) => {
               if (el instanceof HTMLButtonElement && el.disabled) return []
               const action = el.dataset.toolbarAction ?? ''
-              if (!action || !PERIOD_TOOLBAR_ACTION_ID_SET.has(action)) return []
+              if (
+                !action ||
+                (!PERIOD_TOOLBAR_ACTION_ID_SET.has(action) &&
+                  !EMBEDDED_HEADER_CHROME_ACTIONS.has(action))
+              )
+                return []
               const r = el.getBoundingClientRect()
               if (r.width < 1 || r.height < 1) return []
               return [
@@ -799,6 +811,7 @@ export function CalendarGrid({
                   !EMBEDDED_MODE_CHROME_ACTIONS.has(action) &&
                   !EMBEDDED_EXPORT_CHROME_ACTIONS.has(action) &&
                   !EMBEDDED_AUTH_CHROME_ACTIONS.has(action) &&
+                  !EMBEDDED_HEADER_CHROME_ACTIONS.has(action) &&
                   !EMBEDDED_RELOAD_CHROME_ACTIONS.has(action))
               )
                 return []
@@ -964,7 +977,9 @@ export function CalendarGrid({
     footerHintPaused,
     canGoPrevFooterHint,
     footerHelpOpen,
-    store.settings.viewOptions.headerTitle
+    store.settings.viewOptions.headerTitle,
+    storedHeaderCollapsed,
+    guestHeaderCollapsed
   ])
 
   // Re-publish after embed (WorkerW blocks forwarded mousemove).
@@ -995,7 +1010,9 @@ export function CalendarGrid({
     modeBusy,
     switchReady,
     user,
-    store.settings.viewOptions.headerTitle
+    store.settings.viewOptions.headerTitle,
+    storedHeaderCollapsed,
+    guestHeaderCollapsed
   ])
   const year = viewDate.getFullYear()
   const month = viewDate.getMonth()
@@ -1095,7 +1112,8 @@ export function CalendarGrid({
   const eventCapacity = useMaxVisibleEvents(
     monthBodyRef,
     effectiveWeeksInViewport,
-    eventDensity
+    eventDensity,
+    headerCollapsed
   )
   const eventLayoutCssVars = useEventLayoutCssVars(eventDensity)
 
@@ -1178,6 +1196,11 @@ export function CalendarGrid({
     const weeksCountChanged = prevWeeksInViewportRef.current !== effectiveWeeksInViewport
     prevWeeksInViewportRef.current = effectiveWeeksInViewport
 
+    const prevHeaderCollapsed = prevHeaderCollapsedRef.current
+    const headerChromeChanged =
+      prevHeaderCollapsed !== null && prevHeaderCollapsed !== headerCollapsed
+    prevHeaderCollapsedRef.current = headerCollapsed
+
     if (!hasInitialScrollRef.current) {
       hasInitialScrollRef.current = true
       scrollToMonthRef.current(year, month, weekStartsOn, 'auto')
@@ -1185,10 +1208,16 @@ export function CalendarGrid({
       return
     }
 
-    if (enteredMonth || prevViewMonthRef.current !== monthKey || weeksCountChanged) {
-      if (weeksCountChanged || enteredMonth) consumeSkipScroll()
+    if (
+      enteredMonth ||
+      prevViewMonthRef.current !== monthKey ||
+      weeksCountChanged ||
+      headerChromeChanged
+    ) {
+      if (weeksCountChanged || enteredMonth || headerChromeChanged) consumeSkipScroll()
       prevViewMonthRef.current = monthKey
       // Buffer remounts on month change (day-1 anchor) — pin before paint.
+      // Header fold/unfold also re-pins the *current* month so week rows use the new cqh.
       scrollToMonthRef.current(year, month, weekStartsOn, 'auto')
     }
   }, [
@@ -1198,7 +1227,8 @@ export function CalendarGrid({
     weekStartsOn,
     effectiveWeeksInViewport,
     scrollWeeks,
-    consumeSkipScroll
+    consumeSkipScroll,
+    headerCollapsed
   ])
 
   const eventsByDate = useMemo(() => {
@@ -1590,6 +1620,7 @@ export function CalendarGrid({
         ...Array.from(EMBEDDED_MODE_CHROME_ACTIONS),
         ...Array.from(EMBEDDED_EXPORT_CHROME_ACTIONS),
         ...Array.from(EMBEDDED_AUTH_CHROME_ACTIONS),
+        ...Array.from(EMBEDDED_HEADER_CHROME_ACTIONS),
         ...Array.from(EMBEDDED_FOOTER_HINT_ACTIONS),
         ...Array.from(EMBEDDED_FOOTER_LINK_ACTIONS),
         ...Array.from(EMBEDDED_RELOAD_CHROME_ACTIONS)
@@ -2183,6 +2214,21 @@ export function CalendarGrid({
     })
   }
 
+  const toggleHeaderCollapsed = (): void => {
+    if (!canEdit) {
+      setGuestHeaderCollapsed((value) => !value)
+      return
+    }
+    void patchStoreSettings({
+      viewOptions: {
+        ...store.settings.viewOptions,
+        headerCollapsed: !headerCollapsed
+      }
+    }).catch(async (error) => {
+      await alert(error instanceof Error ? error.message : '헤더 표시를 저장하지 못했습니다.')
+    })
+  }
+
   const adjustEventDensity = (delta: number): void => {
     setViewFlag({ eventDensity: stepEventDensity(eventDensity, delta) })
   }
@@ -2362,11 +2408,16 @@ export function CalendarGrid({
 
   return (
     <div
-      className={cn('neo-cal-shell flex h-full flex-col', roundedCorners && 'is-rounded-corners')}
+      className={cn(
+        'neo-cal-shell flex h-full flex-col',
+        roundedCorners && 'is-rounded-corners',
+        headerCollapsed && 'is-header-collapsed'
+      )}
     >
       <header
         className={cn(
           headerShellClass,
+          headerCollapsed && 'gap-0',
           !embedded && 'interaction-ui',
           mode === 'window' && 'is-window-mode'
         )}
@@ -2377,6 +2428,7 @@ export function CalendarGrid({
           event.stopPropagation()
         }}
       >
+        {!headerCollapsed ? (
         <AppChrome
           mode={mode}
           embedded={embedded}
@@ -2415,10 +2467,11 @@ export function CalendarGrid({
           onAuthToggle={handleAuthToggle}
           onLoginRequired={promptLogin}
         />
+        ) : null}
 
         <div
           ref={periodHeaderRef}
-          className="header-period-row interaction-ui flex min-w-0 items-center justify-center gap-2"
+          className="header-period-row interaction-ui flex min-w-0 items-center justify-center gap-1.5"
           data-shell-chrome="period-header"
           onDoubleClick={(event) => {
             event.preventDefault()
@@ -2471,7 +2524,7 @@ export function CalendarGrid({
             )}
             <InteractionUI
               as="button"
-              className={cn(`${navBtnClass} mr-5`, !canEdit && LOGIN_MUTED_CLASS)}
+              className={cn(`${navBtnClass} mr-2`, !canEdit && LOGIN_MUTED_CLASS)}
               captureOnHover={captureToolbarOnHover}
               data-toolbar-action={PERIOD_TOOLBAR_ACTIONS.prev}
               onClick={onPrev}
@@ -2492,12 +2545,12 @@ export function CalendarGrid({
             </InteractionUI>
 
             <div className="flex min-w-0 items-baseline gap-2 whitespace-nowrap">
-              <h1 className="m-0 text-[22px] font-semibold tracking-tight text-gcal-heading">
+              <h1 className="m-0 text-[19px] font-semibold leading-7 tracking-tight text-gcal-heading">
                 {periodTitle}
               </h1>
               {lunarMonthLabel ? (
                 <span
-                  className="hidden shrink-0 rounded-full bg-gcal-blue-soft px-2 py-0.5 text-xs text-gcal-blue-dark xl:inline-block"
+                  className="hidden shrink-0 rounded-full bg-gcal-blue-soft px-1.5 py-0.5 text-[14px] text-gcal-blue-dark xl:inline-block"
                   title={lunarMonthLabel}
                 >
                   {lunarMonthLabel}
@@ -2507,7 +2560,7 @@ export function CalendarGrid({
 
             <InteractionUI
               as="button"
-              className={cn(`${navBtnClass} ml-5`, !canEdit && LOGIN_MUTED_CLASS)}
+              className={cn(`${navBtnClass} ml-2`, !canEdit && LOGIN_MUTED_CLASS)}
               captureOnHover={captureToolbarOnHover}
               data-toolbar-action={PERIOD_TOOLBAR_ACTIONS.next}
               onClick={onNext}
@@ -2683,6 +2736,18 @@ export function CalendarGrid({
             >
               <DensityUpIcon />
             </InteractionUI>
+            <InteractionUI
+              as="button"
+              className={cn(desktopModeIconBtnClass, densityIconBtnClass)}
+              captureOnHover={captureToolbarOnHover}
+              data-toolbar-action={CHROME_TOOLBAR_ACTIONS.toggleHeader}
+              aria-label={headerCollapsed ? '헤더 펼치기' : '헤더 접기'}
+              aria-pressed={headerCollapsed}
+              title={headerCollapsed ? '헤더 펼치기' : '헤더 접기'}
+              onClick={toggleHeaderCollapsed}
+            >
+              {headerCollapsed ? <ChevronDownIcon /> : <ChevronUpIcon />}
+            </InteractionUI>
           </div>
         </div>
       </header>
@@ -2778,6 +2843,7 @@ export function CalendarGrid({
         </div>
       )}
 
+      {!headerCollapsed ? (
       <footer
         className={cn(footerShellClass, 'interaction-ui')}
         data-shell-chrome="footer"
@@ -2874,6 +2940,7 @@ export function CalendarGrid({
         </div>
         <SiteLink />
       </footer>
+      ) : null}
 
       {inlineOverlays ? (
         <SearchPanel

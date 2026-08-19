@@ -268,6 +268,20 @@ const api: NeoCalendarApi = {
     ipcRenderer.invoke('calendar:import-backup-zip-path', zipPath) as ReturnType<
       NeoCalendarApi['importBackupZipFromPath']
     >,
+  getStoreBackupStatus: () =>
+    ipcRenderer.invoke('store-backup:status') as ReturnType<NeoCalendarApi['getStoreBackupStatus']>,
+  saveStoreBackupConfig: (patch) =>
+    ipcRenderer.invoke('store-backup:save-config', patch) as ReturnType<
+      NeoCalendarApi['saveStoreBackupConfig']
+    >,
+  runStoreBackupNow: () =>
+    ipcRenderer.invoke('store-backup:run-now') as ReturnType<NeoCalendarApi['runStoreBackupNow']>,
+  deleteStoreBackup: (fileName) =>
+    ipcRenderer.invoke('store-backup:delete', fileName) as ReturnType<
+      NeoCalendarApi['deleteStoreBackup']
+    >,
+  pickStoreBackupDest: () =>
+    ipcRenderer.invoke('store-backup:pick-dest') as ReturnType<NeoCalendarApi['pickStoreBackupDest']>,
   exportCalendarZip: (calendarId: string) =>
     ipcRenderer.invoke('calendar:export-calendar-zip', calendarId) as ReturnType<
       NeoCalendarApi['exportCalendarZip']

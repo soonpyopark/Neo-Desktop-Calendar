@@ -7,6 +7,7 @@ import type {
   TagRecord
 } from './calendarTypes'
 import { DEFAULT_HEADER_TITLE } from './headerTitle'
+import { DEFAULT_STORE_BACKUP } from './storeBackup'
 
 export const HOLIDAYS_KR_CALENDAR_ID = 'holidays-kr'
 
@@ -112,7 +113,7 @@ export function createDefaultSettings(): StoreSettings {
     viewOptions: {
       showWeekNumbers: true,
       weekStartsOnSunday: true,
-      roundedCorners: true,
+      roundedCorners: false,
       headerTitle: { ...DEFAULT_HEADER_TITLE },
       dayListSortDesc: true,
       eventDensity: 1,
@@ -120,7 +121,8 @@ export function createDefaultSettings(): StoreSettings {
       accentColor: DEFAULT_ACCENT_COLOR,
       runAtStartup: true,
       eventsHidden: false,
-      completedHidden: false
+      completedHidden: false,
+      headerCollapsed: false
     },
     holidaysKr: {
       serviceKey: '',
@@ -149,6 +151,7 @@ export function createDefaultSettings(): StoreSettings {
     webServerPort: null,
     webServerMode: null,
     httpsEnabled: null,
+    storeBackup: { ...DEFAULT_STORE_BACKUP },
     headerOpacity: DEFAULT_HEADER_OPACITY,
     shellOpacity: DEFAULT_SHELL_OPACITY
   }

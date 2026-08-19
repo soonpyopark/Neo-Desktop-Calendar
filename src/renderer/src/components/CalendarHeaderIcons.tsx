@@ -89,6 +89,14 @@ export function ChevronUpIcon({ size = 20 }: { size?: number }): ReactElement {
   )
 }
 
+export function ChevronDownIcon({ size = 20 }: { size?: number }): ReactElement {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <path fill="currentColor" d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z" />
+    </svg>
+  )
+}
+
 export function PlusIcon({ size = 16 }: { size?: number }): ReactElement {
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">

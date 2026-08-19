@@ -9,6 +9,7 @@ import type {
   TagRecord
 } from '../../../shared/calendarTypes'
 import { isImageAttachment } from '../../../shared/attachmentKinds'
+import { normalizeStoreBackup } from '../../../shared/storeBackup'
 import { clearOfflineQueue, clearOfflineSnapshot } from './offlineStore'
 
 const TOKEN_KEY = 'neo-calendar-auth-token'
@@ -573,6 +574,28 @@ export function installBrowserNeoCalendar(): void {
     importBackupZipFromPath: async () => {
       throw new Error('브라우저에서는 파일 선택으로 ZIP을 가져와 주세요.')
     },
+    getStoreBackupStatus: async () => {
+      const snap = await http<CalendarStoreSnapshot>('GET', '/api/store')
+      return {
+        config: normalizeStoreBackup(snap.settings.storeBackup),
+        running: false,
+        last: null,
+        archives: []
+      }
+    },
+    saveStoreBackupConfig: async (patch) => {
+      const snap = await http<CalendarStoreSnapshot>('PATCH', '/api/settings', {
+        storeBackup: patch
+      })
+      return normalizeStoreBackup(snap.settings.storeBackup)
+    },
+    runStoreBackupNow: async () => {
+      throw new Error('지금 백업은 이 PC의 Neo Desktop Calendar 앱에서만 실행할 수 있습니다.')
+    },
+    deleteStoreBackup: async () => {
+      throw new Error('백업 삭제는 이 PC의 Neo Desktop Calendar 앱에서만 할 수 있습니다.')
+    },
+    pickStoreBackupDest: async () => null,
     exportCalendarZip: async () => {
       throw new Error('브라우저에서는 전체 ZIP 백업 내보내기를 사용해 주세요.')
     },

@@ -1,4 +1,5 @@
 import type { LaunchMode, WidgetBounds } from './ipc'
+import type { StoreBackupSettings } from './storeBackup'
 
 export type CalendarOwner = 'local' | 'shared'
 
@@ -151,7 +152,7 @@ export type HeaderTitleOptions = {
 export type SurfaceViewOptions = {
   showWeekNumbers: boolean
   weekStartsOnSunday: boolean
-  /** Neo chrome: rounded shell/header/footer. Default on for new installs. */
+  /** Neo chrome: rounded shell/header/footer. Default off for new installs. */
   roundedCorners: boolean
   /** Optional personal calendar name in the header (between logo and search). */
   headerTitle: HeaderTitleOptions
@@ -169,6 +170,8 @@ export type SurfaceViewOptions = {
   accentColor: string
   eventsHidden: boolean
   completedHidden: boolean
+  /** Hide chrome row 1 (search/settings/login) and the footer hint bar. */
+  headerCollapsed: boolean
 }
 
 export type ViewOptions = SurfaceViewOptions & {
@@ -238,6 +241,11 @@ export type StoreSettings = {
    * null/undefined → fall back to .env HTTPS_ENABLED, then off.
    */
   httpsEnabled?: boolean | null
+  /**
+   * Super-admin scheduled ZIP backup (설정 → 백업 관리).
+   * Dest folder + auto-mirror times live here; run state is a sidecar file.
+   */
+  storeBackup?: StoreBackupSettings
   /** Neo chrome extensions */
   headerOpacity: number
   shellOpacity: number

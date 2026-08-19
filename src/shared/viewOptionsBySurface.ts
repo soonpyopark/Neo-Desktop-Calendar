@@ -18,7 +18,8 @@ export const SURFACE_SCOPED_VIEW_OPTION_KEYS = [
   'dayListSortDesc',
   'eventDensity',
   'colorScheme',
-  'accentColor'
+  'accentColor',
+  'headerCollapsed'
 ] as const satisfies ReadonlyArray<keyof SurfaceViewOptions>
 
 export type SurfaceScopedViewOptionKey = (typeof SURFACE_SCOPED_VIEW_OPTION_KEYS)[number]
@@ -46,7 +47,8 @@ function pickSurfaceOptions(source: Partial<ViewOptions> | null | undefined): Su
       ? s.accentColor
       : DEFAULT_ACCENT_COLOR,
     eventsHidden: Boolean(s.eventsHidden),
-    completedHidden: Boolean(s.completedHidden)
+    completedHidden: Boolean(s.completedHidden),
+    headerCollapsed: Boolean(s.headerCollapsed)
   }
 }
 

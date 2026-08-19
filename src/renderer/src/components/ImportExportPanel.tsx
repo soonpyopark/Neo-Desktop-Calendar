@@ -8,6 +8,7 @@ import {
 import { getJsonExportTimestamp } from '../../../shared/exportTimestamp'
 import type { CalendarStoreSnapshot } from '../../../shared/calendarTypes'
 import { useAppDialog } from './AppDialogProvider'
+import { BackupSettingsPanel } from './BackupSettingsPanel'
 import { CalendarFileFormatButton } from './CalendarFileFormatButton'
 
 export type ImportExportPanelProps = {
@@ -195,6 +196,9 @@ export function ImportExportPanel({
             </p>
           </div>
         </div>
+      </div>
+      <div className="mt-12">
+        <BackupSettingsPanel />
       </div>
     </div>
   )

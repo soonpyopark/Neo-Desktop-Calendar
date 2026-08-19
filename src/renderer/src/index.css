@@ -221,6 +221,13 @@ textarea {
   overflow: hidden;
 }
 
+/* Fold hides the footer — the grid is the bottom chrome and must keep the curve. */
+.neo-cal-shell.is-rounded-corners.is-header-collapsed > .month-view,
+.neo-cal-shell.is-rounded-corners.is-header-collapsed > .year-view {
+  border-bottom: 1px solid var(--gcal-border-light);
+  border-radius: 0 0 10px 10px;
+}
+
 /* Month grid week rows already draw the separator — avoid a double line above footer. */
 .month-view:not(.week-view) + .neo-mdc-chrome[data-shell-chrome='footer'] {
   border-top: none;
@@ -241,6 +248,12 @@ textarea {
   flex: 1;
   min-height: 36px;
   align-items: center;
+}
+
+/* Period row — compact controls (glyph scale matches row-1 icons). */
+.header-period-row svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* MDC SiteLink — footer URL (text-xs / muted → blue underline on hover). */
@@ -1119,11 +1132,12 @@ input[type='search']::-ms-clear,
   background: color-mix(in srgb, #fff2cc 18%, var(--gcal-surface-2));
 }
 
-/* 헤더 이동 묶음의 [오늘] — 아이콘 버튼과 같은 네모 크기. */
+/* 헤더 이동 묶음의 [오늘] — 아이콘보다 가지만 넓혀 「오늘」이 덜 답답하게. */
 .day-list-preview-today {
   display: inline-flex;
   height: 1.75rem;
-  width: 1.75rem;
+  width: auto;
+  min-width: 2.75rem;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
@@ -1131,7 +1145,7 @@ input[type='search']::-ms-clear,
   border: 1px solid var(--gcal-border);
   border-radius: 0.375rem;
   background: var(--gcal-red-soft);
-  padding: 0;
+  padding: 0 0.45rem;
   font-size: 0.625rem;
   font-weight: 700;
   line-height: 1;

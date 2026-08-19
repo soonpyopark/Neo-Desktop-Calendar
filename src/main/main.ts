@@ -54,6 +54,13 @@ import {
 import { type WebServerSyncInfo } from '../shared/httpsConfig'
 import { resolveDataRoot } from './calendarStore/paths'
 import {
+  deleteStoreBackup,
+  getStoreBackupStatus,
+  runStoreBackup,
+  saveStoreBackupSettings,
+  startStoreBackupScheduler
+} from './storeBackupService'
+import {
   allowFirewallInbound,
   removeFirewallInbound
 } from './webServer/allowFirewallInbound'
@@ -87,6 +94,7 @@ import {
   EMBEDDED_FLOATING_CHROME_ACTIONS,
   EMBEDDED_FOOTER_HINT_ACTIONS,
   EMBEDDED_FOOTER_LINK_ACTIONS,
+  EMBEDDED_HEADER_CHROME_ACTIONS,
   EMBEDDED_RELOAD_CHROME_ACTIONS,
   PERIOD_TOOLBAR_ACTIONS,
   YEAR_MONTH_OPEN_ACTIONS
@@ -452,6 +460,7 @@ function triggerEmbeddedPeriodToolbar(payload: ToolbarClickPayload): void {
     !EMBEDDED_FLOATING_CHROME_ACTIONS.has(payload.action) &&
     !EMBEDDED_EXPORT_CHROME_ACTIONS.has(payload.action) &&
     !EMBEDDED_AUTH_CHROME_ACTIONS.has(payload.action) &&
+    !EMBEDDED_HEADER_CHROME_ACTIONS.has(payload.action) &&
     !EMBEDDED_FOOTER_HINT_ACTIONS.has(payload.action) &&
     !EMBEDDED_FOOTER_LINK_ACTIONS.has(payload.action) &&
     !EMBEDDED_RELOAD_CHROME_ACTIONS.has(payload.action)
@@ -942,6 +951,37 @@ function registerIpc(): void {
     notifyStoreChanged()
     return result
   })
+  ipcMain.handle('store-backup:status', () => {
+    requireCap('backupStore')
+    return getStoreBackupStatus()
+  })
+  ipcMain.handle('store-backup:save-config', (_event, patch: unknown) => {
+    requireCap('backupStore')
+    const next = saveStoreBackupSettings(patch)
+    notifyStoreChanged()
+    return next
+  })
+  ipcMain.handle('store-backup:run-now', () => {
+    requireCap('backupStore')
+    return runStoreBackup('manual')
+  })
+  ipcMain.handle('store-backup:delete', (_event, fileName: string) => {
+    requireCap('backupStore')
+    return deleteStoreBackup(String(fileName ?? ''))
+  })
+  ipcMain.handle('store-backup:pick-dest', async (event) => {
+    requireCap('backupStore')
+    const options: Electron.OpenDialogOptions = {
+      title: '백업 폴더 선택',
+      properties: ['openDirectory', 'createDirectory']
+    }
+    const win = resolveNativeDialogParent(event) ?? undefined
+    const result = await withNativeDialog(async () =>
+      win ? dialog.showOpenDialog(win, options) : dialog.showOpenDialog(options)
+    )
+    if (result.canceled || result.filePaths.length === 0) return null
+    return result.filePaths[0]
+  })
   ipcMain.handle('calendar:export-calendar-zip', async (event, calendarId: string) => {
     if (!auth.getUser()?.loginId) {
       throw new Error('내보내기는 로그인 후 사용할 수 있습니다.')
@@ -1371,6 +1411,7 @@ function bootApp(): void {
   })
 
   registerIpc()
+  startStoreBackupScheduler(calendarStore)
   desktopHitHelperHost.start()
 
   webServer = new CalendarWebServer({

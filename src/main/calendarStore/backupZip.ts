@@ -135,7 +135,7 @@ function stageBackupZip(store: CalendarStore): {
   return { staging, fileCount, eventCount }
 }
 
-function writeBackupZip(store: CalendarStore, zipPath: string): { fileCount: number; eventCount: number } {
+export function writeBackupZip(store: CalendarStore, zipPath: string): { fileCount: number; eventCount: number } {
   const { staging, fileCount, eventCount } = stageBackupZip(store)
   try {
     createZipFromDirectory(staging, zipPath)

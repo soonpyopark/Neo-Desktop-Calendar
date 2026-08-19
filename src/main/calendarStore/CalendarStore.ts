@@ -38,6 +38,7 @@ import {
   normalizeClientSurface,
   projectViewOptionsForClient
 } from '../../shared/viewOptionsBySurface'
+import { normalizeStoreBackup } from '../../shared/storeBackup'
 import { resolveAdminCredentials } from '../dotEnv'
 import { findHolidaySeedPath } from './holidaySeedPaths'
 import { resolveDataRoot, sanitizeDataKey } from './paths'
@@ -84,6 +85,10 @@ function deepMergeSettings(base: StoreSettings, patch: Partial<StoreSettings>): 
     viewOptionsBySurface:
       Object.keys(bySurface).length > 0 ? bySurface : base.viewOptionsBySurface,
     holidaysKr: { ...base.holidaysKr, ...(patch.holidaysKr ?? {}) },
+    storeBackup: normalizeStoreBackup({
+      ...base.storeBackup,
+      ...(patch.storeBackup ?? {})
+    }),
     widget: {
       ...base.widget,
       ...(patch.widget ?? {}),
@@ -183,6 +188,7 @@ export class CalendarStore {
       settings.dayHighlights = {}
       delete settings.dayHighlightsByLoginId
       delete settings.hiddenCalendarIdsByLoginId
+      delete settings.storeBackup
       return {
         ...snap,
         calendars: [],
@@ -223,6 +229,7 @@ export class CalendarStore {
         snap.settings.holidaysKr = { ...snap.settings.holidaysKr, serviceKey: '' }
       }
       snap.settings.allowedIpCidrs = []
+      delete snap.settings.storeBackup
     }
 
     // Project personal dayColors onto settings.dayColors for this login.
@@ -542,6 +549,9 @@ export class CalendarStore {
   ): StoreSettings {
     const settings = deepMergeSettings(createDefaultSettings(), payloadSettings ?? {})
     settings.holidaysKr = { ...current.settings.holidaysKr }
+    settings.storeBackup = current.settings.storeBackup
+      ? { ...current.settings.storeBackup }
+      : settings.storeBackup
     settings.viewOptions = {
       ...settings.viewOptions,
       eventsHidden: false,

@@ -145,7 +145,9 @@ export function AppChrome({
           <InteractionUI
             as="button"
             type="button"
-            className="app-chrome-header-title app-chrome-no-drag pointer-events-auto max-w-[min(100%,42%)] cursor-pointer truncate border-0 bg-transparent px-1.5 py-1 font-semibold tracking-tight"
+            className={cn(
+              'app-chrome-header-title app-chrome-no-drag pointer-events-auto max-w-[min(100%,42%)] truncate border-0 bg-transparent px-1.5 py-1 font-semibold tracking-tight cursor-pointer'
+            )}
             style={{
               color: headerTitle.color,
               fontSize: `${headerTitle.fontSizePx}px`,
@@ -198,7 +200,10 @@ export function AppChrome({
 
         <InteractionUI
           as="button"
-          className={cn(iconBtnClass, (!loggedIn || searchOpen) && 'cursor-not-allowed opacity-40')}
+          className={cn(
+            iconBtnClass,
+            (!loggedIn || searchOpen) && 'cursor-not-allowed opacity-40'
+          )}
           captureOnHover={captureOnHover}
           data-toolbar-action={CHROME_TOOLBAR_ACTIONS.settings}
           aria-label="설정"
@@ -252,7 +257,9 @@ export function AppChrome({
           data-toolbar-action={CHROME_TOOLBAR_ACTIONS.footerHelp}
           aria-label="도움말"
           title="도움말 — 모든 푸터 힌트"
-          onClick={() => onOpenFooterHelp()}
+          onClick={() => {
+            onOpenFooterHelp()
+          }}
         >
           <HelpIcon />
         </InteractionUI>
@@ -311,11 +318,16 @@ export function AppChrome({
 
         <InteractionUI
           as="button"
-          className={cn(actionBtnBase, 'bg-gcal-blue-soft hover:bg-[#d2e3fc] dark:hover:bg-gcal-surface-2')}
+          className={cn(
+            actionBtnBase,
+            'bg-gcal-blue-soft hover:bg-[#d2e3fc] dark:hover:bg-gcal-surface-2'
+          )}
           captureOnHover={captureOnHover}
           data-toolbar-action={CHROME_TOOLBAR_ACTIONS.authToggle}
           title={loggedIn && user ? `${user.loginId} 로그아웃` : '로그인'}
-          onClick={onAuthToggle}
+          onClick={() => {
+            onAuthToggle()
+          }}
         >
           {loggedIn ? '로그아웃' : '로그인'}
         </InteractionUI>

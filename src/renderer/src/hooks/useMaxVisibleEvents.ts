@@ -21,7 +21,9 @@ export {
 export function useMaxVisibleEvents(
   containerRef: RefObject<HTMLElement | null>,
   weeksInViewport = 5,
-  density = 1
+  density = 1,
+  /** Bump when chrome height changes so row capacity remeasures without a window resize. */
+  layoutKey?: unknown
 ): { maxAll: number; maxWithMore: number } {
   const normalizedDensity = normalizeEventDensity(density)
   const [capacity, setCapacity] = useState(() =>
@@ -55,7 +57,7 @@ export function useMaxVisibleEvents(
       window.removeEventListener('resize', schedule)
       if (raf) window.cancelAnimationFrame(raf)
     }
-  }, [containerRef, weeksInViewport, normalizedDensity])
+  }, [containerRef, weeksInViewport, normalizedDensity, layoutKey])
 
   return capacity
 }

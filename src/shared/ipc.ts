@@ -19,6 +19,18 @@ import type {
   TagRecord
 } from './calendarTypes'
 import type { UpdateCheckResult } from './updateCheck'
+import type {
+  StoreBackupArchive,
+  StoreBackupRunResult,
+  StoreBackupSettings,
+  StoreBackupStatus
+} from './storeBackup'
+export type {
+  StoreBackupArchive,
+  StoreBackupRunResult,
+  StoreBackupSettings,
+  StoreBackupStatus
+} from './storeBackup'
 export type { UpdateCheckResult }
 import type { WebServerSyncInfo } from './httpsConfig'
 export type { WebServerSyncInfo, WebServerTlsStatus } from './httpsConfig'
@@ -130,7 +142,9 @@ export const CHROME_TOOLBAR_ACTIONS = {
   /** App name click → full reload (WorkerW embedded). */
   reload: 'reload',
   /** Header calendar title click → edit panel (WorkerW embedded). */
-  editHeaderTitle: 'edit-header-title'
+  editHeaderTitle: 'edit-header-title',
+  /** Collapse / expand the period row (WorkerW embedded). */
+  toggleHeader: 'toggle-header'
 } as const
 
 /** Header actions that open floating panels while WorkerW-embedded. */
@@ -160,6 +174,11 @@ export const EMBEDDED_AUTH_CHROME_ACTIONS = new Set<string>([
 /** App-name reload while WorkerW-embedded (single click, same as search/settings). */
 export const EMBEDDED_RELOAD_CHROME_ACTIONS = new Set<string>([
   CHROME_TOOLBAR_ACTIONS.reload
+])
+
+/** Header fold / unfold while WorkerW-embedded (stay under icons). */
+export const EMBEDDED_HEADER_CHROME_ACTIONS = new Set<string>([
+  CHROME_TOOLBAR_ACTIONS.toggleHeader
 ])
 
 /** Year-view month title → open that month (`open-year-month-0` … `open-year-month-11`). */
@@ -403,6 +422,12 @@ export type NeoCalendarApi = {
     attachmentFiles?: number
     store?: CalendarStoreSnapshot
   }>
+  /** Super-admin scheduled folder backup (설정 → 백업 관리). Electron only for dest/run. */
+  getStoreBackupStatus: () => Promise<StoreBackupStatus>
+  saveStoreBackupConfig: (patch: Partial<StoreBackupSettings>) => Promise<StoreBackupSettings>
+  runStoreBackupNow: () => Promise<StoreBackupRunResult>
+  deleteStoreBackup: (fileName: string) => Promise<StoreBackupArchive[]>
+  pickStoreBackupDest: () => Promise<string | null>
   exportCalendarZip: (calendarId: string) => Promise<{
     ok: boolean
     cancelled?: boolean
