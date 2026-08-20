@@ -5,7 +5,7 @@ export const APP_VERSION = '1.2.2'
  * Refreshed by `build:release` / `build:msi` / `build:portable` for update checks
  * when the GitHub tag version is unchanged (same-version republish).
  */
-export const APP_BUILD_STAMP = '260820_214857'
+export const APP_BUILD_STAMP = '260820_221836'
 export const APP_NAME = 'Neo Desktop Calendar'
 export const APP_TITLE = `${APP_NAME} v${APP_VERSION}`
 export const SITE_URL = 'https://note4all.tistory.com'

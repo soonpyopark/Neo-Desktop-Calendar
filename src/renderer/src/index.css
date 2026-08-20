@@ -276,6 +276,18 @@ textarea {
   align-items: center;
 }
 
+/* Period row / header chrome empty space moves the window; controls stay clickable. */
+.neo-mdc-chrome.is-window-mode[data-shell-chrome='header'] {
+  -webkit-app-region: drag;
+}
+
+.neo-mdc-chrome.is-window-mode[data-shell-chrome='header'] button,
+.neo-mdc-chrome.is-window-mode[data-shell-chrome='header'] a,
+.neo-mdc-chrome.is-window-mode[data-shell-chrome='header'] input,
+.neo-mdc-chrome.is-window-mode[data-shell-chrome='header'] .app-chrome-no-drag {
+  -webkit-app-region: no-drag;
+}
+
 /* Period row — compact controls (glyph scale matches row-1 icons). */
 .header-period-row {
   min-width: max-content;
