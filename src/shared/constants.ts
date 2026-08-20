@@ -5,7 +5,7 @@ export const APP_VERSION = '1.2.1'
  * Refreshed by `build:release` / `build:msi` / `build:portable` for update checks
  * when the GitHub tag version is unchanged (same-version republish).
  */
-export const APP_BUILD_STAMP = '260819_223019'
+export const APP_BUILD_STAMP = '260820_123020'
 export const APP_NAME = 'Neo Desktop Calendar'
 export const APP_TITLE = `${APP_NAME} v${APP_VERSION}`
 export const SITE_URL = 'https://note4all.tistory.com'
@@ -24,6 +24,6 @@ export const DEFAULT_WIDGET_BOUNDS = {
   height: 1000
 } as const
 
-/** Main calendar shell — cannot resize below this in window mode. */
-export const MIN_WIDGET_WIDTH = 680
+/** Main calendar shell — cannot resize below the month period toolbar. */
+export const MIN_WIDGET_WIDTH = 900
 export const MIN_WIDGET_HEIGHT = 800

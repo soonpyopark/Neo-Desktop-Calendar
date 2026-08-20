@@ -265,6 +265,10 @@ textarea {
 }
 
 /* Period row — compact controls (glyph scale matches row-1 icons). */
+.header-period-row {
+  min-width: max-content;
+}
+
 .header-period-row svg {
   width: 16px;
   height: 16px;

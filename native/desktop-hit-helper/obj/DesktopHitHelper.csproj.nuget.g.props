@@ -4,12 +4,12 @@
     <RestoreSuccess Condition=" '$(RestoreSuccess)' == '' ">True</RestoreSuccess>
     <RestoreTool Condition=" '$(RestoreTool)' == '' ">NuGet</RestoreTool>
     <ProjectAssetsFile Condition=" '$(ProjectAssetsFile)' == '' ">$(MSBuildThisFileDirectory)project.assets.json</ProjectAssetsFile>
-    <NuGetPackageRoot Condition=" '$(NuGetPackageRoot)' == '' ">$(UserProfile)\AppData\Local\Temp\cursor-sandbox-cache\a1fc42a7b47ab1734da5f312066e3ba7\nuget</NuGetPackageRoot>
-    <NuGetPackageFolders Condition=" '$(NuGetPackageFolders)' == '' ">C:\Users\user\AppData\Local\Temp\cursor-sandbox-cache\a1fc42a7b47ab1734da5f312066e3ba7\nuget</NuGetPackageFolders>
+    <NuGetPackageRoot Condition=" '$(NuGetPackageRoot)' == '' ">$(UserProfile)\AppData\Local\Temp\cursor-sandbox-cache\d6a196a08a9e426c2bfe1ebd1dfe50e2\nuget</NuGetPackageRoot>
+    <NuGetPackageFolders Condition=" '$(NuGetPackageFolders)' == '' ">C:\Users\user\AppData\Local\Temp\cursor-sandbox-cache\d6a196a08a9e426c2bfe1ebd1dfe50e2\nuget</NuGetPackageFolders>
     <NuGetProjectStyle Condition=" '$(NuGetProjectStyle)' == '' ">PackageReference</NuGetProjectStyle>
     <NuGetToolVersion Condition=" '$(NuGetToolVersion)' == '' ">6.11.2</NuGetToolVersion>
   </PropertyGroup>
   <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
-    <SourceRoot Include="C:\Users\user\AppData\Local\Temp\cursor-sandbox-cache\a1fc42a7b47ab1734da5f312066e3ba7\nuget\" />
+    <SourceRoot Include="C:\Users\user\AppData\Local\Temp\cursor-sandbox-cache\d6a196a08a9e426c2bfe1ebd1dfe50e2\nuget\" />
   </ItemGroup>
 </Project>
