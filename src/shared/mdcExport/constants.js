@@ -13,6 +13,7 @@ export const DEFAULT_VIEW_OPTIONS = {
   },
   colorScheme: 'light',
   accentColor: '#795548',
+  skin: { light: {}, dark: {} },
   runAtStartup: true,
   eventsHidden: false,
   completedHidden: false,

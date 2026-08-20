@@ -5,6 +5,7 @@ import type {
   ViewOptions
 } from './calendarTypes'
 import { DEFAULT_ACCENT_COLOR } from './calendarColorPalette'
+import { normalizeSkin } from './calendarSkin'
 import { normalizeHeaderTitle } from './headerTitle'
 import { normalizeEventDensity } from './eventLayoutMetrics'
 
@@ -19,6 +20,7 @@ export const SURFACE_SCOPED_VIEW_OPTION_KEYS = [
   'eventDensity',
   'colorScheme',
   'accentColor',
+  'skin',
   'headerCollapsed'
 ] as const satisfies ReadonlyArray<keyof SurfaceViewOptions>
 
@@ -46,6 +48,7 @@ function pickSurfaceOptions(source: Partial<ViewOptions> | null | undefined): Su
     accentColor: typeof s.accentColor === 'string' && s.accentColor.trim()
       ? s.accentColor
       : DEFAULT_ACCENT_COLOR,
+    skin: normalizeSkin(s.skin),
     eventsHidden: Boolean(s.eventsHidden),
     completedHidden: Boolean(s.completedHidden),
     headerCollapsed: Boolean(s.headerCollapsed)
@@ -121,6 +124,8 @@ export function applyViewOptionsPatch(
       ;(bySurface[surf] as Record<string, unknown>)[key] = normalizeEventDensity(
         patch.eventDensity
       )
+    } else if (key === 'skin') {
+      ;(bySurface[surf] as Record<string, unknown>)[key] = normalizeSkin(patch.skin)
     } else {
       ;(bySurface[surf] as Record<string, unknown>)[key] = patch[key]
     }

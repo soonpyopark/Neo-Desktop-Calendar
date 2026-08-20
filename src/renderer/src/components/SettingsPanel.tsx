@@ -45,17 +45,20 @@ import type {
   TagRecord,
   ViewOptions
 } from '../../../shared/calendarTypes'
+import { normalizeSkin, type CalendarSkin } from '../../../shared/calendarSkin'
 import { normalizeHeaderTitle } from '../../../shared/headerTitle'
 import type { AppSettings, AuthUser, OpacityPreviewPatch } from '../../../shared/ipc'
 import { isSuperAdminUser } from '../../../shared/members'
 import {
   applyAccentColor,
   applyColorScheme,
+  applySkin,
   getColorScheme,
   normalizeAccentColor,
   normalizeColorScheme,
   type ColorScheme
 } from '../lib/colorScheme'
+import { SkinSettingsFields } from './SkinSettingsFields'
 import { useAppDialog } from './AppDialogProvider'
 
 type SettingsSection =
@@ -212,6 +215,7 @@ function ViewOptionsPanel({
   const [accentColor, setAccentColor] = useState(() =>
     normalizeAccentColor(vo.accentColor)
   )
+  const [skin, setSkin] = useState<CalendarSkin>(() => normalizeSkin(vo.skin))
   const [runAtStartup, setRunAtStartup] = useState(Boolean(vo.runAtStartup))
   const [headerOpacity, setHeaderOpacity] = useState(
     appSettings?.headerOpacity ?? storeSettings.headerOpacity
@@ -229,12 +233,14 @@ function ViewOptionsPanel({
     setHeaderTitle(normalizeHeaderTitle(vo.headerTitle))
     setColorScheme(getColorScheme(vo))
     setAccentColor(normalizeAccentColor(vo.accentColor))
+    setSkin(normalizeSkin(vo.skin))
     setRunAtStartup(Boolean(vo.runAtStartup))
     setHeaderOpacity(appSettings?.headerOpacity ?? storeSettings.headerOpacity)
     setShellOpacity(appSettings?.shellOpacity ?? storeSettings.shellOpacity)
     void window.neoCalendar.getDataRoot().then(setDataRoot)
     applyColorScheme(getColorScheme(vo))
     applyAccentColor(normalizeAccentColor(vo.accentColor))
+    applySkin(vo.skin)
   }, [vo, appSettings, storeSettings])
 
   useEffect(() => {
@@ -252,6 +258,7 @@ function ViewOptionsPanel({
       headerTitle,
       colorScheme,
       accentColor,
+      skin,
       runAtStartup,
       ...patch
     }
@@ -371,6 +378,15 @@ function ViewOptionsPanel({
           }}
         />
       </fieldset>
+
+      <SkinSettingsFields
+        skin={skin}
+        colorScheme={colorScheme}
+        onChange={(next) => {
+          setSkin(next)
+          void persistView({ skin: next })
+        }}
+      />
 
       {!browserHost ? (
         <div className="mt-8">

@@ -16,6 +16,7 @@ import { headerTitleForBootstrap, writeCachedHeaderTitle } from '../../../shared
 import {
   applyAccentColor,
   applyColorScheme,
+  applySkin,
   getColorScheme,
   normalizeAccentColor
 } from '../lib/colorScheme'
@@ -306,7 +307,13 @@ export function useCalendarStore(): UseCalendarStoreResult {
     const vo = store.settings.viewOptions
     applyColorScheme(getColorScheme(vo))
     applyAccentColor(normalizeAccentColor(vo.accentColor))
-  }, [loading, store.settings.viewOptions.colorScheme, store.settings.viewOptions.accentColor])
+    applySkin(vo.skin)
+  }, [
+    loading,
+    store.settings.viewOptions.colorScheme,
+    store.settings.viewOptions.accentColor,
+    store.settings.viewOptions.skin
+  ])
 
   useEffect(() => {
     if (loading) return

@@ -183,7 +183,12 @@ export function usePanelTheme(
   useEffect(() => {
     if (loading) return
     applyThemeFromStoreSettings(settings)
-  }, [loading, settings.viewOptions?.colorScheme, settings.viewOptions?.accentColor])
+  }, [
+    loading,
+    settings.viewOptions?.colorScheme,
+    settings.viewOptions?.accentColor,
+    settings.viewOptions?.skin
+  ])
 
   useEffect(() => {
     if (loading) return

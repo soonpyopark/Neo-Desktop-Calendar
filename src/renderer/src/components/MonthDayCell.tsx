@@ -103,6 +103,9 @@ export function MonthDayCell({
   )
 
   const openQuickEditFromCell = (target: HTMLElement): void => {
+    // Adjacent-month pads must not open quick edit (clicks outside the
+    // in-month grid / WorkerW leftover zones would otherwise hit them).
+    if (!cell.inMonth) return
     const cellEl = target.closest('.day-cell') as HTMLElement | null
     const rect = (cellEl ?? target).getBoundingClientRect()
     onDayQuickEdit(cell.date, rect)
@@ -111,6 +114,7 @@ export function MonthDayCell({
   const handleQuickEditDoubleClick = (event: MouseEvent<HTMLElement>): void => {
     event.preventDefault()
     event.stopPropagation()
+    if (!cell.inMonth) return
     if (!gateEdit()) return
     openQuickEditFromCell(event.currentTarget)
   }
@@ -119,6 +123,7 @@ export function MonthDayCell({
     if ((event.target as Element | null)?.closest?.('.event-bar, .event-more')) return
     event.preventDefault()
     event.stopPropagation()
+    if (!cell.inMonth) return
     if (!interactive) {
       onLoginRequired?.()
       return

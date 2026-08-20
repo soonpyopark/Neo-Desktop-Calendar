@@ -1,3 +1,4 @@
+import type { CalendarSkin } from './calendarSkin'
 import type { LaunchMode, WidgetBounds } from './ipc'
 import type { StoreBackupSettings } from './storeBackup'
 
@@ -168,6 +169,8 @@ export type SurfaceViewOptions = {
   eventDensity: number
   colorScheme: 'light' | 'dark' | 'system'
   accentColor: string
+  /** Optional chrome colors (weekday/weekend/header/footer/grid). Empty = theme default. */
+  skin: CalendarSkin
   eventsHidden: boolean
   completedHidden: boolean
   /** Hide chrome row 1 (search/settings/login) and the footer hint bar. */

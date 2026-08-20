@@ -1,8 +1,10 @@
 import { DEFAULT_ACCENT_COLOR } from '../../../shared/calendarColorPalette'
+import { normalizeSkin, skinDecls, type CalendarSkin } from '../../../shared/calendarSkin'
 
 export type ColorScheme = 'light' | 'dark' | 'system'
 
 const ACCENT_STYLE_ELEMENT_ID = 'neo-calendar-accent-color-style'
+const SKIN_STYLE_ELEMENT_ID = 'neo-calendar-skin-style'
 const HEX_PATTERN = /^#[0-9a-fA-F]{6}$/
 
 export function normalizeColorScheme(value: unknown): ColorScheme {
@@ -28,14 +30,15 @@ export function applyColorScheme(scheme: ColorScheme): void {
   )
 }
 
-/** Apply light/dark + accent from calendar store settings (panel / quick-edit windows). */
+/** Apply light/dark + accent + skin from calendar store settings (panel / quick-edit windows). */
 export function applyThemeFromStoreSettings(settings: {
   accentColor?: string
-  viewOptions?: { colorScheme?: string; accentColor?: string } | null
+  viewOptions?: { colorScheme?: string; accentColor?: string; skin?: CalendarSkin } | null
 }): void {
   const viewOptions = settings.viewOptions
   applyColorScheme(getColorScheme(viewOptions))
   applyAccentColor(normalizeAccentColor(viewOptions?.accentColor ?? settings.accentColor))
+  applySkin(viewOptions?.skin)
 }
 
 /** Apply theme as early as possible in panel / quick-edit HTML entries (before React mount). */
@@ -142,4 +145,43 @@ export function applyAccentColor(color: string): void {
   }
 
   root.dataset.accentColor = accent
+}
+
+export function effectiveColorScheme(scheme: ColorScheme): 'light' | 'dark' {
+  if (scheme === 'dark') return 'dark'
+  if (scheme === 'system') {
+    return typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light'
+  }
+  return 'light'
+}
+
+function ensureSkinStyleElement(): HTMLStyleElement | null {
+  if (typeof document === 'undefined') return null
+  let el = document.getElementById(SKIN_STYLE_ELEMENT_ID) as HTMLStyleElement | null
+  if (!el) {
+    el = document.createElement('style')
+    el.id = SKIN_STYLE_ELEMENT_ID
+    document.head.appendChild(el)
+  }
+  return el
+}
+
+/** Inject :root / .dark chrome fills. Missing tokens keep the theme default. */
+export function applySkin(skin: unknown): void {
+  if (typeof document === 'undefined') return
+  const normalized = normalizeSkin(skin)
+  const signature = JSON.stringify(normalized)
+  const root = document.documentElement
+  if (root.dataset.calendarSkin === signature) return
+
+  const lightDecls = skinDecls(normalized.light)
+  const darkDecls = skinDecls(normalized.dark)
+  const style = ensureSkinStyleElement()
+  if (style) {
+    style.textContent =
+      (lightDecls ? `:root{${lightDecls}}` : '') + (darkDecls ? `.dark{${darkDecls}}` : '')
+  }
+  root.dataset.calendarSkin = signature
 }

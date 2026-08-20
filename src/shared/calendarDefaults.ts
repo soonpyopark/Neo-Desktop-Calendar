@@ -119,6 +119,7 @@ export function createDefaultSettings(): StoreSettings {
       eventDensity: 1,
       colorScheme: 'light',
       accentColor: DEFAULT_ACCENT_COLOR,
+      skin: { light: {}, dark: {} },
       runAtStartup: true,
       eventsHidden: false,
       completedHidden: false,
