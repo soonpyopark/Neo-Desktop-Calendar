@@ -181,7 +181,8 @@ export function applySkin(skin: unknown): void {
   const style = ensureSkinStyleElement()
   if (style) {
     style.textContent =
-      (lightDecls ? `:root{${lightDecls}}` : '') + (darkDecls ? `.dark{${darkDecls}}` : '')
+      (lightDecls ? `:root:not(.dark){${lightDecls}}` : '') +
+      (darkDecls ? `.dark{${darkDecls}}` : '')
   }
   root.dataset.calendarSkin = signature
 }

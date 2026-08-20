@@ -143,18 +143,6 @@ export const SKIN_PRESETS_LIGHT: SkinPreset[] = [
     }
   },
   {
-    id: 'vivid',
-    label: '선명',
-    tokens: {
-      weekdayFill: '#ffffff',
-      saturdayFill: '#c9e6f7',
-      sundayFill: '#f4c9c8',
-      headerFill: '#f4f6f8',
-      footerFill: '#f4f6f8',
-      gridLine: '#8e959c'
-    }
-  },
-  {
     id: 'lavender',
     label: '라벤더',
     tokens: {
@@ -213,6 +201,18 @@ export const SKIN_PRESETS_LIGHT: SkinPreset[] = [
       footerFill: '#e6e6e3',
       gridLine: '#a8a8a2'
     }
+  },
+  {
+    id: 'vivid',
+    label: '선명',
+    tokens: {
+      weekdayFill: '#ffffff',
+      saturdayFill: '#c9e6f7',
+      sundayFill: '#f4c9c8',
+      headerFill: '#f4f6f8',
+      footerFill: '#f4f6f8',
+      gridLine: '#8e959c'
+    }
   }
 ]
 
@@ -252,18 +252,6 @@ export const SKIN_PRESETS_DARK: SkinPreset[] = [
       headerFill: '#252b33',
       footerFill: '#252b33',
       gridLine: '#6e7a86'
-    }
-  },
-  {
-    id: 'contrast',
-    label: '고대비',
-    tokens: {
-      weekdayFill: '#1e1f22',
-      saturdayFill: '#163948',
-      sundayFill: '#4a1c20',
-      headerFill: '#141516',
-      footerFill: '#141516',
-      gridLine: '#8a9096'
     }
   },
   {
@@ -324,6 +312,18 @@ export const SKIN_PRESETS_DARK: SkinPreset[] = [
       headerFill: '#222426',
       footerFill: '#222426',
       gridLine: '#7a7e82'
+    }
+  },
+  {
+    id: 'contrast',
+    label: '고대비',
+    tokens: {
+      weekdayFill: '#1e1f22',
+      saturdayFill: '#163948',
+      sundayFill: '#4a1c20',
+      headerFill: '#141516',
+      footerFill: '#141516',
+      gridLine: '#8a9096'
     }
   }
 ]
