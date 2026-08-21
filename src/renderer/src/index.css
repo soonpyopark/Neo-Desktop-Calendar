@@ -99,6 +99,7 @@
   --gcal-focus-ring-outer: #323130;
   --gcal-mini-month-bg: #dcdcdc;
   --event-density: 1;
+  --event-letter-spacing: -0.06em;
   --event-lane-height: 18px;
   --event-lane-step: 20px;
   --day-event-gap: 1px;
@@ -904,7 +905,7 @@ textarea {
   border-radius: 4px;
   font-size: calc(clamp(8.5px, 1.25vh, 11.5px) * var(--event-density, 1));
   font-weight: 500;
-  letter-spacing: -0.06em;
+  letter-spacing: var(--event-letter-spacing, -0.06em);
   text-align: left;
   white-space: nowrap;
   color: var(--event-text, #3c4043);
@@ -2346,7 +2347,7 @@ body.is-resizing-window {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: calc(12px * var(--event-density, 1));
-  letter-spacing: -0.06em;
+  letter-spacing: var(--event-letter-spacing, -0.06em);
   transform: scaleX(0.88) scaleY(1.08);
   transform-origin: left center;
   color: var(--gcal-heading);
@@ -3376,7 +3377,7 @@ html.neo-panel-window.dark form.shell-solid-surface.rounded-lg {
   color: var(--gcal-muted);
   font-size: calc(clamp(8.5px, 1.25vh, 11.5px) * var(--event-density, 1));
   font-weight: 500;
-  letter-spacing: -0.06em;
+  letter-spacing: var(--event-letter-spacing, -0.06em);
   text-align: left;
   cursor: pointer;
   overflow: hidden;

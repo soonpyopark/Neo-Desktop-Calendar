@@ -25,6 +25,27 @@ export function stepEventDensity(current: unknown, delta: number): number {
   return normalizeEventDensity(normalizeEventDensity(current) + delta)
 }
 
+/** Event-bar letter-spacing in em (matches current −0.06em default). */
+export const EVENT_LETTER_SPACING_MIN = -0.12
+export const EVENT_LETTER_SPACING_MAX = 0.08
+export const EVENT_LETTER_SPACING_STEP = 0.02
+export const EVENT_LETTER_SPACING_DEFAULT = -0.06
+
+/** Clamp + snap letter-spacing to 0.02em steps. */
+export function normalizeEventLetterSpacing(value: unknown): number {
+  const n = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(n)) return EVENT_LETTER_SPACING_DEFAULT
+  const clamped = Math.min(
+    EVENT_LETTER_SPACING_MAX,
+    Math.max(EVENT_LETTER_SPACING_MIN, n)
+  )
+  return Math.round(clamped * 50) / 50
+}
+
+export function stepEventLetterSpacing(current: unknown, delta: number): number {
+  return normalizeEventLetterSpacing(normalizeEventLetterSpacing(current) + delta)
+}
+
 export type ScaledEventLayout = {
   laneHeight: number
   laneGap: number

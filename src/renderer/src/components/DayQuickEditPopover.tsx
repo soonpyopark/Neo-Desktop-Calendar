@@ -37,7 +37,10 @@ import { HOLIDAYS_KR_CALENDAR_ID, PRIMARY_CALENDAR_ID } from '../../../shared/ca
 import { getSeriesId, expandEventsForRange } from '../../../shared/mdcExport/eventOccurrences.js'
 import { compareEventsForDayDisplay } from '../../../shared/mdcExport/eventBarFormat.js'
 import type { CalendarEvent, CalendarRecord, EventLink, TagRecord } from '../../../shared/calendarTypes'
-import { normalizeEventDensity } from '../../../shared/eventLayoutMetrics'
+import {
+  normalizeEventDensity,
+  normalizeEventLetterSpacing
+} from '../../../shared/eventLayoutMetrics'
 import type { DayReorderItem } from '../lib/dayReorder'
 
 import {
@@ -108,6 +111,8 @@ export type DayQuickEditPopoverProps = {
   minBodyHeight?: number
   /** Month density (−/+ toolbar); scales list title size with main calendar. */
   eventDensity?: number
+  /** Event-bar letter-spacing (−/+ AA toolbar); applies to list titles. */
+  eventLetterSpacing?: number
   onClose: () => void
   onCreate: (title: string, calendarId: string, tagIds?: string[], links?: EventLink[]) => void
   onToggleCompleted: (event: CalendarEvent, completed: boolean) => void
@@ -269,6 +274,7 @@ export function DayQuickEditPopover({
   expandBody = false,
   minBodyHeight = 0,
   eventDensity = 1,
+  eventLetterSpacing,
   onClose,
   onCreate,
   onToggleCompleted,
@@ -328,9 +334,10 @@ export function DayQuickEditPopover({
   const densityCssVars = useMemo(
     () =>
       ({
-        '--event-density': String(normalizeEventDensity(eventDensity))
+        '--event-density': String(normalizeEventDensity(eventDensity)),
+        '--event-letter-spacing': `${normalizeEventLetterSpacing(eventLetterSpacing)}em`
       }) as CSSProperties,
-    [eventDensity]
+    [eventDensity, eventLetterSpacing]
   )
 
   // Reopening the panel on another day must not keep the previous day's swatches.

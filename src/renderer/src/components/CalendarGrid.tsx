@@ -42,6 +42,7 @@ import {
 } from '../lib/browserNeoCalendar'
 import {
   CHROME_TOOLBAR_ACTIONS,
+  CHROME_TOGGLE_ACTION_TO_SLOT,
   EMBEDDED_AUTH_CHROME_ACTIONS,
   EMBEDDED_EXPORT_CHROME_ACTIONS,
   EMBEDDED_FLOATING_CHROME_ACTIONS,
@@ -76,8 +77,13 @@ import {
   EVENT_DENSITY_MAX,
   EVENT_DENSITY_MIN,
   EVENT_DENSITY_STEP,
+  EVENT_LETTER_SPACING_MAX,
+  EVENT_LETTER_SPACING_MIN,
+  EVENT_LETTER_SPACING_STEP,
   normalizeEventDensity,
-  stepEventDensity
+  normalizeEventLetterSpacing,
+  stepEventDensity,
+  stepEventLetterSpacing
 } from '../../../shared/eventLayoutMetrics'
 import {
   getOccurrenceDate,
@@ -121,6 +127,8 @@ import {
   DoubleChevronRightIcon,
   DensityDownIcon,
   DensityUpIcon,
+  LetterSpacingDownIcon,
+  LetterSpacingUpIcon,
   ExportIcon,
   HelpIcon,
   HideCompletedCheckIcon,
@@ -745,6 +753,9 @@ export function CalendarGrid({
   const headerCollapsed = canEdit ? storedHeaderCollapsed : guestHeaderCollapsed
   const prevHeaderCollapsedRef = useRef<boolean | null>(null)
   const eventDensity = normalizeEventDensity(store.settings.viewOptions.eventDensity)
+  const eventLetterSpacing = normalizeEventLetterSpacing(
+    store.settings.viewOptions.eventLetterSpacing
+  )
   const showWeekNumbers = store.settings.viewOptions.showWeekNumbers !== false
   const roundedCorners = Boolean(store.settings.viewOptions.roundedCorners)
   const dayColors = store.settings.dayColors ?? {}
@@ -761,8 +772,14 @@ export function CalendarGrid({
       })
       return
     }
+    if (searchOpen) {
+      window.neoCalendar.closePanelSlot?.('search')
+      setSearchOpen(false)
+      return
+    }
     openEmbeddedPanel({ kind: 'search', eventsHidden })
-  }, [eventsHidden, floatingPanels, openEmbeddedPanel])
+    setSearchOpen(true)
+  }, [eventsHidden, floatingPanels, openEmbeddedPanel, searchOpen])
 
   const openSettingsPanel = useCallback((): void => {
     if (!requireEdit()) return
@@ -774,8 +791,14 @@ export function CalendarGrid({
       })
       return
     }
+    if (settingsOpen) {
+      window.neoCalendar.closePanelSlot?.('settings')
+      setSettingsOpen(false)
+      return
+    }
     openEmbeddedPanel({ kind: 'settings' })
-  }, [floatingPanels, openEmbeddedPanel, requireEdit])
+    setSettingsOpen(true)
+  }, [floatingPanels, openEmbeddedPanel, requireEdit, settingsOpen])
 
   // WorkerW-embedded: publish period-toolbar + visible day-cell hit zones.
   useLayoutEffect(() => {
@@ -783,10 +806,44 @@ export function CalendarGrid({
     if (!api?.setClickForwardHitZones || !api.setDayCellHitZones || !api.setDayDblClickExcludeZones)
       return
 
+    const collectChromeToggleZones = (): Array<{
+      x: number
+      y: number
+      width: number
+      height: number
+      action: string
+    }> => {
+      const roots: HTMLElement[] = []
+      if (periodHeaderRef.current) roots.push(periodHeaderRef.current)
+      if (chromeRef.current) roots.push(chromeRef.current)
+      const seen = new Set<string>()
+      const out: Array<{ x: number; y: number; width: number; height: number; action: string }> = []
+      for (const root of roots) {
+        const buttons = Array.from(root.querySelectorAll<HTMLElement>('[data-toolbar-action]'))
+        for (const el of buttons) {
+          if (el instanceof HTMLButtonElement && el.disabled) continue
+          const action = el.dataset.toolbarAction ?? ''
+          if (!action || !(action in CHROME_TOGGLE_ACTION_TO_SLOT) || seen.has(action)) continue
+          const r = el.getBoundingClientRect()
+          if (r.width < 1 || r.height < 1) continue
+          seen.add(action)
+          out.push({
+            x: Math.round(r.left),
+            y: Math.round(r.top),
+            width: Math.round(r.width),
+            height: Math.round(r.height),
+            action
+          })
+        }
+      }
+      return out
+    }
+
     const publish = (): void => {
       const { mode: currentMode, embedded: isEmbedded } = modeEmbeddedRef.current
       if (currentMode !== 'desktop' || !isEmbedded) {
-        api.setClickForwardHitZones([])
+        // Window mode still needs these rects so a second click can toggle-close.
+        api.setClickForwardHitZones(collectChromeToggleZones())
         api.setDayCellHitZones([])
         api.setDayDblClickExcludeZones([])
         return
@@ -991,9 +1048,12 @@ export function CalendarGrid({
     weekStartsOn,
     eventsHidden,
     completedHidden,
+    eventDensity,
+    eventLetterSpacing,
     webEditUrl,
     searchOpen,
     settingsOpen,
+    exportOptionsOpen,
     exporting,
     modeBusy,
     switchReady,
@@ -1082,8 +1142,25 @@ export function CalendarGrid({
       setFooterHelpOpen((open) => !open)
       return
     }
+    if (footerHelpOpen) {
+      window.neoCalendar.closePanelSlot?.('footerHelp')
+      setFooterHelpOpen(false)
+      return
+    }
     openEmbeddedPanel({ kind: 'footerHelp' })
-  }, [floatingPanels, openEmbeddedPanel])
+    setFooterHelpOpen(true)
+  }, [floatingPanels, footerHelpOpen, openEmbeddedPanel])
+
+  useEffect(() => {
+    const api = window.neoCalendar
+    if (!api?.onChromePanelOpenChanged) return
+    return api.onChromePanelOpenChanged(({ kind, open }) => {
+      if (kind === 'search') setSearchOpen(open)
+      else if (kind === 'settings') setSettingsOpen(open)
+      else if (kind === 'exportOptions') setExportOptionsOpen(open)
+      else if (kind === 'footerHelp') setFooterHelpOpen(open)
+    })
+  }, [])
 
   const openHeaderTitleEditorRef = useRef(openHeaderTitleEditor)
   openHeaderTitleEditorRef.current = openHeaderTitleEditor
@@ -2273,6 +2350,7 @@ export function CalendarGrid({
     eventsHidden?: boolean
     completedHidden?: boolean
     eventDensity?: number
+    eventLetterSpacing?: number
   }): void => {
     if (!requireEdit()) return
     void patchStoreSettings({
@@ -2302,6 +2380,10 @@ export function CalendarGrid({
 
   const adjustEventDensity = (delta: number): void => {
     setViewFlag({ eventDensity: stepEventDensity(eventDensity, delta) })
+  }
+
+  const adjustEventLetterSpacing = (delta: number): void => {
+    setViewFlag({ eventLetterSpacing: stepEventLetterSpacing(eventLetterSpacing, delta) })
   }
 
   const exportReferenceDate = useMemo(() => {
@@ -2337,11 +2419,17 @@ export function CalendarGrid({
     if (!requireEdit() || exporting) return
     const { floatingPanels: useFloating } = modeEmbeddedRef.current
     if (useFloating && !isBrowserNeoCalendarHost()) {
+      if (exportOptionsOpen) {
+        window.neoCalendar.closePanelSlot?.('exportOptions')
+        setExportOptionsOpen(false)
+        return
+      }
       openEmbeddedPanel({
         kind: 'exportOptions',
         referenceDate: exportReferenceDate,
         weekStartsOnSunday: store.settings.viewOptions.weekStartsOnSunday !== false
       })
+      setExportOptionsOpen(true)
       return
     }
     setExportOptionsOpen((open) => !open)
@@ -2484,6 +2572,11 @@ export function CalendarGrid({
         roundedCorners && 'is-rounded-corners',
         headerCollapsed && 'is-header-collapsed'
       )}
+      style={
+        {
+          '--event-letter-spacing': `${eventLetterSpacing}em`
+        } as CSSProperties
+      }
     >
       <header
         className={cn(
@@ -2785,11 +2878,54 @@ export function CalendarGrid({
               className={cn(
                 desktopModeIconBtnClass,
                 densityIconBtnClass,
+                iconBtnDisabledClass,
+                !canEdit && LOGIN_MUTED_CLASS
+              )}
+              captureOnHover={captureToolbarOnHover}
+              data-toolbar-action={PERIOD_TOOLBAR_ACTIONS.letterSpacingDown}
+              onClick={() => adjustEventLetterSpacing(-EVENT_LETTER_SPACING_STEP)}
+              disabled={!canEdit || eventLetterSpacing <= EVENT_LETTER_SPACING_MIN}
+              aria-label="일정 자간 좁히기"
+              title={
+                !canEdit
+                  ? LOGIN_REQUIRED_TITLE
+                  : `자간 좁히기 (${eventLetterSpacing.toFixed(2)}em)`
+              }
+            >
+              <LetterSpacingDownIcon />
+            </InteractionUI>
+            <InteractionUI
+              as="button"
+              className={cn(
+                desktopModeIconBtnClass,
+                densityIconBtnClass,
+                iconBtnDisabledClass,
+                !canEdit && LOGIN_MUTED_CLASS
+              )}
+              captureOnHover={captureToolbarOnHover}
+              data-toolbar-action={PERIOD_TOOLBAR_ACTIONS.letterSpacingUp}
+              onClick={() => adjustEventLetterSpacing(EVENT_LETTER_SPACING_STEP)}
+              disabled={!canEdit || eventLetterSpacing >= EVENT_LETTER_SPACING_MAX}
+              aria-label="일정 자간 넓히기"
+              title={
+                !canEdit
+                  ? LOGIN_REQUIRED_TITLE
+                  : `자간 넓히기 (${eventLetterSpacing.toFixed(2)}em)`
+              }
+            >
+              <LetterSpacingUpIcon />
+            </InteractionUI>
+            <InteractionUI
+              as="button"
+              className={cn(
+                desktopModeIconBtnClass,
+                densityIconBtnClass,
                 (!canEdit || settingsOpen) && LOGIN_MUTED_CLASS
               )}
               captureOnHover={captureToolbarOnHover}
               data-toolbar-action={CHROME_TOOLBAR_ACTIONS.search}
               aria-label="검색"
+              aria-pressed={searchOpen}
               title={
                 !canEdit
                   ? LOGIN_REQUIRED_TITLE
@@ -2816,6 +2952,7 @@ export function CalendarGrid({
               captureOnHover={captureToolbarOnHover}
               data-toolbar-action={CHROME_TOOLBAR_ACTIONS.settings}
               aria-label="설정"
+              aria-pressed={settingsOpen}
               title={
                 !canEdit
                   ? LOGIN_REQUIRED_TITLE
@@ -2839,6 +2976,7 @@ export function CalendarGrid({
               captureOnHover={captureToolbarOnHover}
               data-toolbar-action={CHROME_TOOLBAR_ACTIONS.export}
               aria-label="내려받기"
+              aria-pressed={exportOptionsOpen}
               title={!canEdit ? LOGIN_REQUIRED_TITLE : '내려받기'}
               disabled={canEdit ? exporting || settingsOpen || searchOpen : false}
               onClick={() => {
@@ -2854,6 +2992,7 @@ export function CalendarGrid({
               captureOnHover={captureToolbarOnHover}
               data-toolbar-action={CHROME_TOOLBAR_ACTIONS.footerHelp}
               aria-label="도움말"
+              aria-pressed={footerHelpOpen}
               title="도움말 — 모든 푸터 힌트"
               onClick={openFooterHelp}
             >
@@ -3250,6 +3389,7 @@ export function CalendarGrid({
           expandBody={viewMode === 'month'}
           minBodyHeight={viewMode === 'year' ? QUICK_EDIT_YEAR_MIN_BODY : undefined}
           eventDensity={eventDensity}
+          eventLetterSpacing={eventLetterSpacing}
           zIndex={inlineQuickEditZ}
           onRaise={() => setInlineFrontPanel('quickEdit')}
           onDismissEventDetail={clearEventDetail}

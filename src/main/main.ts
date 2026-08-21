@@ -89,6 +89,7 @@ import type {
 } from '../shared/ipc'
 import {
   CHROME_TOOLBAR_ACTIONS,
+  CHROME_TOGGLE_ACTION_TO_SLOT,
   EMBEDDED_AUTH_CHROME_ACTIONS,
   EMBEDDED_EXPORT_CHROME_ACTIONS,
   EMBEDDED_FLOATING_CHROME_ACTIONS,
@@ -1502,7 +1503,27 @@ function bootApp(): void {
         mainWindow && !mainWindow.isDestroyed() ? getWindowDipScreenBounds(mainWindow) : null
       return live ?? locked
     },
-    isForeignAppAtPoint: (pt) => isForeignClickAtPoint(pt)
+    isForeignAppAtPoint: (pt) => isForeignClickAtPoint(pt),
+    getChromeToggleHit: (pt) => {
+      const origin = hitTestScreenOrigin()
+      if (!origin) return null
+      for (const zone of clickForwardHitZones) {
+        const slot =
+          CHROME_TOGGLE_ACTION_TO_SLOT[zone.action as keyof typeof CHROME_TOGGLE_ACTION_TO_SLOT]
+        if (!slot) continue
+        const left = origin.x + zone.x
+        const top = origin.y + zone.y
+        if (
+          pt.x >= left - 2 &&
+          pt.y >= top - 2 &&
+          pt.x < left + zone.width + 2 &&
+          pt.y < top + zone.height + 2
+        ) {
+          return slot
+        }
+      }
+      return null
+    }
   })
 
   // Cold-start unlocked desktop: 10s without input → WorkerW embed.

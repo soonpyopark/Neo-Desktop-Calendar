@@ -143,6 +143,25 @@ const api: NeoCalendarApi = {
       ipcRenderer.removeListener('day-list-preview-open-changed', handler)
     }
   },
+  onChromePanelOpenChanged: (listener) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      payload: { kind?: string; open?: boolean }
+    ): void => {
+      if (
+        payload?.kind === 'search' ||
+        payload?.kind === 'settings' ||
+        payload?.kind === 'exportOptions' ||
+        payload?.kind === 'footerHelp'
+      ) {
+        listener({ kind: payload.kind, open: Boolean(payload.open) })
+      }
+    }
+    ipcRenderer.on('chrome-panel-open-changed', handler)
+    return () => {
+      ipcRenderer.removeListener('chrome-panel-open-changed', handler)
+    }
+  },
   onQuickEditDeferred: (listener: (payload: QuickEditDeferToMainPayload) => void) => {
     const handler = (
       _event: Electron.IpcRendererEvent,

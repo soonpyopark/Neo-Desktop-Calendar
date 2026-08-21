@@ -398,6 +398,7 @@ export function installBrowserNeoCalendar(): void {
     resizePanelWindow: async () => false,
     onPanelRequestDismiss: () => () => undefined,
     onDayListPreviewOpenChanged: () => () => undefined,
+    onChromePanelOpenChanged: () => () => undefined,
     onQuickEditDeferred: () => () => undefined,
     onDayDblClickLog: () => () => undefined,
     // Browser already refreshes via WebSocket → neo-store-changed.

@@ -190,6 +190,38 @@ export function DensityUpIcon(): ReactElement {
   )
 }
 
+/** Event-bar letter-spacing: tighter (A A). */
+export function LetterSpacingDownIcon(): ReactElement {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M6.2 17.2 8.8 7.2l2.6 10M6.9 13.6h3.8M13.2 17.2l2.6-10 2.6 10M13.9 13.6h3.8"
+      />
+    </svg>
+  )
+}
+
+/** Event-bar letter-spacing: wider (A    A). */
+export function LetterSpacingUpIcon(): ReactElement {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M2.8 17.2 5.8 7.2l3 10M3.6 13.6h4.4M12.8 17.2l3-10 3 10M13.6 13.6h4.4"
+      />
+    </svg>
+  )
+}
+
 export function HideEventsEyeIcon({ open }: { open: boolean }): ReactElement {
   if (open) {
     return (

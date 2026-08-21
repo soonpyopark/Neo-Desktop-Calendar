@@ -7,7 +7,7 @@ import type {
 import { DEFAULT_ACCENT_COLOR } from './calendarColorPalette'
 import { normalizeSkin } from './calendarSkin'
 import { normalizeHeaderTitle } from './headerTitle'
-import { normalizeEventDensity } from './eventLayoutMetrics'
+import { normalizeEventDensity, normalizeEventLetterSpacing } from './eventLayoutMetrics'
 
 export const SURFACE_SCOPED_VIEW_OPTION_KEYS = [
   'eventsHidden',
@@ -18,6 +18,7 @@ export const SURFACE_SCOPED_VIEW_OPTION_KEYS = [
   'headerTitle',
   'dayListSortDesc',
   'eventDensity',
+  'eventLetterSpacing',
   'colorScheme',
   'accentColor',
   'skin',
@@ -43,6 +44,7 @@ function pickSurfaceOptions(source: Partial<ViewOptions> | null | undefined): Su
     headerTitle: normalizeHeaderTitle(s.headerTitle),
     dayListSortDesc: s.dayListSortDesc !== false,
     eventDensity: normalizeEventDensity(s.eventDensity),
+    eventLetterSpacing: normalizeEventLetterSpacing(s.eventLetterSpacing),
     colorScheme:
       s.colorScheme === 'dark' || s.colorScheme === 'system' ? s.colorScheme : 'light',
     accentColor: typeof s.accentColor === 'string' && s.accentColor.trim()
@@ -123,6 +125,10 @@ export function applyViewOptionsPatch(
     } else if (key === 'eventDensity') {
       ;(bySurface[surf] as Record<string, unknown>)[key] = normalizeEventDensity(
         patch.eventDensity
+      )
+    } else if (key === 'eventLetterSpacing') {
+      ;(bySurface[surf] as Record<string, unknown>)[key] = normalizeEventLetterSpacing(
+        patch.eventLetterSpacing
       )
     } else if (key === 'skin') {
       ;(bySurface[surf] as Record<string, unknown>)[key] = normalizeSkin(patch.skin)

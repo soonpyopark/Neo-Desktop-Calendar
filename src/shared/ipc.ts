@@ -128,7 +128,9 @@ export const PERIOD_TOOLBAR_ACTIONS = {
   toggleEvents: 'toggle-events',
   toggleCompleted: 'toggle-completed',
   densityDown: 'density-down',
-  densityUp: 'density-up'
+  densityUp: 'density-up',
+  letterSpacingDown: 'letter-spacing-down',
+  letterSpacingUp: 'letter-spacing-up'
 } as const
 
 export const CHROME_TOOLBAR_ACTIONS = {
@@ -156,6 +158,26 @@ export const EMBEDDED_FLOATING_CHROME_ACTIONS = new Set<string>([
   CHROME_TOOLBAR_ACTIONS.editHeaderTitle,
   CHROME_TOOLBAR_ACTIONS.footerHelp
 ])
+
+/** Same-button toggle: action id → floating panel slot. */
+export const CHROME_TOGGLE_ACTION_TO_SLOT = {
+  [CHROME_TOOLBAR_ACTIONS.search]: 'search',
+  [CHROME_TOOLBAR_ACTIONS.settings]: 'settings',
+  [CHROME_TOOLBAR_ACTIONS.export]: 'exportOptions',
+  [CHROME_TOOLBAR_ACTIONS.footerHelp]: 'footerHelp'
+} as const
+
+export type ChromeTogglePanelKind =
+  (typeof CHROME_TOGGLE_ACTION_TO_SLOT)[keyof typeof CHROME_TOGGLE_ACTION_TO_SLOT]
+
+export function isChromeTogglePanelKind(kind: string): kind is ChromeTogglePanelKind {
+  return (
+    kind === 'search' ||
+    kind === 'settings' ||
+    kind === 'exportOptions' ||
+    kind === 'footerHelp'
+  )
+}
 
 /** Header actions that detach from WorkerW and switch launch mode. */
 export const EMBEDDED_MODE_CHROME_ACTIONS = new Set<string>([
@@ -322,6 +344,10 @@ export type NeoCalendarApi = {
   onPanelRequestDismiss: (listener: () => void) => () => void
   /** Main → main calendar: floating 세로보기 opened/closed (toolbar pressed state). */
   onDayListPreviewOpenChanged: (listener: (open: boolean) => void) => () => void
+  /** Main → main calendar: search/settings/export/help opened/closed (toolbar toggle). */
+  onChromePanelOpenChanged: (
+    listener: (payload: { kind: ChromeTogglePanelKind; open: boolean }) => void
+  ) => () => void
   /** Main → renderer: open editor/detail after floating quick edit defers. */
   onQuickEditDeferred: (listener: (payload: QuickEditDeferToMainPayload) => void) => () => void
   /** Main → renderer: run period toolbar action after embedded click unlock. */

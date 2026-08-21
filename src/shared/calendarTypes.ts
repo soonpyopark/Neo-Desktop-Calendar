@@ -167,6 +167,10 @@ export type SurfaceViewOptions = {
    * events before "N개 더보기". Default 1.
    */
   eventDensity: number
+  /**
+   * Event-bar letter-spacing in em (−0.12 … 0.08). Default −0.06 (current look).
+   */
+  eventLetterSpacing: number
   colorScheme: 'light' | 'dark' | 'system'
   accentColor: string
   /** Optional chrome colors (weekday/weekend/header/footer/grid). Empty = theme default. */

@@ -117,6 +117,7 @@ export function createDefaultSettings(): StoreSettings {
       headerTitle: { ...DEFAULT_HEADER_TITLE },
       dayListSortDesc: true,
       eventDensity: 1,
+      eventLetterSpacing: -0.06,
       colorScheme: 'light',
       accentColor: DEFAULT_ACCENT_COLOR,
       skin: { light: {}, dark: {} },

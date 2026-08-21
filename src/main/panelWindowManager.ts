@@ -19,6 +19,7 @@ import {
 } from '../shared/panelWindows'
 import type { QuickEditDeferToMainPayload } from '../shared/quickEditLayout'
 import type { OpenDayQuickEditPayload, WidgetBounds } from '../shared/ipc'
+import { isChromeTogglePanelKind, type ChromeTogglePanelKind } from '../shared/ipc'
 import type { QuickEditViewMode } from '../shared/quickEditLayout'
 import type { WallpaperBrowserWindow } from './wallpaper'
 
@@ -108,6 +109,11 @@ type PanelWindowManagerOptions = {
   getMainFootprint?: () => WidgetBounds | null
   /** True when the topmost window at the click point belongs to another app. */
   isForeignAppAtPoint?: (pt: ScreenPoint) => boolean
+  /**
+   * Screen point is on a chrome toolbar button that toggles this panel.
+   * Skip outside-close so the same click can toggle the panel shut.
+   */
+  getChromeToggleHit?: (pt: ScreenPoint) => ChromeTogglePanelKind | null
 }
 
 export class PanelWindowManager {
@@ -312,6 +318,16 @@ export class PanelWindowManager {
     }
   }
 
+  private notifyChromePanelOpen(kind: ChromeTogglePanelKind, open: boolean): void {
+    const main = this.getMainWindow() ?? this.lastMainWindow
+    if (!main || main.isDestroyed()) return
+    try {
+      main.webContents.send('chrome-panel-open-changed', { kind, open })
+    } catch {
+      /* ignore */
+    }
+  }
+
   private registerEntry(
     slot: PanelSlot,
     win: BrowserWindow,
@@ -323,6 +339,7 @@ export class PanelWindowManager {
     this.entriesBySlot.set(slot, entry)
     this.slotByWebContentsId.set(webContentsId, slot)
     if (slot === 'dayListPreview') this.notifyDayListPreviewOpen(true)
+    if (isChromeTogglePanelKind(slot)) this.notifyChromePanelOpen(slot, true)
     this.notifyPanelStackChanged()
   }
 
@@ -336,6 +353,7 @@ export class PanelWindowManager {
         this.slotByWebContentsId.delete(webContentsId)
       }
       if (slot === 'dayListPreview') this.notifyDayListPreviewOpen(false)
+      if (isChromeTogglePanelKind(slot)) this.notifyChromePanelOpen(slot, false)
       if (this.entriesBySlot.size === 0) {
         this.stopOutsideListener()
       }
@@ -344,6 +362,7 @@ export class PanelWindowManager {
       this.entriesBySlot.delete(slot)
       this.slotByWebContentsId.delete(webContentsId)
       if (slot === 'dayListPreview') this.notifyDayListPreviewOpen(false)
+      if (isChromeTogglePanelKind(slot)) this.notifyChromePanelOpen(slot, false)
       if (this.entriesBySlot.size === 0) {
         this.stopOutsideListener()
       }
@@ -838,6 +857,14 @@ export class PanelWindowManager {
 
     // Click on any floating panel — keep all panels open; z-order follows focus.
     if (insideAnyPanel) return
+
+    // Same toolbar button that opened this panel — let the button toggle it closed.
+    // Without this, outside-close + the same click reopening looks like "never toggles".
+    const toggleHit = this.options.getChromeToggleHit?.(pt)
+    if (toggleHit) {
+      const existing = this.entriesBySlot.get(toggleHit)
+      if (existing && isWinAlive(existing.win)) return
+    }
 
     // Working in the app a panel just opened a link / attachment in.
     if (this.shouldKeepPanelsForForeignClick(pt)) return
