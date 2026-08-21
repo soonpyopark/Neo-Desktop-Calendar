@@ -105,10 +105,7 @@
   --event-more-offset: 2px;
   --neo-header-opacity: 1;
   --neo-shell-opacity: 1;
-  /* Window-mode resize grips / frame (Neo-only) */
-  --neo-window-frame-color: var(--gcal-blue);
-  --neo-window-frame-opacity: 0.85;
-  --neo-window-frame-width: 3px;
+  /* Window-mode resize grips (invisible hit zones) */
   --neo-window-resize-thickness: 8px;
   --neo-window-resize-corner: 14px;
   --neo-panel-divider: #cccccc;
@@ -210,17 +207,19 @@ textarea {
 
 /* —— App shell (MDC layout; Neo opacity only) —— */
 .neo-cal-shell {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
   height: 100%;
   padding: 0;
   gap: 0;
+  --neo-corner-radius: 0px;
 }
 
-/* View option: 둥근모서리 — previous Neo inset shell + rounded chrome */
+/* View option: 둥근모서리 — same footprint as square; only chrome corners curve. */
 .neo-cal-shell.is-rounded-corners {
-  padding: 10px 12px 12px;
+  --neo-corner-radius: 10px;
 }
 
 .neo-cal-shell.is-rounded-corners > .neo-mdc-chrome[data-shell-chrome='header'] {
@@ -276,9 +275,23 @@ textarea {
   align-items: center;
 }
 
-/* Period row / header chrome empty space moves the window; controls stay clickable. */
+/* Period row / header chrome empty space moves the window; controls stay clickable.
+   The top resize strip is no-drag so window-mode grips can show a resize cursor. */
 .neo-mdc-chrome.is-window-mode[data-shell-chrome='header'] {
+  position: relative;
   -webkit-app-region: drag;
+}
+
+.neo-mdc-chrome.is-window-mode[data-shell-chrome='header']::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 5;
+  height: var(--neo-window-resize-corner);
+  pointer-events: none;
+  -webkit-app-region: no-drag;
 }
 
 .neo-mdc-chrome.is-window-mode[data-shell-chrome='header'] button,
@@ -889,10 +902,7 @@ textarea {
   padding: 0 1px 0 0;
   border: 0;
   border-radius: 4px;
-  font-size: min(
-    calc(clamp(8.5px, 1.25vh, 11.5px) * var(--event-density, 1)),
-    calc(var(--event-lane-height) - 2px)
-  );
+  font-size: calc(clamp(8.5px, 1.25vh, 11.5px) * var(--event-density, 1));
   font-weight: 500;
   letter-spacing: -0.06em;
   text-align: left;
@@ -1992,11 +2002,8 @@ html.neo-panel-window.dark .mdc-login-card--floating .mdc-login-btn--primary:hov
   pointer-events: auto;
   box-sizing: border-box;
   background: transparent;
-  opacity: var(--neo-window-frame-opacity);
-  /* Dashed edge = the same strip that shows the resize cursor. */
-  border-color: var(--neo-window-frame-color);
-  border-style: dashed;
-  border-width: 0;
+  border: none;
+  -webkit-app-region: no-drag;
 }
 
 .window-resize-handle--n {
@@ -2004,7 +2011,6 @@ html.neo-panel-window.dark .mdc-login-card--floating .mdc-login-btn--primary:hov
   left: var(--neo-window-resize-corner);
   right: var(--neo-window-resize-corner);
   height: var(--neo-window-resize-thickness);
-  border-top-width: var(--neo-window-frame-width);
   cursor: ns-resize;
 }
 
@@ -2013,7 +2019,6 @@ html.neo-panel-window.dark .mdc-login-card--floating .mdc-login-btn--primary:hov
   left: var(--neo-window-resize-corner);
   right: var(--neo-window-resize-corner);
   height: var(--neo-window-resize-thickness);
-  border-bottom-width: var(--neo-window-frame-width);
   cursor: ns-resize;
 }
 
@@ -2022,7 +2027,6 @@ html.neo-panel-window.dark .mdc-login-card--floating .mdc-login-btn--primary:hov
   right: 0;
   bottom: var(--neo-window-resize-corner);
   width: var(--neo-window-resize-thickness);
-  border-right-width: var(--neo-window-frame-width);
   cursor: ew-resize;
 }
 
@@ -2031,7 +2035,6 @@ html.neo-panel-window.dark .mdc-login-card--floating .mdc-login-btn--primary:hov
   left: 0;
   bottom: var(--neo-window-resize-corner);
   width: var(--neo-window-resize-thickness);
-  border-left-width: var(--neo-window-frame-width);
   cursor: ew-resize;
 }
 
@@ -2041,8 +2044,6 @@ html.neo-panel-window.dark .mdc-login-card--floating .mdc-login-btn--primary:hov
   z-index: 1;
   width: var(--neo-window-resize-corner);
   height: var(--neo-window-resize-corner);
-  border-top-width: var(--neo-window-frame-width);
-  border-right-width: var(--neo-window-frame-width);
   cursor: nesw-resize;
 }
 
@@ -2052,8 +2053,6 @@ html.neo-panel-window.dark .mdc-login-card--floating .mdc-login-btn--primary:hov
   z-index: 1;
   width: var(--neo-window-resize-corner);
   height: var(--neo-window-resize-corner);
-  border-top-width: var(--neo-window-frame-width);
-  border-left-width: var(--neo-window-frame-width);
   cursor: nwse-resize;
 }
 
@@ -2063,8 +2062,6 @@ html.neo-panel-window.dark .mdc-login-card--floating .mdc-login-btn--primary:hov
   z-index: 1;
   width: var(--neo-window-resize-corner);
   height: var(--neo-window-resize-corner);
-  border-bottom-width: var(--neo-window-frame-width);
-  border-right-width: var(--neo-window-frame-width);
   cursor: nwse-resize;
 }
 
@@ -2074,8 +2071,6 @@ html.neo-panel-window.dark .mdc-login-card--floating .mdc-login-btn--primary:hov
   z-index: 1;
   width: var(--neo-window-resize-corner);
   height: var(--neo-window-resize-corner);
-  border-bottom-width: var(--neo-window-frame-width);
-  border-left-width: var(--neo-window-frame-width);
   cursor: nesw-resize;
 }
 
@@ -4806,3 +4801,4 @@ html.neo-panel-window .settings-panel-shell {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+

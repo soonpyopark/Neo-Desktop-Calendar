@@ -268,11 +268,11 @@ export class DesktopModeController {
     this.onModeChanged?.(this.getStatus())
   }
 
-  /** IME/focus helper; undocks if still embedded. */
-  focusForTextInput(): void {
+  /** IME/focus helper; undocks if still embedded unless `keepEmbedded`. */
+  focusForTextInput(options?: { keepEmbedded?: boolean }): void {
     const win = this.getWindow()
     if (!win || win.isDestroyed()) return
-    if (this.mode === 'desktop' && !this.interactionSuspended) {
+    if (this.mode === 'desktop' && !this.interactionSuspended && !options?.keepEmbedded) {
       this.suspendForInteraction()
       return
     }

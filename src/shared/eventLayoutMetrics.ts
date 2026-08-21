@@ -122,9 +122,6 @@ export function fitEventLayout(
     if (!fits(layout) && layout.dayNumberHeight > 22) {
       layout.dayNumberHeight = 22
     }
-    while (!fits(layout) && layout.laneHeight > 10) {
-      layout.laneHeight -= 1
-    }
     if (!fits(layout) && layout.laneGap > 1) {
       layout.laneGap = 1
     }

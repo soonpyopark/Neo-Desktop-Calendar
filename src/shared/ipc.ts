@@ -40,6 +40,8 @@ export type SetIgnoreMouseOptions = {
   forward?: boolean
   /** Project alias; treated the same as `forward` in main */
   forwardToOverlay?: boolean
+  /** Capture mouse on the WorkerW calendar without undocking. */
+  allowWhileEmbedded?: boolean
 }
 
 export type LaunchMode = 'desktop' | 'window'
@@ -281,7 +283,7 @@ export type NeoCalendarApi = {
   setDayDblClickExcludeZones: (zones: ClientHitRect[]) => void
   setInteractionBusy: (busy: boolean) => void
   /** Activate OS keyboard/IME focus for Hangul (and other IME) text input. */
-  focusForTextInput: () => void
+  focusForTextInput: (options?: { keepEmbedded?: boolean }) => void
   onModeChanged: (listener: (status: ModeStatus) => void) => () => void
   /** Main → renderer: open day quick edit after WorkerW double-click unlock. */
   onOpenDayQuickEdit: (listener: (payload: OpenDayQuickEditPayload) => void) => () => void

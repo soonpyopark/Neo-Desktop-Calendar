@@ -20,7 +20,7 @@ export function installTextInputFocusBridge(): () => void {
     const now = Date.now()
     if (now - lastRequestAt < 80) return
     lastRequestAt = now
-    setIgnoreMouseEvents(false)
+    setIgnoreMouseEvents(false, { forwardToOverlay: true })
     window.neoCalendar?.focusForTextInput?.()
   }
 

@@ -59,8 +59,8 @@ const api: NeoCalendarApi = {
   setInteractionBusy: (busy: boolean) => {
     ipcRenderer.send('set-interaction-busy', Boolean(busy))
   },
-  focusForTextInput: () => {
-    ipcRenderer.send('focus-for-text-input')
+  focusForTextInput: (options) => {
+    ipcRenderer.send('focus-for-text-input', options ?? {})
   },
   onModeChanged: (listener: (status: ModeStatus) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, status: ModeStatus): void => {

@@ -493,6 +493,7 @@ export function CalendarGrid({
   const [dayListPreviewOpen, setDayListPreviewOpen] = useState(false)
   const [headerTitleEditorOpen, setHeaderTitleEditorOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+
   const [loginOpen, setLoginOpen] = useState(false)
   const [loginBusy, setLoginBusy] = useState(false)
   const [loginError, setLoginError] = useState<string | null>(null)
@@ -1086,6 +1087,7 @@ export function CalendarGrid({
     }
     openEmbeddedPanel({ kind: 'footerHelp' })
   }, [floatingPanels, openEmbeddedPanel])
+
   const openHeaderTitleEditorRef = useRef(openHeaderTitleEditor)
   openHeaderTitleEditorRef.current = openHeaderTitleEditor
 
@@ -2595,7 +2597,7 @@ export function CalendarGrid({
               </h1>
               {lunarMonthLabel ? (
                 <span
-                  className="hidden shrink-0 rounded-full bg-gcal-blue-soft px-1.5 py-0.5 text-[13px] text-gcal-blue-dark xl:inline-block"
+                  className="hidden shrink-0 rounded-full bg-gcal-blue-soft px-1.5 py-0.5 text-[12px] text-gcal-blue-dark xl:inline-block"
                   title={lunarMonthLabel}
                 >
                   {lunarMonthLabel}

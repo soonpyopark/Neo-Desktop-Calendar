@@ -30,5 +30,5 @@ const ok = await confirm('삭제할까요?', { variant: 'danger', confirmLabel: 
 Popovers, dialogs, flyouts, and quick-edit panels must stay inside the app shell (`.neo-cal-shell`), not only the Electron window. They must not paint or open outside the main calendar chrome.
 
 Use `clampRectToViewport` / `clampFixedPosition` from `popoverPosition.ts`
-(bounds = `.neo-cal-shell` content box including rounded-corner padding, fallback = window).
+(bounds = `.neo-cal-shell` content box, fallback = window).
 Remeasure after layout when height is content-dependent. Prefer `padding` ≥ 5px from that content edge.

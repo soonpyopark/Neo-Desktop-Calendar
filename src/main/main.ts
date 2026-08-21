@@ -638,7 +638,7 @@ function registerIpc(): void {
   const requireCap = (capability: AppCapability) => auth.requireCapability(capability)
   ipcMain.on(
     'set-ignore-mouse',
-    (_event, ignore: boolean, options?: { forward?: boolean; forwardToOverlay?: boolean }) => {
+    (_event, ignore: boolean, options?: { forward?: boolean; forwardToOverlay?: boolean; allowWhileEmbedded?: boolean }) => {
       if (!mainWindow) return
       // Mode-switch swallow: do not let renderer clear ignore-mouse early.
       if (desktopMode.isInputLocked()) {
@@ -653,8 +653,13 @@ function registerIpc(): void {
         mainWindow.setIgnoreMouseEvents(false)
         return
       }
-      // WorkerW-embedded: full click-through.
+      // WorkerW-embedded: full click-through, unless an in-shell surface
+      // needs clicks without undocking.
       if (desktopMode.isWorkerEmbedded()) {
+        if (options?.allowWhileEmbedded && !ignore) {
+          mainWindow.setIgnoreMouseEvents(false)
+          return
+        }
         mainWindow.setIgnoreMouseEvents(true)
         return
       }
@@ -693,7 +698,7 @@ function registerIpc(): void {
   })
   ipcMain.on('set-interaction-busy', () => undefined)
 
-  ipcMain.on('focus-for-text-input', (event) => {
+  ipcMain.on('focus-for-text-input', (event, options?: { keepEmbedded?: boolean }) => {
     if (panelWindowManager?.isPanelWebContents(event.sender.id)) {
       const panelWin = panelWindowManager.getWindowForWebContents(event.sender.id)
       if (panelWin && !panelWin.isDestroyed()) {
@@ -710,7 +715,7 @@ function registerIpc(): void {
       }
       return
     }
-    desktopMode.focusForTextInput()
+    desktopMode.focusForTextInput({ keepEmbedded: Boolean(options?.keepEmbedded) })
   })
 
   ipcMain.handle('open-external', async (event, url: string) => {

@@ -59,7 +59,8 @@ export async function handleApiRequest(
   token: string | null,
   req: IncomingMessage
 ): Promise<ApiResult> {
-  const { auth, calendarStore, membersStore, getSyncInfo, onStoreMutated } = deps
+  const { auth, calendarStore, membersStore, getSyncInfo, onStoreMutated } =
+    deps
   const m = method.toUpperCase()
   const p = path.split('?')[0]
 

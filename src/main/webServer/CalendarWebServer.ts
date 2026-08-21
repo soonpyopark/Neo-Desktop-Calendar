@@ -322,7 +322,11 @@ export class CalendarWebServer {
   }
 
   broadcastStoreChanged(): void {
-    const payload = JSON.stringify({ type: 'store-changed' })
+    this.broadcastWs('store-changed')
+  }
+
+  private broadcastWs(type: string): void {
+    const payload = JSON.stringify({ type })
     for (const ws of this.sockets) {
       if (ws.readyState === ws.OPEN) {
         try {

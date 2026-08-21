@@ -14,8 +14,8 @@ function getViewportSize() {
 
 /**
  * Principle #4 — overlays stay inside the app shell content box (not just the
- * Electron window). Uses the shell's padding edge so rounded-corner inset
- * chrome is respected. Falls back to the window when `.neo-cal-shell` is missing.
+ * Electron window). Uses the shell's padding edge. Falls back to the window
+ * when `.neo-cal-shell` is missing.
  */
 /** Full `.neo-cal-shell` box — used to center overlays in the main program window. */
 export function getMainShellBounds(): {

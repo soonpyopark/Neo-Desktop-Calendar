@@ -18,6 +18,12 @@ export function setIgnoreMouseEvents(
     return
   }
 
+  if (options.allowWhileEmbedded && !ignore) {
+    lastIgnore = false
+    window.neoCalendar?.setIgnoreMouse(false, options)
+    return
+  }
+
   if (lastIgnore === ignore) return
   lastIgnore = ignore
 
