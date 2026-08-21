@@ -588,11 +588,17 @@ export class PanelWindowManager {
         return
       }
     }
-    // 세로보기 toolbar button: click again closes the floating window.
-    if (init.kind === 'dayListPreview') {
-      const existing = this.entriesBySlot.get('dayListPreview')
+    // Chrome toolbar: click the same button again to close the floating window.
+    if (
+      init.kind === 'dayListPreview'
+      || init.kind === 'search'
+      || init.kind === 'settings'
+      || init.kind === 'exportOptions'
+      || init.kind === 'footerHelp'
+    ) {
+      const existing = this.entriesBySlot.get(init.kind)
       if (existing && isWinAlive(existing.win)) {
-        this.closeSlot('dayListPreview')
+        this.closeSlot(init.kind)
         return
       }
     }

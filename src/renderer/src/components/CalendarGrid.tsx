@@ -753,31 +753,28 @@ export function CalendarGrid({
     settings?.weekStartsOn ?? (store.settings.viewOptions.weekStartsOnSunday === false ? 1 : 0)
 
   const openSearch = useCallback((): void => {
-    setSettingsOpen(false)
-    if (isBrowserNeoCalendarHost()) {
-      setSearchOpen(true)
+    if (isBrowserNeoCalendarHost() || !floatingPanels) {
+      setSearchOpen((open) => {
+        const next = !open
+        if (next) setSettingsOpen(false)
+        return next
+      })
       return
     }
-    if (floatingPanels) {
-      openEmbeddedPanel({ kind: 'search', eventsHidden })
-      return
-    }
-    setSearchOpen(true)
+    openEmbeddedPanel({ kind: 'search', eventsHidden })
   }, [eventsHidden, floatingPanels, openEmbeddedPanel])
 
   const openSettingsPanel = useCallback((): void => {
     if (!requireEdit()) return
-    if (isBrowserNeoCalendarHost()) {
-      setSearchOpen(false)
-      setSettingsOpen(true)
+    if (isBrowserNeoCalendarHost() || !floatingPanels) {
+      setSettingsOpen((open) => {
+        const next = !open
+        if (next) setSearchOpen(false)
+        return next
+      })
       return
     }
-    if (floatingPanels) {
-      openEmbeddedPanel({ kind: 'settings' })
-      return
-    }
-    setSearchOpen(false)
-    setSettingsOpen(true)
+    openEmbeddedPanel({ kind: 'settings' })
   }, [floatingPanels, openEmbeddedPanel, requireEdit])
 
   // WorkerW-embedded: publish period-toolbar + visible day-cell hit zones.
@@ -2347,7 +2344,7 @@ export function CalendarGrid({
       })
       return
     }
-    setExportOptionsOpen(true)
+    setExportOptionsOpen((open) => !open)
   }
 
   const lunarMonthLabel = useMemo(

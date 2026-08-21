@@ -1,18 +1,25 @@
 import { BrowserWindow, screen } from 'electron'
 import koffi from 'koffi'
 
+/** Taskbar / notify-area — not foreign apps, but must not open calendar UI. */
+const TASKBAR_SHELL_CLASSES = new Set([
+  'Shell_TrayWnd',
+  'Shell_SecondaryTrayWnd',
+  'NotifyIconOverflowWindow',
+  'TopLevelWindowForOverflowXamlIsland'
+])
+
 /** Desktop / WorkerW layers — clicks here may reach the embedded calendar. */
 const DESKTOP_SHELL_CLASSES = new Set([
   'Progman',
   'WorkerW',
-  'Shell_TrayWnd',
   'SysListView32',
   'SHELLDLL_DefView',
   'DV2ControlHost',
   'DirectUIHWND',
   'ForegroundStaging',
   'tooltips_class32',
-  'TopLevelWindowForOverflowXamlIsland'
+  ...TASKBAR_SHELL_CLASSES
 ])
 
 type WindowAtPointApi = {
@@ -119,11 +126,15 @@ function isOurHwnd(user32: WindowAtPointApi, hwnd: unknown, ourHwnd: bigint): bo
   }
 }
 
-function isDesktopShellHwnd(user32: WindowAtPointApi, hwnd: unknown): boolean {
+function hwndMatchesClassSet(
+  user32: WindowAtPointApi,
+  hwnd: unknown,
+  classes: Set<string>
+): boolean {
   let current: unknown = hwnd
   for (let depth = 0; depth < 10 && current; depth += 1) {
     const className = readClassName(user32, current)
-    if (DESKTOP_SHELL_CLASSES.has(className)) return true
+    if (classes.has(className)) return true
     try {
       const parent = user32.GetAncestor(current, GA_PARENT)
       if (!parent || asHwnd(parent) === asHwnd(current)) break
@@ -133,6 +144,14 @@ function isDesktopShellHwnd(user32: WindowAtPointApi, hwnd: unknown): boolean {
     }
   }
   return false
+}
+
+function isDesktopShellHwnd(user32: WindowAtPointApi, hwnd: unknown): boolean {
+  return hwndMatchesClassSet(user32, hwnd, DESKTOP_SHELL_CLASSES)
+}
+
+function isTaskbarShellHwnd(user32: WindowAtPointApi, hwnd: unknown): boolean {
+  return hwndMatchesClassSet(user32, hwnd, TASKBAR_SHELL_CLASSES)
 }
 
 function hwndAtPhysicalPoint(user32: WindowAtPointApi, ptDip: { x: number; y: number }): unknown {
@@ -239,6 +258,10 @@ export function shouldProcessEmbeddedGlobalClick(
   const fg = user32.GetForegroundWindow()
 
   if (!atPoint) return false
+
+  // Tray / taskbar sit on Shell_TrayWnd. Treating them as desktop-shell used to
+  // open quick-edit when the last week of cells sat under an auto-hide taskbar.
+  if (isTaskbarShellHwnd(user32, atPoint)) return false
 
   // WindowFromPoint can return WorkerW/desktop under layered apps (e.g. Chrome).
   // Always honor foreground foreign window bounds before the desktop-shell shortcut.
