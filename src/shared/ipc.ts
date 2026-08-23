@@ -130,7 +130,9 @@ export const PERIOD_TOOLBAR_ACTIONS = {
   densityDown: 'density-down',
   densityUp: 'density-up',
   letterSpacingDown: 'letter-spacing-down',
-  letterSpacingUp: 'letter-spacing-up'
+  letterSpacingUp: 'letter-spacing-up',
+  periodScrollPrev: 'period-scroll-prev',
+  periodScrollNext: 'period-scroll-next'
 } as const
 
 export const CHROME_TOOLBAR_ACTIONS = {

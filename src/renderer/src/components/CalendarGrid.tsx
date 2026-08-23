@@ -73,6 +73,7 @@ import { DayListPreviewPanel } from './DayListPreviewPanel'
 import { exportFormatLabel, formatExportRangeLabel } from '../../../shared/exportCalendarHelpers.js'
 import type { ExportCalendarRequest } from '../../../shared/exportCalendar'
 import { useMaxVisibleEvents } from '../hooks/useMaxVisibleEvents'
+import { usePeriodRowScroll } from '../hooks/usePeriodRowScroll'
 import {
   EVENT_DENSITY_MAX,
   EVENT_DENSITY_MIN,
@@ -603,6 +604,7 @@ export function CalendarGrid({
 
   const chromeRef = useRef<HTMLDivElement | null>(null)
   const periodHeaderRef = useRef<HTMLDivElement | null>(null)
+  const periodRowScroll = usePeriodRowScroll()
 
   const monthBodyRef = useRef<HTMLDivElement | null>(null)
   const publishHitZonesRef = useRef<(() => void) | null>(null)
@@ -826,6 +828,11 @@ export function CalendarGrid({
           if (!action || !(action in CHROME_TOGGLE_ACTION_TO_SLOT) || seen.has(action)) continue
           const r = el.getBoundingClientRect()
           if (r.width < 1 || r.height < 1) continue
+          const scrollEl = periodRowScroll.scrollRef.current
+          if (scrollEl && scrollEl.contains(el)) {
+            const clip = scrollEl.getBoundingClientRect()
+            if (r.right <= clip.left + 1 || r.left >= clip.right - 1) continue
+          }
           seen.add(action)
           out.push({
             x: Math.round(r.left),
@@ -866,6 +873,11 @@ export function CalendarGrid({
                 return []
               const r = el.getBoundingClientRect()
               if (r.width < 1 || r.height < 1) return []
+              const scrollEl = periodRowScroll.scrollRef.current
+              if (scrollEl && scrollEl.contains(el)) {
+                const clip = scrollEl.getBoundingClientRect()
+                if (r.right <= clip.left + 1 || r.left >= clip.right - 1) return []
+              }
               return [
                 {
                   x: Math.round(r.left),
@@ -1025,15 +1037,19 @@ export function CalendarGrid({
     const ro = new ResizeObserver(publish)
     const chrome = chromeRef.current
     const period = periodHeaderRef.current
+    const periodScroll = periodRowScroll.scrollRef.current
     const body = monthBodyRef.current
     if (chrome) ro.observe(chrome)
     if (period) ro.observe(period)
+    if (periodScroll) ro.observe(periodScroll)
     if (body) ro.observe(body)
+    periodScroll?.addEventListener('scroll', publish, { passive: true })
     body?.addEventListener('scroll', publish, { passive: true })
     window.addEventListener('resize', publish)
     return () => {
       publishHitZonesRef.current = null
       ro.disconnect()
+      periodScroll?.removeEventListener('scroll', publish)
       body?.removeEventListener('scroll', publish)
       window.removeEventListener('resize', publish)
       api.setClickForwardHitZones([])
@@ -2608,13 +2624,44 @@ export function CalendarGrid({
 
         <div
           ref={periodHeaderRef}
-          className="header-period-row interaction-ui flex shrink-0 items-center justify-center gap-1.5"
+          className={cn(
+            'header-period-row interaction-ui flex shrink-0 items-center',
+            periodRowScroll.canScrollLeft && 'is-overflow-start',
+            periodRowScroll.canScrollRight && 'is-overflow-end'
+          )}
           data-shell-chrome="period-header"
           onDoubleClick={(event) => {
             event.preventDefault()
             event.stopPropagation()
           }}
         >
+          {periodRowScroll.canScrollLeft ? (
+            <InteractionUI
+              as="button"
+              className={cn(
+                desktopModeIconBtnClass,
+                densityIconBtnClass,
+                'header-period-scroll-btn is-start'
+              )}
+              captureOnHover={captureToolbarOnHover}
+              data-toolbar-action={PERIOD_TOOLBAR_ACTIONS.periodScrollPrev}
+              aria-label="메뉴 왼쪽으로"
+              title="메뉴 왼쪽으로"
+              onClick={() => periodRowScroll.scrollByStep(-1)}
+            >
+              <ChevronLeftIcon />
+            </InteractionUI>
+          ) : null}
+          <div
+            ref={periodRowScroll.scrollRef}
+            className={cn(
+              'header-period-scroll',
+              !periodRowScroll.overflowing && 'is-centered',
+              periodRowScroll.dragging && 'is-dragging'
+            )}
+            {...periodRowScroll.scrollerProps}
+          >
+            <div className="header-period-scroll-inner">
           <div className="flex shrink-0 items-center gap-1" role="group" aria-label="보기 모드">
             {VIEW_MODE_OPTIONS.map(({ value, label, Icon }) => (
               <InteractionUI
@@ -3063,6 +3110,25 @@ export function CalendarGrid({
               {headerCollapsed ? <ChevronDownIcon /> : <ChevronUpIcon />}
             </InteractionUI>
           </div>
+            </div>
+          </div>
+          {periodRowScroll.canScrollRight ? (
+            <InteractionUI
+              as="button"
+              className={cn(
+                desktopModeIconBtnClass,
+                densityIconBtnClass,
+                'header-period-scroll-btn is-end'
+              )}
+              captureOnHover={captureToolbarOnHover}
+              data-toolbar-action={PERIOD_TOOLBAR_ACTIONS.periodScrollNext}
+              aria-label="메뉴 오른쪽으로"
+              title="메뉴 오른쪽으로"
+              onClick={() => periodRowScroll.scrollByStep(1)}
+            >
+              <ChevronRightIcon />
+            </InteractionUI>
+          ) : null}
         </div>
       </header>
 
