@@ -131,6 +131,8 @@ export const PERIOD_TOOLBAR_ACTIONS = {
   densityUp: 'density-up',
   letterSpacingDown: 'letter-spacing-down',
   letterSpacingUp: 'letter-spacing-up',
+  letterWidthDown: 'letter-width-down',
+  letterWidthUp: 'letter-width-up',
   periodScrollPrev: 'period-scroll-prev',
   periodScrollNext: 'period-scroll-next'
 } as const

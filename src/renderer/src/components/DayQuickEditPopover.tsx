@@ -39,7 +39,8 @@ import { compareEventsForDayDisplay } from '../../../shared/mdcExport/eventBarFo
 import type { CalendarEvent, CalendarRecord, EventLink, TagRecord } from '../../../shared/calendarTypes'
 import {
   normalizeEventDensity,
-  normalizeEventLetterSpacing
+  normalizeEventLetterSpacing,
+  normalizeEventLetterWidth
 } from '../../../shared/eventLayoutMetrics'
 import type { DayReorderItem } from '../lib/dayReorder'
 
@@ -113,6 +114,8 @@ export type DayQuickEditPopoverProps = {
   eventDensity?: number
   /** Event-bar letter-spacing (−/+ AA toolbar); applies to list titles. */
   eventLetterSpacing?: number
+  /** Event-title scaleX (narrow/wide A toolbar). */
+  eventLetterWidth?: number
   onClose: () => void
   onCreate: (title: string, calendarId: string, tagIds?: string[], links?: EventLink[]) => void
   onToggleCompleted: (event: CalendarEvent, completed: boolean) => void
@@ -275,6 +278,7 @@ export function DayQuickEditPopover({
   minBodyHeight = 0,
   eventDensity = 1,
   eventLetterSpacing,
+  eventLetterWidth,
   onClose,
   onCreate,
   onToggleCompleted,
@@ -335,9 +339,10 @@ export function DayQuickEditPopover({
     () =>
       ({
         '--event-density': String(normalizeEventDensity(eventDensity)),
-        '--event-letter-spacing': `${normalizeEventLetterSpacing(eventLetterSpacing)}em`
+        '--event-letter-spacing': `${normalizeEventLetterSpacing(eventLetterSpacing)}em`,
+        '--event-letter-width': String(normalizeEventLetterWidth(eventLetterWidth))
       }) as CSSProperties,
-    [eventDensity, eventLetterSpacing]
+    [eventDensity, eventLetterSpacing, eventLetterWidth]
   )
 
   // Reopening the panel on another day must not keep the previous day's swatches.

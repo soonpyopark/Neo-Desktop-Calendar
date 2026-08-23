@@ -46,6 +46,24 @@ export function stepEventLetterSpacing(current: unknown, delta: number): number 
   return normalizeEventLetterSpacing(normalizeEventLetterSpacing(current) + delta)
 }
 
+/** Event-title scaleX (matches current condensed 0.88 default). */
+export const EVENT_LETTER_WIDTH_MIN = 0.7
+export const EVENT_LETTER_WIDTH_MAX = 1.16
+export const EVENT_LETTER_WIDTH_STEP = 0.04
+export const EVENT_LETTER_WIDTH_DEFAULT = 0.88
+
+/** Clamp + snap glyph width to 0.04 steps. */
+export function normalizeEventLetterWidth(value: unknown): number {
+  const n = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(n)) return EVENT_LETTER_WIDTH_DEFAULT
+  const clamped = Math.min(EVENT_LETTER_WIDTH_MAX, Math.max(EVENT_LETTER_WIDTH_MIN, n))
+  return Math.round(clamped * 25) / 25
+}
+
+export function stepEventLetterWidth(current: unknown, delta: number): number {
+  return normalizeEventLetterWidth(normalizeEventLetterWidth(current) + delta)
+}
+
 export type ScaledEventLayout = {
   laneHeight: number
   laneGap: number

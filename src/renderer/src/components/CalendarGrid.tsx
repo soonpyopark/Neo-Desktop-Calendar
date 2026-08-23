@@ -81,10 +81,15 @@ import {
   EVENT_LETTER_SPACING_MAX,
   EVENT_LETTER_SPACING_MIN,
   EVENT_LETTER_SPACING_STEP,
+  EVENT_LETTER_WIDTH_MAX,
+  EVENT_LETTER_WIDTH_MIN,
+  EVENT_LETTER_WIDTH_STEP,
   normalizeEventDensity,
   normalizeEventLetterSpacing,
+  normalizeEventLetterWidth,
   stepEventDensity,
-  stepEventLetterSpacing
+  stepEventLetterSpacing,
+  stepEventLetterWidth
 } from '../../../shared/eventLayoutMetrics'
 import {
   getOccurrenceDate,
@@ -130,6 +135,8 @@ import {
   DensityUpIcon,
   LetterSpacingDownIcon,
   LetterSpacingUpIcon,
+  LetterWidthDownIcon,
+  LetterWidthUpIcon,
   ExportIcon,
   HelpIcon,
   HideCompletedCheckIcon,
@@ -758,6 +765,7 @@ export function CalendarGrid({
   const eventLetterSpacing = normalizeEventLetterSpacing(
     store.settings.viewOptions.eventLetterSpacing
   )
+  const eventLetterWidth = normalizeEventLetterWidth(store.settings.viewOptions.eventLetterWidth)
   const showWeekNumbers = store.settings.viewOptions.showWeekNumbers !== false
   const roundedCorners = Boolean(store.settings.viewOptions.roundedCorners)
   const dayColors = store.settings.dayColors ?? {}
@@ -1066,6 +1074,7 @@ export function CalendarGrid({
     completedHidden,
     eventDensity,
     eventLetterSpacing,
+    eventLetterWidth,
     webEditUrl,
     searchOpen,
     settingsOpen,
@@ -2367,6 +2376,7 @@ export function CalendarGrid({
     completedHidden?: boolean
     eventDensity?: number
     eventLetterSpacing?: number
+    eventLetterWidth?: number
   }): void => {
     if (!requireEdit()) return
     void patchStoreSettings({
@@ -2400,6 +2410,10 @@ export function CalendarGrid({
 
   const adjustEventLetterSpacing = (delta: number): void => {
     setViewFlag({ eventLetterSpacing: stepEventLetterSpacing(eventLetterSpacing, delta) })
+  }
+
+  const adjustEventLetterWidth = (delta: number): void => {
+    setViewFlag({ eventLetterWidth: stepEventLetterWidth(eventLetterWidth, delta) })
   }
 
   const exportReferenceDate = useMemo(() => {
@@ -2590,7 +2604,8 @@ export function CalendarGrid({
       )}
       style={
         {
-          '--event-letter-spacing': `${eventLetterSpacing}em`
+          '--event-letter-spacing': `${eventLetterSpacing}em`,
+          '--event-letter-width': String(eventLetterWidth)
         } as CSSProperties
       }
     >
@@ -2929,6 +2944,48 @@ export function CalendarGrid({
                 !canEdit && LOGIN_MUTED_CLASS
               )}
               captureOnHover={captureToolbarOnHover}
+              data-toolbar-action={PERIOD_TOOLBAR_ACTIONS.letterWidthDown}
+              onClick={() => adjustEventLetterWidth(-EVENT_LETTER_WIDTH_STEP)}
+              disabled={!canEdit || eventLetterWidth <= EVENT_LETTER_WIDTH_MIN}
+              aria-label="일정 글자 너비 좁히기"
+              title={
+                !canEdit
+                  ? LOGIN_REQUIRED_TITLE
+                  : `글자 너비 좁히기 (${eventLetterWidth.toFixed(2)})`
+              }
+            >
+              <LetterWidthDownIcon />
+            </InteractionUI>
+            <InteractionUI
+              as="button"
+              className={cn(
+                desktopModeIconBtnClass,
+                densityIconBtnClass,
+                iconBtnDisabledClass,
+                !canEdit && LOGIN_MUTED_CLASS
+              )}
+              captureOnHover={captureToolbarOnHover}
+              data-toolbar-action={PERIOD_TOOLBAR_ACTIONS.letterWidthUp}
+              onClick={() => adjustEventLetterWidth(EVENT_LETTER_WIDTH_STEP)}
+              disabled={!canEdit || eventLetterWidth >= EVENT_LETTER_WIDTH_MAX}
+              aria-label="일정 글자 너비 넓히기"
+              title={
+                !canEdit
+                  ? LOGIN_REQUIRED_TITLE
+                  : `글자 너비 넓히기 (${eventLetterWidth.toFixed(2)})`
+              }
+            >
+              <LetterWidthUpIcon />
+            </InteractionUI>
+            <InteractionUI
+              as="button"
+              className={cn(
+                desktopModeIconBtnClass,
+                densityIconBtnClass,
+                iconBtnDisabledClass,
+                !canEdit && LOGIN_MUTED_CLASS
+              )}
+              captureOnHover={captureToolbarOnHover}
               data-toolbar-action={PERIOD_TOOLBAR_ACTIONS.letterSpacingDown}
               onClick={() => adjustEventLetterSpacing(-EVENT_LETTER_SPACING_STEP)}
               disabled={!canEdit || eventLetterSpacing <= EVENT_LETTER_SPACING_MIN}
@@ -2994,6 +3051,27 @@ export function CalendarGrid({
               className={cn(
                 desktopModeIconBtnClass,
                 densityIconBtnClass,
+                iconBtnDisabledClass,
+                (!canEdit || exporting || settingsOpen || searchOpen) && LOGIN_MUTED_CLASS
+              )}
+              captureOnHover={captureToolbarOnHover}
+              data-toolbar-action={CHROME_TOOLBAR_ACTIONS.export}
+              aria-label="내려받기"
+              aria-pressed={exportOptionsOpen}
+              title={!canEdit ? LOGIN_REQUIRED_TITLE : '내려받기'}
+              disabled={canEdit ? exporting || settingsOpen || searchOpen : false}
+              onClick={() => {
+                if (!requireEdit()) return
+                handleOpenExport()
+              }}
+            >
+              <ExportIcon />
+            </InteractionUI>
+            <InteractionUI
+              as="button"
+              className={cn(
+                desktopModeIconBtnClass,
+                densityIconBtnClass,
                 (!canEdit || searchOpen) && LOGIN_MUTED_CLASS
               )}
               captureOnHover={captureToolbarOnHover}
@@ -3011,27 +3089,6 @@ export function CalendarGrid({
               onClick={openSettingsPanel}
             >
               <SettingsIcon />
-            </InteractionUI>
-            <InteractionUI
-              as="button"
-              className={cn(
-                desktopModeIconBtnClass,
-                densityIconBtnClass,
-                iconBtnDisabledClass,
-                (!canEdit || exporting || settingsOpen || searchOpen) && LOGIN_MUTED_CLASS
-              )}
-              captureOnHover={captureToolbarOnHover}
-              data-toolbar-action={CHROME_TOOLBAR_ACTIONS.export}
-              aria-label="내려받기"
-              aria-pressed={exportOptionsOpen}
-              title={!canEdit ? LOGIN_REQUIRED_TITLE : '내려받기'}
-              disabled={canEdit ? exporting || settingsOpen || searchOpen : false}
-              onClick={() => {
-                if (!requireEdit()) return
-                handleOpenExport()
-              }}
-            >
-              <ExportIcon />
             </InteractionUI>
             <InteractionUI
               as="button"
@@ -3456,6 +3513,7 @@ export function CalendarGrid({
           minBodyHeight={viewMode === 'year' ? QUICK_EDIT_YEAR_MIN_BODY : undefined}
           eventDensity={eventDensity}
           eventLetterSpacing={eventLetterSpacing}
+          eventLetterWidth={eventLetterWidth}
           zIndex={inlineQuickEditZ}
           onRaise={() => setInlineFrontPanel('quickEdit')}
           onDismissEventDetail={clearEventDetail}

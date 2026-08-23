@@ -118,6 +118,7 @@ export function createDefaultSettings(): StoreSettings {
       dayListSortDesc: true,
       eventDensity: 1,
       eventLetterSpacing: -0.06,
+      eventLetterWidth: 0.88,
       colorScheme: 'light',
       accentColor: DEFAULT_ACCENT_COLOR,
       skin: { light: {}, dark: {} },

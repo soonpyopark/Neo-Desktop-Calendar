@@ -100,6 +100,7 @@
   --gcal-mini-month-bg: #dcdcdc;
   --event-density: 1;
   --event-letter-spacing: -0.06em;
+  --event-letter-width: 0.88;
   --event-lane-height: 18px;
   --event-lane-step: 20px;
   --day-event-gap: 1px;
@@ -1068,8 +1069,8 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  /* Taller glyphs, narrower advance width */
-  transform: scaleX(0.88) scaleY(1.14);
+  /* Taller glyphs; width comes from --event-letter-width (toolbar). */
+  transform: scaleX(var(--event-letter-width, 0.88)) scaleY(1.14);
   transform-origin: left center;
 }
 
@@ -2418,7 +2419,7 @@ body.is-resizing-window {
   white-space: nowrap;
   font-size: calc(12px * var(--event-density, 1));
   letter-spacing: var(--event-letter-spacing, -0.06em);
-  transform: scaleX(0.88) scaleY(1.08);
+  transform: scaleX(var(--event-letter-width, 0.88)) scaleY(1.08);
   transform-origin: left center;
   color: var(--gcal-heading);
 }
@@ -3453,6 +3454,8 @@ html.neo-panel-window.dark form.shell-solid-surface.rounded-lg {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  transform: scaleX(var(--event-letter-width, 0.88));
+  transform-origin: left center;
   z-index: 1;
 }
 .event-more:hover {

@@ -171,6 +171,10 @@ export type SurfaceViewOptions = {
    * Event-bar letter-spacing in em (−0.12 … 0.08). Default −0.06 (current look).
    */
   eventLetterSpacing: number
+  /**
+   * Event-title horizontal scale (0.70 … 1.16). Default 0.88 (current condensed look).
+   */
+  eventLetterWidth: number
   colorScheme: 'light' | 'dark' | 'system'
   accentColor: string
   /** Optional chrome colors (weekday/weekend/header/footer/grid). Empty = theme default. */

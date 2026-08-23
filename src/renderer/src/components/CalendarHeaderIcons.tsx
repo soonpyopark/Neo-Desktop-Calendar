@@ -222,6 +222,38 @@ export function LetterSpacingUpIcon(): ReactElement {
   )
 }
 
+/** Event-title glyph width: condensed A. */
+export function LetterWidthDownIcon(): ReactElement {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9.4 17.2 12 7l2.6 10.2M10.1 13.5h3.8"
+      />
+    </svg>
+  )
+}
+
+/** Event-title glyph width: expanded A. */
+export function LetterWidthUpIcon(): ReactElement {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M7.2 17.2 12 6.8l4.8 10.4M8.4 13.5h7.2"
+      />
+    </svg>
+  )
+}
+
 export function HideEventsEyeIcon({ open }: { open: boolean }): ReactElement {
   if (open) {
     return (
