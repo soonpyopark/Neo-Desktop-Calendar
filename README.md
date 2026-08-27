@@ -97,6 +97,7 @@ npm run build:portable
 → `msi/Neo Desktop Calendar v{버전}_YYMMDD_HHMMSS.msi` (현재 사용자 설치, 관리자 권한 불필요)  
 → `msi/Neo Desktop Calendar v{버전}_YYMMDD_HHMMSS_portable.zip`  
 설치 마법사에서 **설치 폴더 선택** 가능 (`WixUI_InstallDir`).  
+캘린더 데이터는 설치/포터블 폴더의 `data/`, Electron 캐시는 `.neo-desktop-calendar/electron-profile`에 둡니다 (`%APPDATA%`에는 쓰지 않습니다).  
 MSI에는 Electron 런타임이 포함됩니다 (`Neo Desktop Calendar.exe` + `resources/app.asar` + DLL). 별도 Electron 설치 불필요.
 
 | 스크립트 | 설명 |

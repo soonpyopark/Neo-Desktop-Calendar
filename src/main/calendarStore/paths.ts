@@ -15,8 +15,9 @@ function isWritableDirCandidate(path: string): boolean {
 /**
  * Resolve MDC-compatible data root.
  *
- * Packaged (MSI): never write under app.asar — use exe-side `data/` or userData.
- * Dev: DATA_ROOT → workspace `data/` → userData/data
+ * Packaged (MSI): never write under app.asar — use exe-side `data/`
+ * (Electron profile lives in `.neo-desktop-calendar/electron-profile`).
+ * Dev: DATA_ROOT → workspace `data/` → last-resort userData/data
  */
 export function resolveDataRoot(): string {
   const fromEnv = getEnvValue('DATA_ROOT')

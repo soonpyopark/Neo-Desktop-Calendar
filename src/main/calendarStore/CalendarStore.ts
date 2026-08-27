@@ -42,6 +42,7 @@ import { normalizeStoreBackup } from '../../shared/storeBackup'
 import { resolveAdminCredentials } from '../dotEnv'
 import { findHolidaySeedPath } from './holidaySeedPaths'
 import { resolveDataRoot, sanitizeDataKey } from './paths'
+import { getLegacyUserDataPath } from '../portableUserData'
 
 type SettingsFile = {
   version: number
@@ -1408,9 +1409,9 @@ export class CalendarStore {
     // If MDC settings already exist, keep them.
     if (existsSync(this.settingsPath)) return
     try {
-      const { app } = require('electron') as typeof import('electron')
-      const legacy = join(app.getPath('userData'), 'data', 'settings.json')
-      if (!existsSync(legacy) || legacy === this.settingsPath) return
+      const legacyRoot = getLegacyUserDataPath()
+      const legacy = legacyRoot ? join(legacyRoot, 'data', 'settings.json') : ''
+      if (!legacy || !existsSync(legacy) || legacy === this.settingsPath) return
       const raw = JSON.parse(readFileSync(legacy, 'utf8')) as {
         settings?: AppSettings & { widget?: { launchMode?: LaunchMode; bounds?: WidgetBounds } }
         authToken?: string | null

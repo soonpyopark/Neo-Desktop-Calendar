@@ -429,7 +429,7 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\user\\AppData\\Local\\Temp\\cursor-sandbox-cache\\d8f035f008bbc44ef2f4350639db3592\\nuget": {}
+    "C:\\Users\\user\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
@@ -437,7 +437,7 @@
       "projectUniqueName": "D:\\My_Cursor\\Neo Calendar\\native\\desktop-hit-helper\\DesktopHitHelper.csproj",
       "projectName": "Neo-Desktop-Calendar",
       "projectPath": "D:\\My_Cursor\\Neo Calendar\\native\\desktop-hit-helper\\DesktopHitHelper.csproj",
-      "packagesPath": "C:\\Users\\user\\AppData\\Local\\Temp\\cursor-sandbox-cache\\d8f035f008bbc44ef2f4350639db3592\\nuget",
+      "packagesPath": "C:\\Users\\user\\.nuget\\packages\\",
       "outputPath": "D:\\My_Cursor\\Neo Calendar\\native\\desktop-hit-helper\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [

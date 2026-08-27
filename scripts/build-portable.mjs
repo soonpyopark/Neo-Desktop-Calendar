@@ -190,6 +190,7 @@ function stagePortable() {
       : 'staged .env contains no holiday API key'
   )
   fs.rmSync(path.join(stageDir, 'data'), { recursive: true, force: true })
+  fs.rmSync(path.join(stageDir, '.neo-desktop-calendar'), { recursive: true, force: true })
   log(`staged: ${stageDir}`)
   return stageDir
 }

@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "SR337OW4AeE=",
+  "dgSpecHash": "DLdHCxFiiTU=",
   "success": true,
   "projectFilePath": "D:\\My_Cursor\\Neo Calendar\\native\\desktop-hit-helper\\DesktopHitHelper.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\user\\AppData\\Local\\Temp\\cursor-sandbox-cache\\d8f035f008bbc44ef2f4350639db3592\\nuget\\microsoft.netframework.referenceassemblies\\1.0.3\\microsoft.netframework.referenceassemblies.1.0.3.nupkg.sha512",
-    "C:\\Users\\user\\AppData\\Local\\Temp\\cursor-sandbox-cache\\d8f035f008bbc44ef2f4350639db3592\\nuget\\microsoft.netframework.referenceassemblies.net48\\1.0.3\\microsoft.netframework.referenceassemblies.net48.1.0.3.nupkg.sha512"
+    "C:\\Users\\user\\.nuget\\packages\\microsoft.netframework.referenceassemblies\\1.0.3\\microsoft.netframework.referenceassemblies.1.0.3.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\microsoft.netframework.referenceassemblies.net48\\1.0.3\\microsoft.netframework.referenceassemblies.net48.1.0.3.nupkg.sha512"
   ],
   "logs": []
 }

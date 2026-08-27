@@ -244,6 +244,7 @@ function stageForMsi() {
   // Do not ship data/ inside the MSI — first-launch writes then fail with access denied.
   // Holidays come from the bundled seed (resources/seed/holidays-kr.json) on first run.
   fs.rmSync(path.join(stageDir, 'data'), { recursive: true, force: true })
+  fs.rmSync(path.join(stageDir, '.neo-desktop-calendar'), { recursive: true, force: true })
   log(`staged: ${stageDir}`)
 }
 

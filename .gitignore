@@ -3,6 +3,7 @@ dist
 out
 release
 data/
+.neo-desktop-calendar/
 .cache/
 *.log
 .DS_Store

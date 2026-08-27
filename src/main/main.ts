@@ -53,6 +53,7 @@ import {
 } from './webServer/tlsCerts'
 import { type WebServerSyncInfo } from '../shared/httpsConfig'
 import { resolveDataRoot } from './calendarStore/paths'
+import { applyPortableUserData } from './portableUserData'
 import {
   deleteStoreBackup,
   getStoreBackupStatus,
@@ -109,6 +110,8 @@ import {
   stripMemberAdminSettingsPatch,
   type AppCapability
 } from '../shared/members'
+
+applyPortableUserData()
 
 function sanitizeClientHitRects(zones: unknown): ClientHitRect[] {
   if (!Array.isArray(zones)) return []
