@@ -9,18 +9,14 @@ const TASKBAR_SHELL_CLASSES = new Set([
   'TopLevelWindowForOverflowXamlIsland'
 ])
 
-/** Desktop / WorkerW layers — clicks here may reach the embedded calendar. */
-const DESKTOP_SHELL_CLASSES = new Set([
-  'Progman',
-  'WorkerW',
-  'SysListView32',
-  'SHELLDLL_DefView',
-  'DV2ControlHost',
-  'DirectUIHWND',
-  'ForegroundStaging',
-  'tooltips_class32',
-  ...TASKBAR_SHELL_CLASSES
-])
+/**
+ * Wallpaper / desktop-icon host only. Do not include SysListView32 / DirectUIHWND /
+ * SHELLDLL_DefView — File Explorer folders reuse those classes.
+ */
+const DESKTOP_WALLPAPER_HOST_CLASSES = new Set(['Progman', 'WorkerW'])
+
+/** Explorer folder / This PC frames — same child classes as the desktop icon list. */
+const EXPLORER_FRAME_CLASSES = new Set(['CabinetWClass', 'ExploreWClass'])
 
 type WindowAtPointApi = {
   WindowFromPoint: (x: number, y: number) => unknown
@@ -147,7 +143,8 @@ function hwndMatchesClassSet(
 }
 
 function isDesktopShellHwnd(user32: WindowAtPointApi, hwnd: unknown): boolean {
-  return hwndMatchesClassSet(user32, hwnd, DESKTOP_SHELL_CLASSES)
+  if (hwndMatchesClassSet(user32, hwnd, EXPLORER_FRAME_CLASSES)) return false
+  return hwndMatchesClassSet(user32, hwnd, DESKTOP_WALLPAPER_HOST_CLASSES)
 }
 
 function isTaskbarShellHwnd(user32: WindowAtPointApi, hwnd: unknown): boolean {
@@ -268,7 +265,7 @@ export function shouldProcessEmbeddedGlobalClick(
   if (isClickInsideForeignForeground(user32, ptDip, ourHwnd)) return false
   if (isForeignProcessHwnd(user32, atPoint, ourHwnd)) return false
 
-  // Empty desktop / WorkerW / icon listview — accept here.
+  // Empty wallpaper / WorkerW (not Explorer folders — those share listview classes).
   // Desktop *icon items* are filtered by Neo-Desktop-Calendar.exe helper in main.ts.
   if (isDesktopShellHwnd(user32, atPoint)) return true
 

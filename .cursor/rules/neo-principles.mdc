@@ -1,5 +1,5 @@
 ---
-description: Neo Desktop Calendar core product principles (desktop embed, click-through, modal dialogs, in-app overlays)
+description: Neo Desktop Calendar core product principles (desktop embed, click-through, foreign clicks, modal dialogs, in-app overlays)
 alwaysApply: true
 ---
 
@@ -32,3 +32,22 @@ Popovers, dialogs, flyouts, and quick-edit panels must stay inside the app shell
 Use `clampRectToViewport` / `clampFixedPosition` from `popoverPosition.ts`
 (bounds = `.neo-cal-shell` content box, fallback = window).
 Remeasure after layout when height is content-dependent. Prefer `padding` ≥ 5px from that content edge.
+
+## 원칙 5 — 다른 프로그램의 클릭·더블클릭은 달력으로 넘기지 않는다
+WorkerW 전역 훅(`WH_MOUSE_LL` in `globalMouseHook.ts`)은 OS 전체 클릭을 본다. Embedded day-dblclick / toolbar / outside-close는 **바탕화면 빈 곳**에만 반응한다.
+
+Gate: `shouldProcessEmbeddedGlobalClick` (`windowAtPoint.ts`). Do not weaken it when adding features.
+
+- Desktop accept = HWND ancestor is `Progman` or `WorkerW` only.
+- Never treat `DirectUIHWND` / `SHELLDLL_DefView` / `SysListView32` as desktop by themselves — File Explorer folders reuse those classes (`CabinetWClass` / `ExploreWClass` = foreign).
+- Taskbar / notify (`Shell_TrayWnd`, …) is never a calendar click.
+- If the click is inside a foreign foreground window’s root rect, reject even when `WindowFromPoint` returns WorkerW (layered / transparent apps).
+- `WM_LBUTTONDBLCLK` must not open quick-edit unless a prior **accepted** desktop press exists in the OS double-click window. Another app’s double-click can land on WorkerW after that window closes.
+
+```ts
+// ❌ BAD — Explorer folder looks like “desktop”
+if (className === 'DirectUIHWND' || className === 'SHELLDLL_DefView') accept()
+
+// ✅ GOOD
+if (isDesktopWallpaperHost(hwnd)) accept() // Progman / WorkerW only
+```

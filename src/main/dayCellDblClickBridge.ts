@@ -183,6 +183,17 @@ export class DayCellDblClickBridge {
     }
 
     const prev = this.lastPress
+    const dblWindow = this.GetDoubleClickTime() || DEFAULT_DBLCLICK_MS
+    // Orphan WM_LBUTTONDBLCLK: another app's double-click after its window
+    // closes can hit WorkerW. Require a prior accepted desktop press.
+    if (!prev || now - prev.at > dblWindow) {
+      this.debug('[day-dblclick] dblclk ignored — no prior desktop press', {
+        x: pt.x,
+        y: pt.y
+      })
+      this.lastPress = null
+      return
+    }
     let hit = this.hitDayCell(pt, origin, zones)
     if (
       !hit &&
