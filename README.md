@@ -2,6 +2,15 @@
 
 Lightweight Electron desktop wallpaper calendar with dynamic click-through.
 
+![Windows에서 실행한 Neo Desktop Calendar — 2026년 10월 월간 보기](docs/screenshots/windows.png)
+
+## Repository
+
+- **메인:** [gitlab.aigov.go.kr/soonpyo/neo-desktop-calendar](https://gitlab.aigov.go.kr/soonpyo/neo-desktop-calendar)
+- **미러:** [github.com/soonpyopark/Neo-Desktop-Calendar](https://github.com/soonpyopark/Neo-Desktop-Calendar)
+
+`origin`은 GitLab입니다. `git push`하면 GitLab과 GitHub에 함께 올라갑니다.
+
 ## License
 
 **GNU Affero General Public License v3.0 (AGPL-3.0-only)** — see [`LICENSE`](LICENSE).

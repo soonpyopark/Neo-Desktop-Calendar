@@ -6,7 +6,8 @@ https://note4all.tistory.com
 
 - 소스 코드: 저장소 루트 LICENSE (AGPL-3.0 전문)
 - 수정·재배포·네트워크(서버) 제공 시 AGPL-3.0 의무(소스 제공 등)가 적용됩니다.
-- GitHub: https://github.com/soonpyopark/Neo-Desktop-Calendar
+- 소스: https://gitlab.aigov.go.kr/soonpyo/neo-desktop-calendar
+- 미러(GitHub): https://github.com/soonpyopark/Neo-Desktop-Calendar
 
 아래 오픈소스·공개 데이터·런타임을 포함하거나 사용합니다.
 (각각 고유 라이선스가 있으며, 앱 본체 AGPL과 별개입니다.)

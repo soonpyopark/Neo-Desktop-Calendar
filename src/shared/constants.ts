@@ -3,15 +3,16 @@ export const APP_VERSION = '1.2.2'
 /**
  * Package build id (YYMMDD_HHMMSS) — matches MSI/portable filename suffix.
  * Refreshed by `build:release` / `build:msi` / `build:portable` for update checks
- * when the GitHub tag version is unchanged (same-version republish).
+ * when the published version is unchanged (same-version republish).
  */
-export const APP_BUILD_STAMP = '260827_134733'
+export const APP_BUILD_STAMP = '260830_223720'
 export const APP_NAME = 'Neo Desktop Calendar'
 export const APP_TITLE = `${APP_NAME} v${APP_VERSION}`
 export const SITE_URL = 'https://note4all.tistory.com'
 /** SPDX identifier — matches package.json / LICENSE. */
 export const APP_LICENSE = 'AGPL-3.0-only'
-export const APP_SOURCE_URL = 'https://github.com/soonpyopark/Neo-Desktop-Calendar'
+/** Canonical source — GitHub is a read-only mirror. */
+export const APP_SOURCE_URL = 'https://gitlab.aigov.go.kr/soonpyo/neo-desktop-calendar'
 
 export const DEFAULT_ADMIN_ID = 'admin'
 export const DEFAULT_ADMIN_PW = 'admin1234'

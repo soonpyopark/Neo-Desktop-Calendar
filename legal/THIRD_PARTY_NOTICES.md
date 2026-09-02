@@ -5,7 +5,8 @@
 
 앱 자체 라이선스(저장소 `LICENSE` / `package.json`): **GNU Affero General Public License v3.0 (AGPL-3.0-only)**  
 제품 사이트: https://note4all.tistory.com  
-소스: https://github.com/soonpyopark/Neo-Desktop-Calendar
+소스: https://gitlab.aigov.go.kr/soonpyo/neo-desktop-calendar  
+미러: https://github.com/soonpyopark/Neo-Desktop-Calendar
 
 ---
 
@@ -123,7 +124,7 @@ Neo Desktop Calendar는 아래 오픈소스·공개 데이터·런타임을 포�
 
 ## 7. English summary (for bilingual packages)
 
-**Neo Desktop Calendar** is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0-only)**. See the root `LICENSE` file. Source: https://github.com/soonpyopark/Neo-Desktop-Calendar
+**Neo Desktop Calendar** is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0-only)**. See the root `LICENSE` file. Source: https://gitlab.aigov.go.kr/soonpyo/neo-desktop-calendar (mirror: https://github.com/soonpyopark/Neo-Desktop-Calendar)
 
 This product also includes:
 

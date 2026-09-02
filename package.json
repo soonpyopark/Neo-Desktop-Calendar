@@ -5,6 +5,10 @@
   "main": "./out/main/main.js",
   "author": "Neo Desktop Calendar",
   "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.aigov.go.kr/soonpyo/neo-desktop-calendar.git"
+  },
   "scripts": {
     "dev": "electron-vite dev",
     "dev:restart": "node scripts/dev-restart.mjs",
