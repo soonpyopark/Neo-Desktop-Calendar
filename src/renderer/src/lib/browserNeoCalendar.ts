@@ -653,7 +653,9 @@ export function installBrowserNeoCalendar(): void {
       const form = new FormData()
       for (const item of uploads) {
         const bytes = item.data instanceof Uint8Array ? item.data : new Uint8Array(item.data)
-        const blob = new Blob([bytes], {
+        const copy = new Uint8Array(bytes.byteLength)
+        copy.set(bytes)
+        const blob = new Blob([copy], {
           type: item.mime || 'application/octet-stream'
         })
         form.append('files', blob, item.name || 'clipboard.png')

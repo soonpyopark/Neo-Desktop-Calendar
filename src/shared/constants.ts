@@ -5,7 +5,7 @@ export const APP_VERSION = '1.2.2'
  * Refreshed by `build:release` / `build:msi` / `build:portable` for update checks
  * when the published version is unchanged (same-version republish).
  */
-export const APP_BUILD_STAMP = '260830_223720'
+export const APP_BUILD_STAMP = '260903_123716'
 export const APP_NAME = 'Neo Desktop Calendar'
 export const APP_TITLE = `${APP_NAME} v${APP_VERSION}`
 export const SITE_URL = 'https://note4all.tistory.com'

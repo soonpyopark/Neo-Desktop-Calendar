@@ -54,20 +54,20 @@ function digitsOnly(raw, maxLen) {
   return String(raw ?? '').replace(/\D/g, '').slice(0, maxLen);
 }
 
+type DateInputProps = {
+  value?: string
+  onChange?: (value: string) => void
+  className?: string
+  min?: string
+  max?: string
+  disabled?: boolean
+  'aria-label'?: string
+  id?: string
+}
+
 /**
  * YYYY-MM-DD date field with year → month → day auto-advance while typing,
  * plus a native calendar picker affordance.
- *
- * @param {{
- *   value?: string,
- *   onChange?: (value: string) => void,
- *   className?: string,
- *   min?: string,
- *   max?: string,
- *   disabled?: boolean,
- *   'aria-label'?: string,
- *   id?: string,
- * }} props
  */
 export default function DateInput({
   value = '',
@@ -78,7 +78,7 @@ export default function DateInput({
   disabled = false,
   'aria-label': ariaLabel,
   id,
-}) {
+}: DateInputProps) {
   const autoId = useId();
   const rootId = id || autoId;
   const yearRef = useRef(/** @type {HTMLInputElement | null} */ (null));

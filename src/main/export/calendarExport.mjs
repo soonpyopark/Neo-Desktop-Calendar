@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { basename, join } from 'node:path'
-import { nativeImage } from 'electron'
 import ExcelJS from 'exceljs'
 import PDFDocument from 'pdfkit'
 import { EXPORT_COLORS } from '../../shared/mdcExport/exportColors.js'
@@ -248,8 +248,20 @@ function containSize(srcW, srcH, maxW, maxH) {
  * @param {number} maxH
  * @returns {{ buffer: Buffer, drawW: number, drawH: number } | null}
  */
+/** Electron `nativeImage`, or null when this module is loaded from Node (`verify:export`). */
+function getNativeImage() {
+  try {
+    const electron = createRequire(import.meta.url)('electron')
+    return electron && typeof electron === 'object' ? electron.nativeImage ?? null : null
+  } catch {
+    return null
+  }
+}
+
 function prepareImageForPdf(filePath, maxW, maxH) {
   try {
+    const nativeImage = getNativeImage()
+    if (!nativeImage) return null
     let image = nativeImage.createFromPath(filePath);
     if (image.isEmpty()) return null;
     let { width, height } = image.getSize();

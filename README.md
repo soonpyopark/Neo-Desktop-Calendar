@@ -118,7 +118,7 @@ MSI에는 Electron 런타임이 포함됩니다 (`Neo Desktop Calendar.exe` + `r
 | `npm run build:msi` | WiX MSI 설치판만 (`msi/*.msi`) |
 | `npm run build:portable` | 포터블 zip만 (`msi/*_portable.zip`, 7-Zip 필요) |
 | `npm run sync-version` | `constants.ts` 버전 → package.json / License.rtf / 고지 동기화 |
-| `npm run update:all` | npm 의존성 업데이트 (+ desktop-hit 헬퍼 재빌드) |
+| `npm run update:all` | npm 의존성 업데이트 (Electron 최신) 후 typecheck·export 검증 + desktop-hit 헬퍼 재빌드 |
 | `npm run build:update_all` | `update:all` 후 `build:release` (MSI + portable, 동일 스탬프) |
 
 공개 배포 시 라이선스: **AGPL-3.0** ([`LICENSE`](LICENSE))  
@@ -133,7 +133,9 @@ NAS4USB와 같은 흐름입니다.
 npm run update:all
 ```
 
-옵션: `--skip-git` `--skip-npm` `--skip-hit` `--build` `--msi` `--release`  
+옵션: `--skip-git` `--skip-npm` `--skip-verify` `--skip-hit` `--build` `--msi` `--release`  
+Electron은 `electron@latest`로 올리고(메이저 포함), 나머지 패키지는 `package.json` 범위 안에서만 올립니다.  
+의존성 업데이트 후 `typecheck`와 `verify:export`가 실패하면 릴리스를 만들지 않습니다.  
 예: `npm run update:all -- --build`  
 `npm run build:update_all` 은 `--release` 와 같습니다.  
 Windows: `update_all.bat` (로그: `.cache/logs/update-all.log`)

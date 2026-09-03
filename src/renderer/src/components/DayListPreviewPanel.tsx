@@ -20,7 +20,7 @@ import {
   HtmlIcon,
   PdfIcon
 } from './CalendarHeaderIcons'
-import type { CalendarStoreSnapshot } from '../../../shared/calendarTypes'
+import type { CalendarStoreSnapshot, EventAttachment } from '../../../shared/calendarTypes'
 import { HOLIDAYS_KR_CALENDAR_ID } from '../../../shared/calendarDefaults'
 import { exportFormatLabel, formatExportRangeLabel } from '../../../shared/exportCalendarHelpers.js'
 import type { ExportCalendarFormat } from '../../../shared/exportCalendar'
@@ -267,7 +267,7 @@ function findAttachmentMeta(
   store: CalendarStoreSnapshot,
   eventId: string,
   attachmentId: string
-): { name: string; mime?: string; storedName?: string } | null {
+): EventAttachment | null {
   const event = store.events.find((item) => item.id === eventId)
   const meta = event?.attachments?.find((item) => item.id === attachmentId)
   return meta ?? null

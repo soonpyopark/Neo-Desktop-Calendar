@@ -123,9 +123,9 @@
     "uuid": "^11.1.1"
   },
   "allowScripts": {
-    "electron@44.1.1": true,
     "koffi@2.16.3": true,
     "esbuild@0.25.12": true,
-    "esbuild@0.28.1": true
+    "esbuild@0.28.1": true,
+    "electron@44.1.1": true
   }
 }

@@ -2,10 +2,14 @@
 /**
  * Update npm dependencies (NAS4USB-style update:all).
  *
+ * Electron is always installed at npm `latest` (including major bumps).
+ * Other packages stay within package.json semver ranges (`npm update`).
+ *
  * Options:
- *   --skip-git   Skip git pull --ff-only
- *   --skip-npm   Skip npm install / npm update
- *   --skip-hit   Skip desktop-hit helper rebuild
+ *   --skip-git    Skip git pull --ff-only
+ *   --skip-npm    Skip npm install / electron latest / npm update
+ *   --skip-verify Skip typecheck + export verify (not recommended)
+ *   --skip-hit    Skip desktop-hit helper rebuild
  *   --build      Run production build (desktop-hit + electron-vite)
  *   --msi        Run npm run build:msi after updates
  *   --release    Run npm run build:release (MSI + portable, same stamp)
@@ -26,6 +30,7 @@ function parseArgs(argv) {
   return {
     skipGit: argv.includes('--skip-git'),
     skipNpm: argv.includes('--skip-npm'),
+    skipVerify: argv.includes('--skip-verify'),
     skipHit: argv.includes('--skip-hit'),
     build: argv.includes('--build'),
     msi: argv.includes('--msi'),
@@ -70,6 +75,49 @@ async function gitPull() {
   run('git pull', 'git', ['pull', '--ff-only'])
 }
 
+function latestElectronVersion() {
+  const result = spawnSync('npm', ['view', 'electron', 'version'], {
+    cwd: root,
+    encoding: 'utf8',
+    shell: process.platform === 'win32'
+  })
+  if (result.status !== 0) {
+    throw new Error(`npm view electron version failed (exit ${result.status ?? 1})`)
+  }
+  const version = result.stdout.trim().split(/\r?\n/).at(-1)?.trim() ?? ''
+  if (!/^\d+\.\d+\.\d+(?:-[\w.]+)?$/.test(version)) {
+    throw new Error(`unexpected electron version: ${version}`)
+  }
+  return version
+}
+
+/**
+ * npm allowScripts keys are name@version. Approve the new Electron before install.
+ * @param {string} version
+ */
+async function approveElectronScript(version) {
+  const pkgPath = path.join(root, 'package.json')
+  const pkg = JSON.parse(await fs.readFile(pkgPath, 'utf8'))
+  const allowScripts = { ...(pkg.allowScripts ?? {}) }
+  for (const key of Object.keys(allowScripts)) {
+    if (key.startsWith('electron@')) delete allowScripts[key]
+  }
+  allowScripts[`electron@${version}`] = true
+  pkg.allowScripts = allowScripts
+  await fs.writeFile(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`)
+}
+
+async function updateElectronLatest() {
+  const version = latestElectronVersion()
+  console.log(`[update-all] electron latest: ${version}`)
+  await approveElectronScript(version)
+  run(`npm install electron@${version}`, 'npm', [
+    'install',
+    `electron@${version}`,
+    '--save-dev'
+  ])
+}
+
 async function main() {
   const opts = parseArgs(process.argv.slice(2))
 
@@ -84,7 +132,13 @@ async function main() {
 
   if (!opts.skipNpm) {
     run('npm install', 'npm', ['install'])
+    await updateElectronLatest()
     run('npm update', 'npm', ['update'])
+  }
+
+  if (!opts.skipVerify) {
+    run('typecheck', 'npm', ['run', 'typecheck'])
+    run('verify export', 'npm', ['run', 'verify:export'])
   }
 
   if (!opts.skipHit && !opts.release) {
