@@ -119,6 +119,9 @@
       "allowToChangeInstallationDirectory": true
     }
   },
+  "overrides": {
+    "uuid": "^11.1.1"
+  },
   "allowScripts": {
     "electron@44.1.1": true,
     "koffi@2.16.3": true,
