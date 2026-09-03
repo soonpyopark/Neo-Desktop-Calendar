@@ -4,6 +4,8 @@ Lightweight Electron desktop wallpaper calendar with dynamic click-through.
 
 ![Windows에서 실행한 Neo Desktop Calendar — 2026년 10월 월간 보기](docs/screenshots/windows.png)
 
+![Windows 바탕화면 모드 — 데스크톱 아이콘 아래에 깔린 월간 보기](docs/screenshots/windows-desktop.png)
+
 ## Repository
 
 - **메인:** [gitlab.aigov.go.kr/soonpyo/neo-desktop-calendar](https://gitlab.aigov.go.kr/soonpyo/neo-desktop-calendar)
