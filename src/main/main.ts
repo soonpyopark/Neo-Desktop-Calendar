@@ -1530,66 +1530,69 @@ function bootApp(): void {
     }
   })
 
-  // Cold-start unlocked desktop: 10s without input → WorkerW embed.
-  const idleEmbed = new DesktopIdleEmbedBridge({
-    isArmed: () =>
-      desktopMode.getLaunchMode() === 'desktop' && desktopMode.isInteractionSuspended(),
-    onEmbed: () => {
-      desktopMode.resumeUnderIcons()
-    }
-  })
-  idleEmbed.start()
-  mainWindow?.webContents.on('before-input-event', () => {
-    idleEmbed.noteActivity()
-  })
+  // WorkerW / global mouse hooks are Windows-only — never load user32 on macOS.
+  if (process.platform === 'win32') {
+    // Cold-start unlocked desktop: 10s without input → WorkerW embed.
+    const idleEmbed = new DesktopIdleEmbedBridge({
+      isArmed: () =>
+        desktopMode.getLaunchMode() === 'desktop' && desktopMode.isInteractionSuspended(),
+      onEmbed: () => {
+        desktopMode.resumeUnderIcons()
+      }
+    })
+    idleEmbed.start()
+    mainWindow?.webContents.on('before-input-event', () => {
+      idleEmbed.noteActivity()
+    })
 
-  // Unlocked desktop: click outside calendar → re-embed under icons.
-  const outsideClickEmbed = new DesktopOutsideClickEmbedBridge({
-    isArmed: () =>
-      desktopMode.getLaunchMode() === 'desktop' && desktopMode.isInteractionSuspended(),
-    getAppBounds: () => {
-      const locked = desktopMode.getLockedBounds()
-      const live =
-        mainWindow && !mainWindow.isDestroyed() ? getWindowDipScreenBounds(mainWindow) : null
-      return live ?? locked
-    },
-    isForeignAppAtPoint: (pt) => isForeignClickAtPoint(pt),
-    shouldSkipClick: (pt) =>
-      isNativeDialogOpen() ||
-      (panelWindowManager?.isPointInsideAnyPanel(pt) ?? false) ||
-      // Re-embedding closes every panel — not while a panel's link is being read elsewhere.
-      (panelWindowManager?.shouldKeepPanelsForForeignClick(pt) ?? false),
-    onEmbed: () => {
-      desktopMode.resumeUnderIcons()
-    }
-  })
-  outsideClickEmbed.start()
+    // Unlocked desktop: click outside calendar → re-embed under icons.
+    const outsideClickEmbed = new DesktopOutsideClickEmbedBridge({
+      isArmed: () =>
+        desktopMode.getLaunchMode() === 'desktop' && desktopMode.isInteractionSuspended(),
+      getAppBounds: () => {
+        const locked = desktopMode.getLockedBounds()
+        const live =
+          mainWindow && !mainWindow.isDestroyed() ? getWindowDipScreenBounds(mainWindow) : null
+        return live ?? locked
+      },
+      isForeignAppAtPoint: (pt) => isForeignClickAtPoint(pt),
+      shouldSkipClick: (pt) =>
+        isNativeDialogOpen() ||
+        (panelWindowManager?.isPointInsideAnyPanel(pt) ?? false) ||
+        // Re-embedding closes every panel — not while a panel's link is being read elsewhere.
+        (panelWindowManager?.shouldKeepPanelsForForeignClick(pt) ?? false),
+      onEmbed: () => {
+        desktopMode.resumeUnderIcons()
+      }
+    })
+    outsideClickEmbed.start()
 
-  // WorkerW-embedded: click period toolbar → action (stay embedded).
-  const toolbarClick = new PeriodToolbarClickBridge({
-    isArmed: () => desktopMode.isWorkerEmbedded(),
-    getScreenOrigin: () => hitTestScreenOrigin(),
-    getZones: () => clickForwardHitZones,
-    shouldProcessEmbeddedClick: (pt) => shouldProcessEmbeddedClickAtPoint(pt),
-    onToolbarClick: (payload) => {
-      triggerEmbeddedPeriodToolbar({ action: payload.action })
-    }
-  })
-  toolbarClick.start()
+    // WorkerW-embedded: click period toolbar → action (stay embedded).
+    const toolbarClick = new PeriodToolbarClickBridge({
+      isArmed: () => desktopMode.isWorkerEmbedded(),
+      getScreenOrigin: () => hitTestScreenOrigin(),
+      getZones: () => clickForwardHitZones,
+      shouldProcessEmbeddedClick: (pt) => shouldProcessEmbeddedClickAtPoint(pt),
+      onToolbarClick: (payload) => {
+        triggerEmbeddedPeriodToolbar({ action: payload.action })
+      }
+    })
+    toolbarClick.start()
 
-  // WorkerW-embedded: custom double-click on date cell → unlock + quick edit.
-  const dayDblClick = new DayCellDblClickBridge({
-    isArmed: () => desktopMode.isWorkerEmbedded(),
-    getScreenOrigin: () => hitTestScreenOrigin(),
-    getZones: () => dayCellHitZones,
-    getExcludeZones: () => dayDblClickExcludeZones,
-    shouldProcessEmbeddedClick: (pt) => shouldProcessEmbeddedClickAtPoint(pt),
-    onDebug: (msg, data) => sendDayDblClickLog(msg, data),
-    onQuickEditClick: (payload) => {
-      openFloatingDayQuickEdit(payload)
-    }
-  })
-  dayDblClick.start()
+    // WorkerW-embedded: custom double-click on date cell → unlock + quick edit.
+    const dayDblClick = new DayCellDblClickBridge({
+      isArmed: () => desktopMode.isWorkerEmbedded(),
+      getScreenOrigin: () => hitTestScreenOrigin(),
+      getZones: () => dayCellHitZones,
+      getExcludeZones: () => dayDblClickExcludeZones,
+      shouldProcessEmbeddedClick: (pt) => shouldProcessEmbeddedClickAtPoint(pt),
+      onDebug: (msg, data) => sendDayDblClickLog(msg, data),
+      onQuickEditClick: (payload) => {
+        openFloatingDayQuickEdit(payload)
+      }
+    })
+    dayDblClick.start()
+  }
 
   const onDisplayChanged = (): void => {
     desktopMode.onDisplayTopologyChanged()

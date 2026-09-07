@@ -2,6 +2,7 @@ import { app } from 'electron'
 import { existsSync, statSync } from 'node:fs'
 import { dirname, isAbsolute, join } from 'node:path'
 import { getEnvValue } from '../dotEnv'
+import { resolveStateRoot } from '../portableUserData'
 
 function isWritableDirCandidate(path: string): boolean {
   if (!existsSync(path)) return true
@@ -15,26 +16,25 @@ function isWritableDirCandidate(path: string): boolean {
 /**
  * Resolve MDC-compatible data root.
  *
- * Packaged (MSI): never write under app.asar — use exe-side `data/`
- * (Electron profile lives in `.neo-desktop-calendar/electron-profile`).
+ * Packaged (MSI / Windows portable): never write under app.asar — use
+ * exe-side `data/` (Electron profile lives in `.neo-desktop-calendar/electron-profile`).
+ * Packaged macOS: `~/Library/Application Support/Neo Desktop Calendar/data`
+ * (or `data/` beside the .app when that folder is a portable install).
  * Dev: DATA_ROOT → workspace `data/` → last-resort userData/data
  */
 export function resolveDataRoot(): string {
   const fromEnv = getEnvValue('DATA_ROOT')
   if (fromEnv) {
     if (isAbsolute(fromEnv)) return fromEnv
-    // Relative DATA_ROOT: beside the exe when packaged, else cwd (dev).
-    const base =
-      app.isPackaged && process.execPath ? dirname(process.execPath) : process.cwd()
+    // Relative DATA_ROOT: beside the state root when packaged, else cwd (dev).
+    const base = app.isPackaged ? resolveStateRoot() : process.cwd()
     return join(base, fromEnv)
   }
 
   if (app.isPackaged) {
-    const besideExe = process.execPath
-      ? join(dirname(process.execPath), 'data')
-      : null
-    if (besideExe && isWritableDirCandidate(besideExe)) {
-      return besideExe
+    const besideState = join(resolveStateRoot(), 'data')
+    if (isWritableDirCandidate(besideState)) {
+      return besideState
     }
     return join(app.getPath('userData'), 'data')
   }

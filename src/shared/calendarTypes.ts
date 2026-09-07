@@ -237,7 +237,7 @@ export type StoreSettings = {
   loginLockoutEnabled?: boolean
   /**
    * HTTP web server listen port (Local / LAN).
-   * null/undefined → fall back to .env PORT, then 3010.
+   * null/undefined → fall back to .env PORT, then 3010 (packaged macOS: 3012).
    * When set, always wins over .env.
    */
   webServerPort?: number | null

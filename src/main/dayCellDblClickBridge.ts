@@ -45,7 +45,7 @@ export class DayCellDblClickBridge {
   private lastZoneCount = -1
   private lastMissLogAt = 0
   private lastEmptyZonesLogAt = 0
-  private readonly GetDoubleClickTime: () => number
+  private GetDoubleClickTime: () => number = () => DEFAULT_DBLCLICK_MS
   private readonly options: BridgeOptions
 
   private debug(msg: string, data?: Record<string, unknown>): void {
@@ -56,12 +56,17 @@ export class DayCellDblClickBridge {
 
   constructor(options: BridgeOptions) {
     this.options = options
-    const user32 = koffi.load('user32.dll')
-    this.GetDoubleClickTime = user32.func('GetDoubleClickTime', 'uint', []) as () => number
   }
 
   start(): void {
     if (process.platform !== 'win32' || this.unsubscribe) return
+    try {
+      const user32 = koffi.load('user32.dll')
+      this.GetDoubleClickTime = user32.func('GetDoubleClickTime', 'uint', []) as () => number
+    } catch (error) {
+      console.warn('[day-dblclick] user32 load skipped', error)
+      this.GetDoubleClickTime = () => DEFAULT_DBLCLICK_MS
+    }
     this.unsubscribe = subscribeGlobalMouseDown((pt, button) => {
       if (button === 'left' || button === 'left-dblclick') {
         this.handleMouseDown(pt, button)

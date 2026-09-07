@@ -1,7 +1,63 @@
-import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs'
+import { execFileSync, spawnSync } from 'node:child_process'
+import {
+  accessSync,
+  chmodSync,
+  constants,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  statSync,
+  unlinkSync
+} from 'node:fs'
 import { dirname, join, resolve, sep } from 'node:path'
 import { app } from 'electron'
+
+/**
+ * macOS: do not spawn 7za from inside the .app (extraResources is often 644,
+ * and Gatekeeper can return EACCES). Copy to userData and run that file.
+ */
+function stageUnix7za(source: string): string | null {
+  if (process.platform === 'win32' || source.toLowerCase().endsWith('.exe')) {
+    return source
+  }
+  try {
+    const destDir = join(app.getPath('userData'), 'bin')
+    mkdirSync(destDir, { recursive: true })
+    const dest = join(destDir, '7za')
+    const srcStat = statSync(source)
+    let copy = !existsSync(dest)
+    if (!copy) {
+      const dstStat = statSync(dest)
+      copy = dstStat.size !== srcStat.size || dstStat.mtimeMs < srcStat.mtimeMs
+    }
+    if (copy) copyFileSync(source, dest)
+    chmodSync(dest, 0o755)
+    spawnSync('xattr', ['-d', 'com.apple.quarantine', dest], { stdio: 'ignore' })
+    accessSync(dest, constants.X_OK)
+    return dest
+  } catch (error) {
+    console.warn('[7za] stage to userData failed', error)
+    return null
+  }
+}
+
+/** electron-builder extraResources often copies 7za as 644 on macOS. */
+function ensureUnixExecutable(filePath: string): boolean {
+  if (filePath.toLowerCase().endsWith('.exe')) return true
+  try {
+    accessSync(filePath, constants.X_OK)
+    return true
+  } catch {
+    try {
+      chmodSync(filePath, 0o755)
+      accessSync(filePath, constants.X_OK)
+      return true
+    } catch {
+      return false
+    }
+  }
+}
 
 function tryPath7zaFromPackage(): string | null {
   try {
@@ -38,7 +94,10 @@ export function resolve7za(): string {
 
   for (const candidate of candidates) {
     try {
-      if (existsSync(candidate)) return candidate
+      if (!existsSync(candidate)) continue
+      const staged = stageUnix7za(candidate)
+      if (staged) return staged
+      if (ensureUnixExecutable(candidate)) return candidate
     } catch {
       /* ignore */
     }
@@ -60,8 +119,8 @@ function run7za(args: string[], cwd?: string): void {
       maxBuffer: 32 * 1024 * 1024
     })
   } catch (error) {
-    const err = error as { stderr?: string; stdout?: string; message?: string }
-    const detail = [err.stderr, err.stdout, err.message]
+    const err = error as { stderr?: string; stdout?: string; message?: string; code?: string }
+    const detail = [err.stderr, err.stdout, err.code, err.message]
       .filter(Boolean)
       .join('\n')
       .trim()

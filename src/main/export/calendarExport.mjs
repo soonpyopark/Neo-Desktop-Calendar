@@ -65,6 +65,9 @@ async function loadKoreanFontBuffer() {
     join(windir, 'Fonts', 'malgunbd.ttf'),
     join(windir, 'Fonts', 'malgunsl.ttf'),
     join(windir, 'Fonts', 'gulim.ttc'),
+    '/System/Library/Fonts/Supplemental/AppleGothic.ttf',
+    '/System/Library/Fonts/AppleSDGothicNeo.ttc',
+    '/Library/Fonts/Arial Unicode.ttf',
     join(process.cwd(), 'resources', 'fonts', 'NotoSansKR-Regular.otf'),
     join(process.cwd(), 'fonts', 'NotoSansKR-Regular.otf')
   ]
@@ -99,6 +102,8 @@ async function loadKoreanBoldFontBuffer() {
   const candidates = [
     join(windir, 'Fonts', 'malgunbd.ttf'),
     join(windir, 'Fonts', 'gulim.ttc'),
+    '/System/Library/Fonts/Supplemental/AppleGothic.ttf',
+    '/System/Library/Fonts/AppleSDGothicNeo.ttc',
     join(process.cwd(), 'resources', 'fonts', 'NotoSansKR-Bold.otf'),
     join(process.cwd(), 'fonts', 'NotoSansKR-Bold.otf')
   ]

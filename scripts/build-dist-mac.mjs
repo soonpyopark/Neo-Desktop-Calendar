@@ -9,6 +9,7 @@
  *   msi/Neo Desktop Calendar v{version}_{stamp}_macOS.zip
  *
  * Desktop WorkerW embed is Windows-only; the Mac build is a normal app window.
+ * Packaged listen port is 3012 (Windows / npm run dev stay on 3010).
  */
 
 import { execSync } from 'node:child_process'
@@ -93,6 +94,13 @@ function main() {
   log(`build stamp: ${stamp}`)
 
   run(`node scripts/sync-version.mjs --stamp=${stamp}`)
+  fs.mkdirSync(path.join(ROOT, 'build'), { recursive: true })
+  fs.writeFileSync(
+    path.join(ROOT, 'build', '.env.macos'),
+    'PORT=3012\nHOSTNAME=127.0.0.1\n',
+    'utf8'
+  )
+  log('packaged listen port: 3012')
   run('npm run build')
 
   const env = {

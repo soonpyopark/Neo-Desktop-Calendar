@@ -23,15 +23,26 @@ export class DesktopIdleEmbedBridge {
   private timer: ReturnType<typeof setInterval> | null = null
   private idleMs = 0
   private lastPt: Point | null = null
-  private readonly GetAsyncKeyState: (vKey: number) => number
+  private GetAsyncKeyState: ((vKey: number) => number) | null = null
   private readonly options: BridgeOptions
 
   constructor(options: BridgeOptions) {
     this.options = options
-    const user32 = koffi.load('user32.dll')
-    this.GetAsyncKeyState = user32.func('GetAsyncKeyState', 'int16', ['int']) as (
-      vKey: number
-    ) => number
+  }
+
+  private bindUser32(): boolean {
+    if (this.GetAsyncKeyState) return true
+    if (process.platform !== 'win32') return false
+    try {
+      const user32 = koffi.load('user32.dll')
+      this.GetAsyncKeyState = user32.func('GetAsyncKeyState', 'int16', ['int']) as (
+        vKey: number
+      ) => number
+      return true
+    } catch (error) {
+      console.warn('[idle-embed] user32 load skipped', error)
+      return false
+    }
   }
 
   /** Call from renderer keyboard activity (before-input-event). */
@@ -41,10 +52,11 @@ export class DesktopIdleEmbedBridge {
 
   start(): void {
     if (process.platform !== 'win32' || this.timer) return
+    if (!this.bindUser32()) return
 
     this.timer = setInterval(() => {
       try {
-        if (!this.options.isArmed()) {
+        if (!this.options.isArmed() || !this.GetAsyncKeyState) {
           this.idleMs = 0
           this.lastPt = null
           return

@@ -51,7 +51,7 @@
     "@types/react-dom": "^19.1.6",
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.7.0",
-    "electron": "^44.1.1",
+    "electron": "^44.2.0",
     "electron-builder": "^26.0.12",
     "electron-vite": "^4.0.0",
     "react": "^19.1.0",
@@ -67,6 +67,7 @@
       "output": "release",
       "buildResources": "build"
     },
+    "afterPack": "./scripts/after-pack.mjs",
     "files": [
       "out/**/*"
     ],
@@ -120,7 +121,7 @@
     },
     "mac": {
       "category": "public.app-category.productivity",
-      "icon": "build/icon.ico",
+      "icon": "build/icon.png",
       "identity": null,
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
@@ -129,6 +130,12 @@
         "zip"
       ],
       "artifactName": "${productName} v${version}_${env.NEO_BUILD_STAMP}_macOS.${ext}",
+      "extraFiles": [
+        {
+          "from": "build/.env.macos",
+          "to": "MacOS/.env"
+        }
+      ],
       "extraResources": [
         {
           "from": "node_modules/7zip-bin/mac/arm64/7za",
@@ -155,6 +162,6 @@
     "koffi@2.16.3": true,
     "esbuild@0.25.12": true,
     "esbuild@0.28.1": true,
-    "electron@44.1.1": true
+    "electron@44.2.0": true
   }
 }

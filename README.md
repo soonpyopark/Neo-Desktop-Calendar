@@ -118,7 +118,8 @@ npm run build:dist:mac
 ```
 
 **macOS에서만** 실행됩니다 (electron-builder가 Windows에서 `.app`/`.dmg`를 만들지 않습니다).  
-바탕화면 WorkerW 임베드는 포함되지 않고, 일반 앱 창으로 동작합니다.
+바탕화면 WorkerW 임베드는 포함되지 않고, 일반 앱 창으로 동작합니다.  
+기본 HTTP 접속 포트는 **3012**입니다 (Windows / `npm run dev`는 3010).
 
 ```bash
 npm run build:update_all:mac
@@ -128,6 +129,12 @@ npm run build:update_all:mac
 
 → `msi/Neo Desktop Calendar v{버전}_YYMMDD_HHMMSS_macOS.dmg`  
 → `msi/Neo Desktop Calendar v{버전}_YYMMDD_HHMMSS_macOS.zip`
+
+캘린더 데이터는 `~/Library/Application Support/Neo Desktop Calendar/data/`에 두고,
+Electron 캐시는 그 아래 `.neo-desktop-calendar/electron-profile`에 둡니다.
+`.app`을 교체해도 설정·일정·회원 데이터가 유지됩니다.
+`.app`과 같은 폴더에 `data/settings.json` 또는 `.neo-desktop-calendar-portable`이 있으면
+그 폴더를 포터블 저장 위치로 씁니다.
 
 | 스크립트 | 설명 |
 | --- | --- |
