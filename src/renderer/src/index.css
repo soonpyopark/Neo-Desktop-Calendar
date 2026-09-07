@@ -1184,6 +1184,7 @@ input[type='search']::-ms-clear,
 
 /* Portrait day-list preview — same 날짜/내용 table as the PDF export. */
 .day-list-preview-shell {
+  min-width: 0;
   /* Light green header / date column matching the PDF export palette. */
   --day-list-font-scale: 1;
   /* Base 날짜/내용 text size; the − / + buttons scale it. */
@@ -1214,13 +1215,92 @@ input[type='search']::-ms-clear,
 }
 
 .day-list-preview-header {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-shrink: 0;
+  align-items: center;
+  border-bottom: 1px solid var(--neo-panel-divider);
+  padding: 0.5rem 0.75rem;
+}
+
+.day-list-preview-header-scroll {
+  min-width: 0;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  cursor: grab;
+  touch-action: pan-x;
+}
+
+.day-list-preview-header-scroll.is-dragging {
+  cursor: grabbing;
+}
+
+.day-list-preview-header-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.day-list-preview-header-scroll-inner {
   display: flex;
   flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  border-bottom: 1px solid var(--neo-panel-divider);
-  padding: 0.5rem 0.75rem;
+  min-width: max-content;
+  width: max(100%, max-content);
+}
+
+.day-list-preview-header-scroll-btn {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  display: inline-flex;
+  height: 1.75rem;
+  width: 1.75rem;
+  transform: translateY(-50%);
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--gcal-border);
+  border-radius: 0.375rem;
+  background: var(--gcal-surface);
+  color: var(--gcal-heading);
+  cursor: pointer;
+}
+
+.day-list-preview-header-scroll-btn.is-start {
+  left: 0.35rem;
+}
+
+.day-list-preview-header-scroll-btn.is-end {
+  right: 0.35rem;
+}
+
+.day-list-preview-header-scroll-btn:hover {
+  background: var(--gcal-surface-2);
+}
+
+.day-list-preview-header.is-overflow-start::before,
+.day-list-preview-header.is-overflow-end::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2rem;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.day-list-preview-header.is-overflow-start::before {
+  left: 0;
+  background: linear-gradient(to right, var(--gcal-surface), transparent);
+}
+
+.day-list-preview-header.is-overflow-end::after {
+  right: 0;
+  background: linear-gradient(to left, var(--gcal-surface), transparent);
 }
 
 .day-list-preview-title {

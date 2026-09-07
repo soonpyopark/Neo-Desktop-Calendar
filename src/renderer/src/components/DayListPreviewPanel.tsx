@@ -30,6 +30,7 @@ import { useOpenAttachment } from './AttachmentViewerProvider'
 import { useImageActionMenu } from './ImageActionMenu'
 import { openExternalUrl } from '../lib/openExternal'
 import { cn } from '../lib/cn'
+import { usePeriodRowScroll } from '../hooks/usePeriodRowScroll'
 import { useAppDialog } from './AppDialogProvider'
 import { SimpleMarkdownText } from './SimpleMarkdownText'
 
@@ -533,6 +534,7 @@ export function DayListPreviewPanel({
   const [exporting, setExporting] = useState(false)
   const findInputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const headerRowScroll = usePeriodRowScroll(open)
 
   const shownYear = Math.floor(viewMonth / 12)
   const shownMonth = viewMonth % 12
@@ -792,8 +794,34 @@ export function DayListPreviewPanel({
           onClick={(event) => event.stopPropagation()}
           onMouseDown={(event) => event.stopPropagation()}
         >
-          <header className="day-list-preview-header">
-            <div className="flex min-w-0 items-center gap-1">
+          <header
+            className={cn(
+              'day-list-preview-header',
+              headerRowScroll.canScrollLeft && 'is-overflow-start',
+              headerRowScroll.canScrollRight && 'is-overflow-end'
+            )}
+          >
+            {headerRowScroll.canScrollLeft ? (
+              <button
+                type="button"
+                className="day-list-preview-header-scroll-btn is-start"
+                aria-label="메뉴 왼쪽으로"
+                title="메뉴 왼쪽으로"
+                onClick={() => headerRowScroll.scrollByStep(-1)}
+              >
+                <ChevronLeftIcon />
+              </button>
+            ) : null}
+            <div
+              ref={headerRowScroll.scrollRef}
+              className={cn(
+                'day-list-preview-header-scroll',
+                headerRowScroll.dragging && 'is-dragging'
+              )}
+              {...headerRowScroll.scrollerProps}
+            >
+              <div className="day-list-preview-header-scroll-inner">
+            <div className="flex shrink-0 items-center gap-1">
               <button
                 type="button"
                 className="day-list-preview-nav"
@@ -937,6 +965,19 @@ export function DayListPreviewPanel({
                 <CloseIcon />
               </button>
             </div>
+              </div>
+            </div>
+            {headerRowScroll.canScrollRight ? (
+              <button
+                type="button"
+                className="day-list-preview-header-scroll-btn is-end"
+                aria-label="메뉴 오른쪽으로"
+                title="메뉴 오른쪽으로"
+                onClick={() => headerRowScroll.scrollByStep(1)}
+              >
+                <ChevronRightIcon />
+              </button>
+            ) : null}
           </header>
 
           {findOpen ? (

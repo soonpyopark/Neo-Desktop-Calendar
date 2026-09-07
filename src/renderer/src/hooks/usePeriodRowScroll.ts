@@ -14,7 +14,7 @@ const SCROLL_STEP_RATIO = 0.55
 /**
  * Horizontal overflow for the period toolbar: drag-to-scroll + edge buttons.
  */
-export function usePeriodRowScroll(): {
+export function usePeriodRowScroll(active = true): {
   scrollRef: RefObject<HTMLDivElement | null>
   canScrollLeft: boolean
   canScrollRight: boolean
@@ -63,6 +63,11 @@ export function usePeriodRowScroll(): {
   }, [])
 
   useEffect(() => {
+    if (!active) {
+      setCanScrollLeft(false)
+      setCanScrollRight(false)
+      return
+    }
     const el = scrollRef.current
     if (!el) return
     updateOverflow()
@@ -72,12 +77,14 @@ export function usePeriodRowScroll(): {
     if (inner instanceof HTMLElement) ro.observe(inner)
     el.addEventListener('scroll', updateOverflow, { passive: true })
     window.addEventListener('resize', updateOverflow)
+    window.visualViewport?.addEventListener('resize', updateOverflow)
     return () => {
       ro.disconnect()
       el.removeEventListener('scroll', updateOverflow)
       window.removeEventListener('resize', updateOverflow)
+      window.visualViewport?.removeEventListener('resize', updateOverflow)
     }
-  }, [updateOverflow])
+  }, [active, updateOverflow])
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
     if (event.button !== 0) return
