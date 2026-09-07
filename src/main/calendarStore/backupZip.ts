@@ -15,6 +15,7 @@ import { basename, dirname, join } from 'node:path'
 import { dialog, type BrowserWindow } from 'electron'
 import { withNativeDialog } from '../nativeDialogGuard'
 import { createZipFromDirectory, extractZipToDirectory } from '../sevenZip'
+import { nfcWalk, sameUnicodeText, toNfc } from '../../shared/unicodeText.js'
 import type { CalendarStore } from './CalendarStore'
 import type { CalendarStoreSnapshot } from '../../shared/calendarTypes'
 
@@ -39,7 +40,7 @@ function stampForZip(): string {
 }
 
 function trySanitizeId(id: string): string | null {
-  const safeId = String(id ?? '').trim()
+  const safeId = toNfc(String(id ?? '').trim())
   if (!safeId) return null
   if (/[<>:"/\\|?*\x00-\x1f]/.test(safeId)) return null
   if (safeId.includes('..')) return null
@@ -70,6 +71,18 @@ function extractZipSafe(zipPath: string, destDir: string): void {
   extractZipToDirectory(zipPath, destDir)
 }
 
+/** Match a stored attachment name across NFC (Windows) and NFD (macOS) filenames. */
+function resolveAttachmentFile(dir: string, storedName: string): string | null {
+  const want = toNfc(basename(storedName))
+  if (!want || !existsSync(dir)) return null
+  const exact = join(dir, want)
+  if (existsSync(exact)) return exact
+  for (const name of readdirSync(dir)) {
+    if (sameUnicodeText(name, want)) return join(dir, name)
+  }
+  return null
+}
+
 function replaceAttachmentsFrom(
   attachmentsRoot: string,
   sourceAttachmentsDir: string
@@ -89,8 +102,9 @@ function replaceAttachmentsFrom(
     for (const name of readdirSync(eventDir)) {
       const source = join(eventDir, name)
       if (!statSync(source).isFile()) continue
-      if (/[<>:"/\\|?*\x00-\x1f]/.test(name)) continue
-      copyFileSync(source, join(destDir, name))
+      const destName = toNfc(name)
+      if (/[<>:"/\\|?*\x00-\x1f]/.test(destName)) continue
+      copyFileSync(source, join(destDir, destName))
       fileCount += 1
     }
   }
@@ -104,7 +118,11 @@ function stageBackupZip(store: CalendarStore): {
 } {
   const staging = mkdtempSync(join(tmpdir(), 'neo-backup-'))
   const snapshot = store.getSnapshot()
-  writeFileSync(join(staging, 'store.json'), `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8')
+  writeFileSync(
+    join(staging, 'store.json'),
+    `${JSON.stringify(nfcWalk(snapshot), null, 2)}\n`,
+    'utf8'
+  )
 
   const attachStaging = join(staging, 'attachments')
   mkdirSync(attachStaging, { recursive: true })
@@ -121,10 +139,10 @@ function stageBackupZip(store: CalendarStore): {
     let copiedForEvent = 0
     const eventDir = join(attachStaging, safeId)
     for (const att of attachments) {
-      const fileName = basename(String(att.storedName ?? ''))
+      const fileName = toNfc(basename(String(att.storedName ?? '')))
       if (!fileName) continue
-      const source = join(attachmentsRoot, safeId, fileName)
-      if (!existsSync(source)) continue
+      const source = resolveAttachmentFile(join(attachmentsRoot, safeId), fileName)
+      if (!source) continue
       mkdirSync(eventDir, { recursive: true })
       copyFileSync(source, join(eventDir, fileName))
       fileCount += 1
@@ -185,7 +203,7 @@ function restoreFromExtractedDir(
 
   let payload: unknown
   try {
-    payload = JSON.parse(readFileSync(storePath, 'utf8'))
+    payload = nfcWalk(JSON.parse(readFileSync(storePath, 'utf8')))
   } catch (error) {
     throw new Error(
       `store.json을 읽지 못했습니다: ${error instanceof Error ? error.message : String(error)}`
@@ -308,11 +326,11 @@ function findCalendarExportJson(extractDir: string): string | null {
 function readEventsFromCalendarZip(extractDir: string): unknown[] {
   const calendarJson = findCalendarExportJson(extractDir)
   if (calendarJson) {
-    const payload = JSON.parse(readFileSync(calendarJson, 'utf8')) as {
+    const payload = nfcWalk(JSON.parse(readFileSync(calendarJson, 'utf8'))) as {
       events?: unknown[]
     }
     if (Array.isArray(payload?.events)) return payload.events
-    if (Array.isArray(payload)) return payload
+    if (Array.isArray(payload)) return payload as unknown[]
   }
   const storePath = findStoreJson(extractDir)
   if (storePath) {
@@ -344,8 +362,9 @@ function restoreAttachmentsForIdMap(
     for (const name of readdirSync(sourceDir)) {
       const source = join(sourceDir, name)
       if (!statSync(source).isFile()) continue
-      if (/[<>:"/\\|?*\x00-\x1f]/.test(name)) continue
-      copyFileSync(source, join(destDir, name))
+      const destName = toNfc(name)
+      if (/[<>:"/\\|?*\x00-\x1f]/.test(destName)) continue
+      copyFileSync(source, join(destDir, destName))
       fileCount += 1
     }
   }
@@ -362,7 +381,7 @@ export async function exportCalendarZip(
   const calendar = snap.calendars.find((c) => c.id === calendarId)
   if (!calendar) throw new Error('캘린더를 찾을 수 없습니다.')
   const events = snap.events.filter((e) => e.calendarId === calendarId)
-  const safeName = String(calendar.name ?? 'calendar').replace(/[\\/:*?"<>|]/g, '_')
+  const safeName = toNfc(String(calendar.name ?? 'calendar')).replace(/[\\/:*?"<>|]/g, '_')
   const stamp = stampForZip()
 
   const saveOpts: Electron.SaveDialogOptions = {
@@ -383,7 +402,7 @@ export async function exportCalendarZip(
   try {
     writeFileSync(
       join(staging, 'calendar.json'),
-      `${JSON.stringify({ calendar, events }, null, 2)}\n`,
+      `${JSON.stringify(nfcWalk({ calendar, events }), null, 2)}\n`,
       'utf8'
     )
     const attachStaging = join(staging, 'attachments')
@@ -399,10 +418,10 @@ export async function exportCalendarZip(
       let copiedForEvent = 0
       const eventDir = join(attachStaging, safeId)
       for (const att of attachments) {
-        const fileName = basename(String(att.storedName ?? ''))
+        const fileName = toNfc(basename(String(att.storedName ?? '')))
         if (!fileName) continue
-        const source = join(attachmentsRoot, safeId, fileName)
-        if (!existsSync(source)) continue
+        const source = resolveAttachmentFile(join(attachmentsRoot, safeId), fileName)
+        if (!source) continue
         mkdirSync(eventDir, { recursive: true })
         copyFileSync(source, join(eventDir, fileName))
         fileCount += 1

@@ -20,6 +20,9 @@
 
 .PARAMETER Release
   Run npm run build:release (MSI + portable zip, same stamp).
+
+.PARAMETER ReleaseMac
+  Run npm run build:dist:mac (DMG + zip, same stamp; macOS only).
 #>
 param(
     [switch]$SkipGit,
@@ -27,7 +30,8 @@ param(
     [switch]$SkipHit,
     [switch]$Build,
     [switch]$Msi,
-    [switch]$Release
+    [switch]$Release,
+    [switch]$ReleaseMac
 )
 
 $ErrorActionPreference = 'Stop'
@@ -53,6 +57,7 @@ if ($SkipHit) { $nodeArgs += '--skip-hit' }
 if ($Build) { $nodeArgs += '--build' }
 if ($Msi) { $nodeArgs += '--msi' }
 if ($Release) { $nodeArgs += '--release' }
+if ($ReleaseMac) { $nodeArgs += '--release-mac' }
 
 Write-UpdateLog '===== update-all started ====='
 Write-UpdateLog "Project root: $Root"

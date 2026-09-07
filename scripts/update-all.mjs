@@ -11,8 +11,9 @@
  *   --skip-verify Skip typecheck + export verify (not recommended)
  *   --skip-hit    Skip desktop-hit helper rebuild
  *   --build      Run production build (desktop-hit + electron-vite)
- *   --msi        Run npm run build:msi after updates
- *   --release    Run npm run build:release (MSI + portable, same stamp)
+ *   --msi         Run npm run build:msi after updates
+ *   --release     Run npm run build:release (MSI + portable, same stamp)
+ *   --release-mac Run npm run build:dist:mac (DMG + zip, same stamp; macOS only)
  */
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs/promises'
@@ -27,6 +28,7 @@ const root = path.resolve(__dirname, '..')
  */
 function parseArgs(argv) {
   const release = argv.includes('--release')
+  const releaseMac = argv.includes('--release-mac')
   return {
     skipGit: argv.includes('--skip-git'),
     skipNpm: argv.includes('--skip-npm'),
@@ -34,7 +36,8 @@ function parseArgs(argv) {
     skipHit: argv.includes('--skip-hit'),
     build: argv.includes('--build'),
     msi: argv.includes('--msi'),
-    release
+    release,
+    releaseMac
   }
 }
 
@@ -141,16 +144,18 @@ async function main() {
     run('verify export', 'npm', ['run', 'verify:export'])
   }
 
-  if (!opts.skipHit && !opts.release) {
+  if (!opts.skipHit && !opts.release && !opts.releaseMac && process.platform === 'win32') {
     run('build desktop-hit helper', 'npm', ['run', 'build:desktop-hit'])
   }
 
-  if (opts.build && !opts.release) {
+  if (opts.build && !opts.release && !opts.releaseMac) {
     run('production build', 'npm', ['run', 'build'])
   }
 
   if (opts.release) {
     run('build release (MSI + portable)', 'npm', ['run', 'build:release'])
+  } else if (opts.releaseMac) {
+    run('build mac dist (DMG + zip)', 'npm', ['run', 'build:dist:mac'])
   } else if (opts.msi) {
     run('build MSI', 'npm', ['run', 'build:msi'])
   }

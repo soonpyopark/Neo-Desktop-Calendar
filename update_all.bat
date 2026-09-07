@@ -45,6 +45,11 @@ if /I "%~1"=="release" (
     shift
     goto parse_args
 )
+if /I "%~1"=="release-mac" (
+    set "EXTRA_ARGS=%EXTRA_ARGS% -ReleaseMac"
+    shift
+    goto parse_args
+)
 if /I "%~1"=="skip-git" (
     set "EXTRA_ARGS=%EXTRA_ARGS% -SkipGit"
     shift
@@ -72,7 +77,7 @@ echo ============================================================
 echo  Root : %APP_ROOT%
 echo  Log  : .cache\logs\update-all.log
 echo.
-echo  Options: build msi release skip-git skip-npm skip-hit
+echo  Options: build msi release release-mac skip-git skip-npm skip-hit
 echo ============================================================
 echo.
 

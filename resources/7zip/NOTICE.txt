@@ -6,4 +6,4 @@ This product bundles the 7-Zip command-line utility (7za.exe) from the
 Homepage: https://www.7-zip.org/
 
 Runtime ZIP options used by Neo Desktop Calendar include UTF-8 filename
-encoding (-mcu=on) so Korean attachment names round-trip correctly.
+encoding (-mcu=on, extract -mcp=65001) so Korean names survive Windows ↔ macOS.

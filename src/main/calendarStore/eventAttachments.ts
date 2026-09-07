@@ -12,6 +12,7 @@ import {
 } from 'node:fs'
 import { basename, extname, join } from 'node:path'
 import { shell } from 'electron'
+import { toNfc } from '../../shared/unicodeText.js'
 import { isImageAttachment } from '../../shared/attachmentKinds'
 import { HOLIDAYS_KR_CALENDAR_ID } from '../../shared/calendarDefaults'
 import type { CalendarEvent, EventAttachment } from '../../shared/calendarTypes'
@@ -247,7 +248,7 @@ export class EventAttachmentService {
 
   private addOneFile(attachments: EventAttachment[], dir: string, sourcePath: string): void {
     if (!existsSync(sourcePath) || !statSync(sourcePath).isFile()) return
-    const originalName = basename(sourcePath)
+    const originalName = toNfc(basename(sourcePath))
     const size = statSync(sourcePath).size
     const ext = extname(originalName)
     this.assertUploadAllowed(originalName, ext, size)
@@ -272,7 +273,7 @@ export class EventAttachmentService {
     dir: string,
     upload: { name: string; data: Buffer; mime?: string }
   ): void {
-    const originalName = basename(String(upload.name ?? '').trim() || 'file')
+    const originalName = toNfc(basename(String(upload.name ?? '').trim() || 'file'))
     const ext = extname(originalName)
     const size = upload.data?.length ?? 0
     this.assertUploadAllowed(originalName, ext, size)

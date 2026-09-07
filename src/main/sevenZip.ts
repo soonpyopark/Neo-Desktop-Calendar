@@ -17,13 +17,22 @@ function tryPath7zaFromPackage(): string | null {
 
 /** Resolve bundled or dev `7za` (UTF-8 ZIP via `-mcu=on`). */
 export function resolve7za(): string {
+  const resources = process.resourcesPath ?? ''
+  const archDir = process.arch === 'arm64' ? 'arm64' : 'x64'
+  const winName = '7za.exe'
+  const unixName = '7za'
   const candidates = [
-    join(process.resourcesPath ?? '', '7zip', '7za.exe'),
-    join(app.getAppPath(), 'resources', '7zip', '7za.exe'),
+    join(resources, '7zip', winName),
+    join(resources, '7zip', unixName),
+    join(resources, '7zip', archDir, unixName),
+    join(app.getAppPath(), 'resources', '7zip', winName),
+    join(app.getAppPath(), 'resources', '7zip', unixName),
     join(__dirname, '../../resources/7zip/7za.exe'),
     join(__dirname, '../../../resources/7zip/7za.exe'),
     join(__dirname, '../../node_modules/7zip-bin/win/x64/7za.exe'),
     join(__dirname, '../../../node_modules/7zip-bin/win/x64/7za.exe'),
+    join(__dirname, `../../node_modules/7zip-bin/mac/${archDir}/7za`),
+    join(__dirname, `../../../node_modules/7zip-bin/mac/${archDir}/7za`),
     tryPath7zaFromPackage()
   ].filter((p): p is string => Boolean(p))
 
@@ -83,7 +92,7 @@ export function assertTreeContained(rootDir: string): void {
 
 /**
  * Create a ZIP whose entries are the contents of `sourceDir` (folder root = zip root).
- * Uses UTF-8 filename encoding (`-mcu=on`) for Korean attachment names.
+ * UTF-8 filenames (`-mcu=on`) so Korean names survive Windows ↔ macOS 7za.
  */
 export function createZipFromDirectory(sourceDir: string, zipPath: string): void {
   const absZip = resolve(zipPath)
@@ -93,7 +102,11 @@ export function createZipFromDirectory(sourceDir: string, zipPath: string): void
   }
   mkdirParent(absZip)
   if (existsSync(absZip)) unlinkSync(absZip)
-  run7za(['a', '-tzip', '-mcu=on', '-y', absZip, '*'], absSource)
+  run7zaCompatible(
+    ['a', '-tzip', '-mcu=on', '-mcl=off', '-sccUTF-8', '-y', absZip, '*'],
+    ['a', '-tzip', '-mcu=on', '-y', absZip, '*'],
+    absSource
+  )
   if (!existsSync(absZip)) {
     throw new Error('ZIP 파일을 만들지 못했습니다.')
   }
@@ -106,8 +119,29 @@ export function extractZipToDirectory(zipPath: string, destDir: string): void {
   if (!existsSync(absZip)) {
     throw new Error(`ZIP 파일이 없습니다: ${absZip}`)
   }
-  run7za(['x', '-y', `-o${absDest}`, absZip])
+  try {
+    run7zaCompatible(
+      ['x', '-y', '-mcp=65001', '-sccUTF-8', `-o${absDest}`, absZip],
+      ['x', '-y', `-o${absDest}`, absZip]
+    )
+  } catch {
+    run7za(['x', '-y', '-mcp=949', `-o${absDest}`, absZip])
+  }
   assertTreeContained(absDest)
+}
+
+/**
+ * Prefer UTF-8 7-Zip switches; older 7za builds may reject `-scc` / `-mcl`.
+ * @param {string[]} preferred
+ * @param {string[]} fallback
+ * @param {string} [cwd]
+ */
+function run7zaCompatible(preferred: string[], fallback: string[], cwd?: string): void {
+  try {
+    run7za(preferred, cwd)
+  } catch {
+    run7za(fallback, cwd)
+  }
 }
 
 function mkdirParent(filePath: string): void {

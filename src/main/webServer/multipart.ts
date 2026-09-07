@@ -1,4 +1,5 @@
 import type { IncomingMessage } from 'node:http'
+import { toNfc } from '../../shared/unicodeText.js'
 
 export type MultipartFile = {
   fieldName: string
@@ -65,12 +66,12 @@ export function parseMultipart(buffer: Buffer, boundary: string): MultipartFile[
       const disposition = /content-disposition:\s*form-data;\s*(.+)/i.exec(headerText)
       if (disposition) {
         const nameMatch = /name="([^"]+)"/i.exec(disposition[1])
-        const fileMatch = /filename="([^"]*)"/i.exec(disposition[1])
-        if (nameMatch && fileMatch && fileMatch[1]) {
+        const filename = decodeMultipartFilename(disposition[1])
+        if (nameMatch && filename) {
           const mimeMatch = /content-type:\s*([^\r\n]+)/i.exec(headerText)
           files.push({
             fieldName: nameMatch[1],
-            filename: fileMatch[1],
+            filename,
             mime: mimeMatch?.[1]?.trim() || 'application/octet-stream',
             data: Buffer.from(body)
           })
@@ -82,6 +83,19 @@ export function parseMultipart(buffer: Buffer, boundary: string): MultipartFile[
     if (buffer[start] === 0x0d && buffer[start + 1] === 0x0a) start += 2
   }
   return files
+}
+
+function decodeMultipartFilename(disposition: string): string {
+  const star = /filename\*=(?:UTF-8|utf-8)''([^;\s]+)/i.exec(disposition)
+  if (star?.[1]) {
+    try {
+      return toNfc(decodeURIComponent(star[1].replace(/["']/g, '')))
+    } catch {
+      /* fall through to filename= */
+    }
+  }
+  const quoted = /filename="([^"]*)"/i.exec(disposition)
+  return toNfc(quoted?.[1] ?? '')
 }
 
 function indexOf(haystack: Buffer, needle: Buffer, from: number): number {

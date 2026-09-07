@@ -1,5 +1,6 @@
 import { HOLIDAYS_KR_CALENDAR_ID } from './calendarDefaults'
 import { addDaysToDateKey, getEventDurationDays, toDateKey } from './mdcExport/eventOccurrences.js'
+import { nfcWalk, toNfc } from './unicodeText.js'
 
 /** @typedef {'json' | 'ics' | 'csv' | 'zip'} CalendarFileFormat */
 
@@ -146,17 +147,17 @@ function buildIcsEventBlock(event, calendarName = '') {
     `DTSTAMP:${formatIcsDateTime(toDateKey(new Date()), '00:00', false)}Z`,
     allDay ? `DTSTART;VALUE=DATE:${dtStart}` : `DTSTART:${dtStart}`,
     allDay ? `DTEND;VALUE=DATE:${dtEnd}` : `DTEND:${dtEnd}`,
-    `SUMMARY:${escapeIcsText(event.title ?? '(제목 없음)')}`,
+    `SUMMARY:${escapeIcsText(toNfc(event.title ?? '(제목 없음)'))}`,
   ];
 
   if (event.description) {
-    lines.push(`DESCRIPTION:${escapeIcsText(event.description)}`);
+    lines.push(`DESCRIPTION:${escapeIcsText(toNfc(event.description))}`);
   }
   if (event.location) {
-    lines.push(`LOCATION:${escapeIcsText(event.location)}`);
+    lines.push(`LOCATION:${escapeIcsText(toNfc(event.location))}`);
   }
   if (calendarName) {
-    lines.push(`CATEGORIES:${escapeIcsText(calendarName)}`);
+    lines.push(`CATEGORIES:${escapeIcsText(toNfc(calendarName))}`);
   }
 
   const rrule = buildIcsRRule(event);
@@ -180,9 +181,14 @@ export function buildIcsDocument(events, calendarNamesById = new Map()) {
   const blocks = events.map((event) =>
     buildIcsEventBlock(event, calendarNamesById.get(event.calendarId) ?? ''),
   );
-  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//My Desktop Calendar//KO', ...blocks, 'END:VCALENDAR'].join(
-    '\r\n',
-  );
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Neo Desktop Calendar//KO',
+    'CALSCALE:GREGORIAN',
+    ...blocks,
+    'END:VCALENDAR',
+  ].join('\r\n');
 }
 
 function escapeCsvCell(value) {
@@ -242,7 +248,7 @@ export function exportFullStore(store, format, timestamp) {
   }
   if (format === 'json') {
     return {
-      content: JSON.stringify(store, null, 2),
+      content: JSON.stringify(nfcWalk(store), null, 2),
       filename: `my-calendar-export-${timestamp}.json`,
       mimeType: getCalendarFileFormatMeta('json').mimeType,
     };
@@ -277,12 +283,12 @@ export function exportSingleCalendar(payload, format, timestamp) {
   if (format === 'zip') {
     throw new Error('ZIP 내보내기는 데스크톱 백업 API를 사용하세요.');
   }
-  const calendarName = payload.calendar?.name ?? 'calendar';
+  const calendarName = toNfc(payload.calendar?.name ?? 'calendar');
   const safeName = calendarName.replace(/[\\/:*?"<>|]/g, '_');
 
   if (format === 'json') {
     return {
-      content: JSON.stringify(payload, null, 2),
+      content: JSON.stringify(nfcWalk(payload), null, 2),
       filename: `${safeName}-export-${timestamp}.json`,
       mimeType: getCalendarFileFormatMeta('json').mimeType,
     };
@@ -606,7 +612,7 @@ export function parseImportPayload(text, format, sourceName = '가져온 캘린�
     throw new Error('ZIP 가져오기는 파일 선택 대화상자에서 ZIP을 고르면 자동으로 처리됩니다.');
   }
   if (format === 'json') {
-    const data = JSON.parse(text);
+    const data = nfcWalk(JSON.parse(text));
     if (!data || typeof data !== 'object') {
       throw new Error('JSON 파일 형식을 확인해 주세요.');
     }
@@ -623,11 +629,12 @@ export function parseImportPayload(text, format, sourceName = '가져온 캘린�
   }
 
   const calendarLabel = events.find((event) => event.calendarLabel)?.calendarLabel;
-  const calendarName = calendarLabel || sourceName.replace(/\.(json|ics|csv)$/i, '') || '가져온 캘린더';
+  const calendarName =
+    toNfc(calendarLabel || sourceName.replace(/\.(json|ics|csv)$/i, '') || '가져온 캘린더');
 
   return {
     kind: 'merge-calendar',
-    data: {
+    data: nfcWalk({
       calendar: {
         name: calendarName,
         description: '',
@@ -636,7 +643,7 @@ export function parseImportPayload(text, format, sourceName = '가져온 캘린�
         custom: true,
       },
       events: normalizeImportedEvents(events),
-    },
+    }),
   };
 }
 

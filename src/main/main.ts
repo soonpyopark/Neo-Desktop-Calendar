@@ -28,6 +28,7 @@ import {
 import { forgetEnvHolidayKey, syncKoreanHolidays } from './calendarStore/holidaySync'
 import { exportCalendarMonth } from './export/exportService'
 import { normalizeExportFormat } from '../shared/exportCalendarHelpers.js'
+import { decodeInterchangeText, toNfc } from '../shared/unicodeText.js'
 import { SettingsStore } from './settingsStore'
 import { createAppTray, type AppTray } from './tray'
 import { focusWindowForTextInput } from './windowFocus'
@@ -1037,7 +1038,7 @@ function registerIpc(): void {
       return { cancelled: true as const }
     }
     const filePath = result.filePaths[0]
-    const filename = basename(filePath)
+    const filename = toNfc(basename(filePath))
     if (filename.toLowerCase().endsWith('.zip')) {
       return {
         cancelled: false as const,
@@ -1046,7 +1047,7 @@ function registerIpc(): void {
         filename
       }
     }
-    const content = await readFile(filePath, 'utf8')
+    const content = decodeInterchangeText(await readFile(filePath))
     return {
       cancelled: false as const,
       kind: 'text' as const,

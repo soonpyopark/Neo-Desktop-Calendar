@@ -111,15 +111,35 @@ npm run build:portable
 캘린더 데이터는 설치/포터블 폴더의 `data/`, Electron 캐시는 `.neo-desktop-calendar/electron-profile`에 둡니다 (`%APPDATA%`에는 쓰지 않습니다).  
 MSI에는 Electron 런타임이 포함됩니다 (`Neo Desktop Calendar.exe` + `resources/app.asar` + DLL). 별도 Electron 설치 불필요.
 
+### macOS DMG + zip (동일 빌드 스탬프)
+
+```bash
+npm run build:dist:mac
+```
+
+**macOS에서만** 실행됩니다 (electron-builder가 Windows에서 `.app`/`.dmg`를 만들지 않습니다).  
+바탕화면 WorkerW 임베드는 포함되지 않고, 일반 앱 창으로 동작합니다.
+
+```bash
+npm run build:update_all:mac
+```
+
+`update:all` 후 `build:dist:mac`과 같습니다.
+
+→ `msi/Neo Desktop Calendar v{버전}_YYMMDD_HHMMSS_macOS.dmg`  
+→ `msi/Neo Desktop Calendar v{버전}_YYMMDD_HHMMSS_macOS.zip`
+
 | 스크립트 | 설명 |
 | --- | --- |
 | `npm run dist` | NSIS 설치 파일 (`release/`) |
 | `npm run build:release` | MSI + portable (동일 스탬프, Electron 1회 빌드) |
+| `npm run build:dist:mac` | macOS DMG + zip (`msi/*_macOS.dmg` / `_macOS.zip`, Mac에서만) |
 | `npm run build:msi` | WiX MSI 설치판만 (`msi/*.msi`) |
 | `npm run build:portable` | 포터블 zip만 (`msi/*_portable.zip`, 7-Zip 필요) |
 | `npm run sync-version` | `constants.ts` 버전 → package.json / License.rtf / 고지 동기화 |
 | `npm run update:all` | npm 의존성 업데이트 (Electron 최신) 후 typecheck·export 검증 + desktop-hit 헬퍼 재빌드 |
 | `npm run build:update_all` | `update:all` 후 `build:release` (MSI + portable, 동일 스탬프) |
+| `npm run build:update_all:mac` | `update:all` 후 `build:dist:mac` (DMG + zip, 동일 스탬프, Mac에서만) |
 
 공개 배포 시 라이선스: **AGPL-3.0** ([`LICENSE`](LICENSE))  
 제3자 고지: [`legal/THIRD_PARTY_NOTICES.md`](legal/THIRD_PARTY_NOTICES.md)  
@@ -133,11 +153,12 @@ NAS4USB와 같은 흐름입니다.
 npm run update:all
 ```
 
-옵션: `--skip-git` `--skip-npm` `--skip-verify` `--skip-hit` `--build` `--msi` `--release`  
+옵션: `--skip-git` `--skip-npm` `--skip-verify` `--skip-hit` `--build` `--msi` `--release` `--release-mac`  
 Electron은 `electron@latest`로 올리고(메이저 포함), 나머지 패키지는 `package.json` 범위 안에서만 올립니다.  
 의존성 업데이트 후 `typecheck`와 `verify:export`가 실패하면 릴리스를 만들지 않습니다.  
 예: `npm run update:all -- --build`  
 `npm run build:update_all` 은 `--release` 와 같습니다.  
+`npm run build:update_all:mac` 은 `--release-mac` 과 같습니다.  
 Windows: `update_all.bat` (로그: `.cache/logs/update-all.log`)
 
 ## Click-through model

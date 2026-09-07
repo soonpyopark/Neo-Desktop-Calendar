@@ -25,10 +25,12 @@
     "sync-version": "node scripts/sync-version.mjs",
     "update:all": "node scripts/update-all.mjs",
     "build:update_all": "node scripts/update-all.mjs --release",
+    "build:update_all:mac": "node scripts/update-all.mjs --release-mac",
     "dist": "npm run build:desktop-hit && npm run build && electron-builder --win",
     "build:msi": "node scripts/build-msi.mjs",
     "build:portable": "node scripts/build-portable.mjs",
-    "build:release": "node scripts/build-release.mjs"
+    "build:release": "node scripts/build-release.mjs",
+    "build:dist:mac": "node scripts/build-dist-mac.mjs"
   },
   "dependencies": {
     "7zip-bin": "^5.2.0",
@@ -77,17 +79,6 @@
         ]
       },
       {
-        "from": "resources/desktop-hit-helper",
-        "to": "desktop-hit-helper",
-        "filter": [
-          "Neo-Desktop-Calendar.exe"
-        ]
-      },
-      {
-        "from": "node_modules/7zip-bin/win/x64/7za.exe",
-        "to": "7zip/7za.exe"
-      },
-      {
         "from": "node_modules/7zip-bin/LICENSE.txt",
         "to": "7zip/LICENSE.txt"
       },
@@ -112,7 +103,45 @@
       "icon": "build/icon.ico",
       "target": [
         "nsis"
+      ],
+      "extraResources": [
+        {
+          "from": "resources/desktop-hit-helper",
+          "to": "desktop-hit-helper",
+          "filter": [
+            "Neo-Desktop-Calendar.exe"
+          ]
+        },
+        {
+          "from": "node_modules/7zip-bin/win/x64/7za.exe",
+          "to": "7zip/7za.exe"
+        }
       ]
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.ico",
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "artifactName": "${productName} v${version}_${env.NEO_BUILD_STAMP}_macOS.${ext}",
+      "extraResources": [
+        {
+          "from": "node_modules/7zip-bin/mac/arm64/7za",
+          "to": "7zip/arm64/7za"
+        },
+        {
+          "from": "node_modules/7zip-bin/mac/x64/7za",
+          "to": "7zip/x64/7za"
+        }
+      ]
+    },
+    "dmg": {
+      "artifactName": "${productName} v${version}_${env.NEO_BUILD_STAMP}_macOS.${ext}"
     },
     "nsis": {
       "oneClick": false,
