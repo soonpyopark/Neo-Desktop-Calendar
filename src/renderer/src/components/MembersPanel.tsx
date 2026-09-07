@@ -366,6 +366,49 @@ export function MembersPanel({
     downloadTextFile(loginAuditExportFilename(), `\uFEFF${csv}\r\n`)
   }
 
+  const handleDeleteLoginAudit = async (entry: LoginAuditEntry): Promise<void> => {
+    const ok = await confirm(
+      `${formatAuditTime(entry.at)} · ${entry.loginId} 접속 이력을 삭제할까요?`,
+      {
+        title: '접속 이력 삭제',
+        confirmLabel: '삭제',
+        variant: 'danger'
+      }
+    )
+    if (!ok) return
+    setSaving(true)
+    try {
+      applyAudit(await window.neoCalendar.deleteLoginAudit(entry.id))
+    } catch (err) {
+      await alert(
+        err instanceof Error ? err.message : '접속 이력을 삭제하지 못했습니다.',
+        { title: '접속 이력' }
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleClearLoginAudit = async (): Promise<void> => {
+    const ok = await confirm(`저장된 접속 이력 ${auditEntries.length}건을 모두 삭제할까요?`, {
+      title: '접속 이력 전체 삭제',
+      confirmLabel: '전체 삭제',
+      variant: 'danger'
+    })
+    if (!ok) return
+    setSaving(true)
+    try {
+      applyAudit(await window.neoCalendar.clearLoginAudit())
+    } catch (err) {
+      await alert(
+        err instanceof Error ? err.message : '접속 이력을 삭제하지 못했습니다.',
+        { title: '접속 이력' }
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="w-full max-w-full text-left">
       <h2 className="mb-2 text-[22px] font-normal text-gcal-heading">회원 관리</h2>
@@ -597,10 +640,18 @@ export function MembersPanel({
               <button
                 type="button"
                 className="settings-btn-secondary h-8 rounded-lg px-3 text-xs"
-                disabled={filteredAuditEntries.length === 0}
+                disabled={filteredAuditEntries.length === 0 || saving}
                 onClick={handleExportLoginAudit}
               >
                 CSV 내보내기
+              </button>
+              <button
+                type="button"
+                className="settings-btn-danger h-8 rounded-lg px-3 text-xs"
+                disabled={auditEntries.length === 0 || saving}
+                onClick={() => void handleClearLoginAudit()}
+              >
+                전체 삭제
               </button>
             </div>
           </div>
@@ -618,6 +669,9 @@ export function MembersPanel({
                     <th className="px-3 py-2 font-medium">아이디</th>
                     <th className="px-3 py-2 font-medium">결과</th>
                     <th className="px-3 py-2 font-medium">IP</th>
+                    <th className="px-3 py-2 font-medium">
+                      <span className="sr-only">삭제</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gcal-border-light">
@@ -641,6 +695,16 @@ export function MembersPanel({
                         </span>
                       </td>
                       <td className="px-3 py-2 text-gcal-body">{entry.ip}</td>
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          type="button"
+                          className="settings-btn-danger rounded-lg px-2 py-1 text-xs"
+                          disabled={saving}
+                          onClick={() => void handleDeleteLoginAudit(entry)}
+                        >
+                          삭제
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

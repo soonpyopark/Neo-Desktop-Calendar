@@ -99,11 +99,10 @@ export function recordLoginAudit(
   return writeChain
 }
 
-export async function listLoginAudit(
-  filter: { loginId?: string; result?: string } = {},
-  dataRoot: string
-): Promise<LoginAuditList> {
-  const entries = await loadEntries(dataRoot)
+function toAuditList(
+  entries: LoginAuditEntry[],
+  filter: { loginId?: string; result?: string } = {}
+): LoginAuditList {
   const loginFilter = String(filter.loginId ?? '').trim().toLowerCase()
   const resultFilter = normalizeResult(filter.result)
   const filtered = entries.filter((entry) => {
@@ -118,4 +117,40 @@ export async function listLoginAudit(
     if (!lastSuccessAt[key]) lastSuccessAt[key] = entry.at
   }
   return { entries: filtered, lastSuccessAt }
+}
+
+function enqueueWrite<T>(fn: () => Promise<T>): Promise<T> {
+  const run = writeChain.then(fn, fn)
+  writeChain = run.then(
+    () => undefined,
+    (err) => {
+      console.warn('[auth] login audit write failed:', err)
+    }
+  )
+  return run
+}
+
+export async function listLoginAudit(
+  filter: { loginId?: string; result?: string } = {},
+  dataRoot: string
+): Promise<LoginAuditList> {
+  return toAuditList(await loadEntries(dataRoot), filter)
+}
+
+export function deleteLoginAudit(id: string, dataRoot: string): Promise<LoginAuditList> {
+  const target = String(id ?? '').trim()
+  return enqueueWrite(async () => {
+    const entries = await loadEntries(dataRoot)
+    if (!target) return toAuditList(entries)
+    const next = entries.filter((entry) => entry.id !== target)
+    if (next.length !== entries.length) await saveEntries(dataRoot, next)
+    return toAuditList(next)
+  })
+}
+
+export function clearLoginAudit(dataRoot: string): Promise<LoginAuditList> {
+  return enqueueWrite(async () => {
+    await saveEntries(dataRoot, [])
+    return toAuditList([])
+  })
 }

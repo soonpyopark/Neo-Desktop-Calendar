@@ -13,7 +13,11 @@ import {
 import { stripBrowserShellSettingsPatch } from '../../shared/viewOptionsBySurface'
 import { syncKoreanHolidays } from '../calendarStore/holidaySync'
 import { resolveAdminCredentials } from '../dotEnv'
-import { listLoginAudit } from '../calendarStore/loginAuditService'
+import {
+  clearLoginAudit,
+  deleteLoginAudit,
+  listLoginAudit
+} from '../calendarStore/loginAuditService'
 
 export type ApiRouterDeps = {
   auth: AuthService
@@ -337,6 +341,22 @@ export async function handleApiRequest(
       calendarStore.dataRoot
     )
     return { status: 200, body: audit }
+  }
+
+  if (p === '/api/members/login-audit' && m === 'DELETE') {
+    const denied = requireCap(user, 'manageMembers')
+    if (denied) return denied
+    return { status: 200, body: await clearLoginAudit(calendarStore.dataRoot) }
+  }
+
+  const auditDeleteMatch = p.match(/^\/api\/members\/login-audit\/([^/]+)$/)
+  if (auditDeleteMatch && m === 'DELETE') {
+    const denied = requireCap(user, 'manageMembers')
+    if (denied) return denied
+    return {
+      status: 200,
+      body: await deleteLoginAudit(decodeURIComponent(auditDeleteMatch[1]), calendarStore.dataRoot)
+    }
   }
 
   if (p === '/api/holidays/sync' && m === 'POST') {

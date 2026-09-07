@@ -376,6 +376,14 @@ const api: NeoCalendarApi = {
     ipcRenderer.invoke('calendar:list-login-audit', filter ?? {}) as ReturnType<
       NeoCalendarApi['listLoginAudit']
     >,
+  deleteLoginAudit: (id) =>
+    ipcRenderer.invoke('calendar:delete-login-audit', id) as ReturnType<
+      NeoCalendarApi['deleteLoginAudit']
+    >,
+  clearLoginAudit: () =>
+    ipcRenderer.invoke('calendar:clear-login-audit') as ReturnType<
+      NeoCalendarApi['clearLoginAudit']
+    >,
   syncHolidays: (input) =>
     ipcRenderer.invoke('calendar:sync-holidays', input ?? {}) as ReturnType<
       NeoCalendarApi['syncHolidays']

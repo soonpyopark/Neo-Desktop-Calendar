@@ -747,6 +747,9 @@ export function installBrowserNeoCalendar(): void {
       const qs = query.toString()
       return http('GET', `/api/members/login-audit${qs ? `?${qs}` : ''}`)
     },
+    deleteLoginAudit: (id) =>
+      http('DELETE', `/api/members/login-audit/${encodeURIComponent(id)}`),
+    clearLoginAudit: () => http('DELETE', '/api/members/login-audit'),
     syncHolidays: (input) => http('POST', '/api/holidays/sync', input ?? {}),
 
     exportCalendar: async (input) => {
