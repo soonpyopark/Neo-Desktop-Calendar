@@ -740,6 +740,13 @@ export function installBrowserNeoCalendar(): void {
 
     listMembers: () => http('GET', '/api/members'),
     saveMembers: (members: MemberSaveInput[]) => http('PUT', '/api/members', members),
+    listLoginAudit: (filter) => {
+      const query = new URLSearchParams()
+      if (filter?.loginId) query.set('loginId', filter.loginId)
+      if (filter?.result) query.set('result', filter.result)
+      const qs = query.toString()
+      return http('GET', `/api/members/login-audit${qs ? `?${qs}` : ''}`)
+    },
     syncHolidays: (input) => http('POST', '/api/holidays/sync', input ?? {}),
 
     exportCalendar: async (input) => {

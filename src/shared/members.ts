@@ -84,6 +84,7 @@ export function stripMemberAdminSettingsPatch<T extends Record<string, unknown>>
     webServerMode?: unknown
     httpsEnabled?: unknown
     loginLockoutEnabled?: unknown
+    loginAuditEnabled?: unknown
     storeBackup?: unknown
   }
   delete next.allowedIpCidrs
@@ -91,6 +92,7 @@ export function stripMemberAdminSettingsPatch<T extends Record<string, unknown>>
   delete next.webServerMode
   delete next.httpsEnabled
   delete next.loginLockoutEnabled
+  delete next.loginAuditEnabled
   delete next.storeBackup
   if (next.holidaysKr && typeof next.holidaysKr === 'object') {
     const holidays = { ...next.holidaysKr }

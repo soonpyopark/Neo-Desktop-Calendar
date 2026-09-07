@@ -15,6 +15,10 @@ import type { MembersStore } from './calendarStore/membersStore'
 import type { SettingsStore } from './settingsStore'
 import { resolveAdminCredentials } from './dotEnv'
 import { normalizeClientIp } from './webServer/ipAccess'
+import {
+  recordLoginAudit,
+  type LoginAuditResult
+} from './calendarStore/loginAuditService'
 
 export type BrowserLoginResult =
   | { ok: true; user: AuthUser; token: string }
@@ -94,6 +98,8 @@ export class AuthService {
     private readonly members: MembersStore,
     private readonly options: {
       isLoginLockoutEnabled?: () => boolean
+      isLoginAuditEnabled?: () => boolean
+      getDataRoot?: () => string
     } = {}
   ) {
     const saved = store.getAuthSession()
@@ -258,6 +264,20 @@ export class AuthService {
     return null
   }
 
+  private recordAudit(
+    loginId: string,
+    result: LoginAuditResult,
+    clientIp?: string | null
+  ): void {
+    const root = this.options.getDataRoot?.()
+    if (!root) return
+    void recordLoginAudit(
+      { loginId, result, clientIp },
+      root,
+      this.options.isLoginAuditEnabled?.() !== false
+    )
+  }
+
   private authenticate(
     loginId: string,
     password: string,
@@ -279,6 +299,7 @@ export class AuthService {
     if (enforceLockout) {
       const locked = getLoginAttemptState(attemptKey)
       if (locked?.lockedUntil && locked.lockedUntil > Date.now()) {
+        this.recordAudit(id, 'locked', context.clientIp)
         return lockedLoginResult(locked)
       }
     }
@@ -286,16 +307,19 @@ export class AuthService {
     const member = this.members.verifyLogin(id, pw)
     if (member) {
       if (attemptKey) loginAttempts.delete(attemptKey)
+      this.recordAudit(member.loginId, 'success', context.clientIp)
       return { ok: true, user: authUserFromMember(member) }
     }
 
     if (enforceLockout) {
       const state = recordLoginFailure(attemptKey)
       if (state.lockedUntil && state.lockedUntil > Date.now()) {
+        this.recordAudit(id, 'locked', context.clientIp)
         return lockedLoginResult(state)
       }
     }
 
+    this.recordAudit(id, 'fail', context.clientIp)
     return { ok: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' }
   }
 }

@@ -5,6 +5,7 @@ import { AuthService } from './auth'
 import { CalendarStore } from './calendarStore/CalendarStore'
 import { EventAttachmentService } from './calendarStore/eventAttachments'
 import { MembersStore } from './calendarStore/membersStore'
+import { listLoginAudit } from './calendarStore/loginAuditService'
 import { DesktopModeController } from './desktopMode'
 import { DesktopIdleEmbedBridge } from './desktopIdleEmbedBridge'
 import { PanelWindowManager } from './panelWindowManager'
@@ -1253,6 +1254,13 @@ function registerIpc(): void {
     notifyStoreChanged()
     return result.members
   })
+  ipcMain.handle(
+    'calendar:list-login-audit',
+    (_event, filter?: { loginId?: string; result?: string }) => {
+      requireCap('manageMembers')
+      return listLoginAudit(filter ?? {}, calendarStore.dataRoot)
+    }
+  )
   ipcMain.handle('calendar:sync-holidays', async (_event, body: SyncHolidaysInput) => {
     requireCap('syncHolidays')
     const result = await syncKoreanHolidays(calendarStore, body ?? {})
@@ -1396,7 +1404,10 @@ function bootApp(): void {
   settingsStore = new SettingsStore(calendarStore)
   auth = new AuthService(settingsStore, membersStore, {
     isLoginLockoutEnabled: () =>
-      calendarStore.getSnapshot().settings.loginLockoutEnabled === true
+      calendarStore.getSnapshot().settings.loginLockoutEnabled === true,
+    isLoginAuditEnabled: () =>
+      calendarStore.getSnapshot().settings.loginAuditEnabled !== false,
+    getDataRoot: () => calendarStore.dataRoot
   })
   try {
     const adminId = resolveAdminCredentials().id

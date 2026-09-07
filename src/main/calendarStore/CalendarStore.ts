@@ -190,6 +190,7 @@ export class CalendarStore {
       delete settings.dayHighlightsByLoginId
       delete settings.hiddenCalendarIdsByLoginId
       delete settings.storeBackup
+      delete settings.loginAuditEnabled
       return {
         ...snap,
         calendars: [],
@@ -231,6 +232,7 @@ export class CalendarStore {
       }
       snap.settings.allowedIpCidrs = []
       delete snap.settings.storeBackup
+      delete snap.settings.loginAuditEnabled
     }
 
     // Project personal dayColors onto settings.dayColors for this login.

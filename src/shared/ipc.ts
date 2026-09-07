@@ -11,6 +11,7 @@ import type {
   CalendarRecord,
   CalendarStoreSnapshot,
   EventInput,
+  LoginAuditList,
   MemberRecord,
   MemberSaveInput,
   StoreSettings,
@@ -529,6 +530,7 @@ export type NeoCalendarApi = {
   deleteTag: (id: string) => Promise<void>
   listMembers: () => Promise<MemberRecord[]>
   saveMembers: (members: MemberSaveInput[]) => Promise<MemberRecord[]>
+  listLoginAudit: (filter?: { loginId?: string; result?: string }) => Promise<LoginAuditList>
   syncHolidays: (input?: SyncHolidaysInput) => Promise<SyncHolidaysResult>
   exportCalendar: (input: {
     format: 'excel' | 'pdf' | 'html'

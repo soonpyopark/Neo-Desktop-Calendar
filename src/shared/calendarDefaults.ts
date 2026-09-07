@@ -151,6 +151,7 @@ export function createDefaultSettings(): StoreSettings {
     hiddenCalendarIdsByLoginId: {},
     allowedIpCidrs: [],
     loginLockoutEnabled: false,
+    loginAuditEnabled: true,
     webServerPort: null,
     webServerMode: null,
     httpsEnabled: null,

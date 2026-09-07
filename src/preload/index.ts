@@ -372,6 +372,10 @@ const api: NeoCalendarApi = {
   listMembers: () => ipcRenderer.invoke('calendar:list-members') as Promise<MemberRecord[]>,
   saveMembers: (members: MemberSaveInput[]) =>
     ipcRenderer.invoke('calendar:save-members', members) as Promise<MemberRecord[]>,
+  listLoginAudit: (filter) =>
+    ipcRenderer.invoke('calendar:list-login-audit', filter ?? {}) as ReturnType<
+      NeoCalendarApi['listLoginAudit']
+    >,
   syncHolidays: (input) =>
     ipcRenderer.invoke('calendar:sync-holidays', input ?? {}) as ReturnType<
       NeoCalendarApi['syncHolidays']

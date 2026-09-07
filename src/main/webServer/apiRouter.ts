@@ -13,6 +13,7 @@ import {
 import { stripBrowserShellSettingsPatch } from '../../shared/viewOptionsBySurface'
 import { syncKoreanHolidays } from '../calendarStore/holidaySync'
 import { resolveAdminCredentials } from '../dotEnv'
+import { listLoginAudit } from '../calendarStore/loginAuditService'
 
 export type ApiRouterDeps = {
   auth: AuthService
@@ -322,6 +323,20 @@ export async function handleApiRequest(
     }
     onStoreMutated()
     return { status: 200, body: result.members }
+  }
+
+  if (p === '/api/members/login-audit' && m === 'GET') {
+    const denied = requireCap(user, 'manageMembers')
+    if (denied) return denied
+    const query = new URL(req.url ?? p, 'http://localhost').searchParams
+    const audit = await listLoginAudit(
+      {
+        loginId: query.get('loginId') ?? '',
+        result: query.get('result') ?? ''
+      },
+      calendarStore.dataRoot
+    )
+    return { status: 200, body: audit }
   }
 
   if (p === '/api/holidays/sync' && m === 'POST') {

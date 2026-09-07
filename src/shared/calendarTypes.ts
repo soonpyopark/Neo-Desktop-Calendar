@@ -236,6 +236,11 @@ export type StoreSettings = {
    */
   loginLockoutEnabled?: boolean
   /**
+   * When not false, record login success / fail / lockout in login-audit.json
+   * (최대 1000건 · 90일). Super admin only.
+   */
+  loginAuditEnabled?: boolean
+  /**
    * HTTP web server listen port (Local / LAN).
    * null/undefined → fall back to .env PORT, then 3010 (packaged macOS: 3012).
    * When set, always wins over .env.
@@ -260,6 +265,21 @@ export type StoreSettings = {
   /** Neo chrome extensions */
   headerOpacity: number
   shellOpacity: number
+}
+
+export type LoginAuditResult = 'success' | 'fail' | 'locked'
+
+export type LoginAuditEntry = {
+  id: string
+  at: string
+  loginId: string
+  result: LoginAuditResult
+  ip: string
+}
+
+export type LoginAuditList = {
+  entries: LoginAuditEntry[]
+  lastSuccessAt: Record<string, string>
 }
 
 export type CalendarStoreSnapshot = {
