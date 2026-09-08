@@ -27,7 +27,7 @@ Neo Desktop Calendar 소스와 바이너리 배포물은 **AGPL-3.0**입니다.
 Neo Desktop Calendar는 아래 오픈소스·공개 데이터·런타임을 포함하거나 사용합니다.
 
 - **Electron** (Chromium / Node.js 포함) — MIT 및 구성 요소별 라이선스
-- **7-Zip `7za.exe`** — GNU LGPL (Igor Pavlov). 백업 ZIP 생성·해제용으로 **별도 실행 파일**로 호출합니다.
+- **7-Zip `7za` / `7za.exe`** — GNU LGPL (Igor Pavlov). 백업 ZIP 생성·해제용으로 **별도 실행 파일**로 호출합니다.
 - **ExcelJS, PDFKit, koffi, ws** 등 — 주로 MIT
 - **solarlunar** — ISC
 - **kor-lunar** — 패키지 저장소 LICENSE 확인 (음력; KASI 공개 데이터 기반 표기)
@@ -41,7 +41,7 @@ Neo Desktop Calendar는 아래 오픈소스·공개 데이터·런타임을 포�
 
 | 항목 | 내용 |
 |------|------|
-| 구성 | `resources/7zip/7za.exe` (및 동봉 `LICENSE.txt` / `NOTICE.txt`) |
+| 구성 | Windows `resources/7zip/7za.exe`, macOS `resources/7zip/arm64/7za`·`x64/7za` (및 동봉 `LICENSE.txt` / `NOTICE.txt`) |
 | 저작권 | Copyright (C) Igor Pavlov |
 | 라이선스 | GNU Lesser General Public License (LGPL) |
 | 홈페이지 | https://www.7-zip.org/ |
@@ -61,7 +61,7 @@ Neo Desktop Calendar는 아래 오픈소스·공개 데이터·런타임을 포�
 
 | 항목 | 내용 |
 |------|------|
-| 구성 | MSI·포터블에 Electron 런타임 포함 |
+| 구성 | Windows MSI·포터블, macOS DMG·zip에 Electron 런타임 포함 |
 | 라이선스 | Electron MIT + Chromium/Node 등 다수 라이선스 |
 | 고지 위치 | 배포본 `LICENSE`(또는 `LICENSES.chromium.html` 등 electron-builder가 넣는 파일) |
 
@@ -111,7 +111,7 @@ Neo Desktop Calendar는 아래 오픈소스·공개 데이터·런타임을 포�
 
 - [ ] 설치 UI `License.rtf`에 앱 **AGPL-3.0** + 7-Zip LGPL + Electron + 공공데이터 출처 요약 포함  
 - [ ] 설치/포터블에 `LICENSE`(AGPL 전문) 및 `THIRD_PARTY_NOTICES.md` 포함  
-- [ ] `resources/7zip/LICENSE.txt` 유지, `7za.exe` 교체 가능 구조 유지  
+- [ ] `resources/7zip/LICENSE.txt` 유지, `7za`/`7za.exe` 교체 가능 구조 유지  
 - [ ] Electron/Chromium LICENSE 파일이 배포물에 존재하는지 확인  
 - [ ] About(트레이 「정보」)에 AGPL·출처·고지 안내  
 - [ ] 공식 기관 사칭·오인 소지 문구 제거  
@@ -128,7 +128,7 @@ Neo Desktop Calendar는 아래 오픈소스·공개 데이터·런타임을 포�
 
 This product also includes:
 
-- **7-Zip (`7za.exe`)**, Copyright (C) Igor Pavlov, licensed under the **GNU LGPL**, invoked as a separate executable for ZIP backup. See `resources/7zip/`.
+- **7-Zip (`7za` / `7za.exe`)**, Copyright (C) Igor Pavlov, licensed under the **GNU LGPL**, invoked as a separate executable for ZIP backup. See `resources/7zip/`.
 - **Electron** (and Chromium/Node components) under their respective open-source licenses shipped with the installer.
 - Other npm libraries under MIT/ISC as listed above.
 - **Korean public holiday data** derived from open government datasets (data.go.kr). This app is **not** an official government product.

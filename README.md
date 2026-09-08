@@ -1,4 +1,4 @@
-# Neo Desktop Calendar v1.2.2
+# Neo Desktop Calendar v1.2.3
 
 Lightweight Electron desktop wallpaper calendar with dynamic click-through.
 
@@ -15,9 +15,11 @@ Lightweight Electron desktop wallpaper calendar with dynamic click-through.
 
 ## License
 
+Copyright (C) 2026 Neo Desktop Calendar  
 **GNU Affero General Public License v3.0 (AGPL-3.0-only)** — see [`LICENSE`](LICENSE).
 
 소스·바이너리 재배포·개작 시 AGPL-3.0 의무(소스 제공 등)가 적용됩니다.  
+네트워크(내장 웹 서버)로 수정본을 제공할 때도 AGPL §13 소스 제공 의무가 적용될 수 있습니다.  
 제3자 구성 요소 고지: [`legal/THIRD_PARTY_NOTICES.md`](legal/THIRD_PARTY_NOTICES.md)
 
 ## Stack
@@ -29,10 +31,13 @@ Lightweight Electron desktop wallpaper calendar with dynamic click-through.
 
 ## Features
 
-- Frameless, transparent, taskbar-hidden window
-- Desktop embed under icons via WorkerW `SetParent` (바탕화면 모드)
-- Empty space clicks pass through to the OS desktop
+- Frameless window; Windows can embed under desktop icons via WorkerW `SetParent` (바탕화면 모드)
+- macOS runs as a normal app window; data stays in Application Support when you replace the `.app`
+- Empty space clicks pass through to the OS desktop (Windows click-through)
 - Interactive controls (nav, events, add) capture mouse on hover (`.interaction-ui`)
+- Narrow / tablet settings: top chips you can drag sideways; 내·고정 캘린더는 본문 목록에서 다룸
+- 세로보기 상단 기간 줄은 창이 좁으면 옆으로 밀어 쓸 수 있음
+- Settings → **회원 관리** (super_admin): members, optional 3-fail/5-min lockout, login audit (CSV)
 - Settings → **서버 관리** (super_admin): HTTP(S) port, Local/Web start·stop, HTTPS/TLS (`data/tls`), firewall inbound
 - Month toolbar `[-]`/`[+]` event density scales main bars and quick-edit list titles together
 - Calendar / backup ZIP import·export via bundled `7za` (UTF-8 filenames, `-mcu=on`)
@@ -65,7 +70,7 @@ Admin login credentials come from `.env` (`MYCALENDAR_ADMIN_ID` / `MYCALENDAR_AD
 
 | Role | Can do |
 | --- | --- |
-| `super_admin` (총괄관리자) | Full calendar store, members (optional 3-fail/5-min login lockout), security/IP, **서버 관리**, holiday API sync, ZIP backup/import |
+| `super_admin` (총괄관리자) | Full calendar store, members (optional 3-fail/5-min lockout, login audit), security/IP, **서버 관리**, holiday API sync, ZIP backup/import |
 | `member` (일반사용자) | Own calendars & events, tags, account password change, Excel/PDF/HTML export of own data, view holidays |
 | Guest (logged out) | Empty store; must log in to edit |
 

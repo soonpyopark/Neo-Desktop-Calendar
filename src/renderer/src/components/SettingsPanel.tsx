@@ -59,7 +59,9 @@ import {
   type ColorScheme
 } from '../lib/colorScheme'
 import { SkinSettingsFields } from './SkinSettingsFields'
+import { usePeriodRowScroll } from '../hooks/usePeriodRowScroll'
 import { useAppDialog } from './AppDialogProvider'
+import { ChevronLeftIcon, ChevronRightIcon } from './CalendarHeaderIcons'
 
 type SettingsSection =
   | 'general'
@@ -72,6 +74,8 @@ type SettingsSection =
   | 'members'
   | 'member-calendars'
   | 'holidays'
+  | 'my-calendars'
+  | 'shared-calendars'
   | 'calendar-settings'
 
 export type SettingsPanelProps = {
@@ -168,17 +172,20 @@ function isMyCalendar(calendar: CalendarRecord, currentLoginId: string): boolean
 function NavBtn({
   active,
   children,
-  onClick
+  onClick,
+  className
 }: {
   active: boolean
   children: React.ReactNode
   onClick: () => void
+  className?: string
 }): ReactElement {
   return (
     <button
       type="button"
       className={cn(
         'settings-nav-btn transition-colors',
+        className,
         active ? 'is-active' : 'hover:bg-gcal-surface'
       )}
       onClick={onClick}
@@ -513,7 +520,7 @@ function CalendarNavRow({
   return (
     <div
       className={cn(
-        'flex items-center gap-0.5 rounded-lg',
+        'settings-cal-nav-row flex items-center gap-0.5 rounded-lg',
         active && 'bg-gcal-blue-soft'
       )}
     >
@@ -542,6 +549,52 @@ function CalendarNavRow({
         <EyeIcon open={visible} />
       </button>
     </div>
+  )
+}
+
+function CalendarListPage({
+  title,
+  hint,
+  children
+}: {
+  title: string
+  hint: string
+  children: ReactNode
+}): ReactElement {
+  return (
+    <div className="w-full max-w-full text-left">
+      <h2 className="mb-2 text-[22px] font-normal text-gcal-heading">{title}</h2>
+      <p className="mb-6 text-sm text-gcal-muted">{hint}</p>
+      <div className="settings-cal-picker-list">{children}</div>
+    </div>
+  )
+}
+
+function SharedCalendarsNavList({
+  calendars,
+  activeCalendarId,
+  activeSection,
+  onOpenCalendarSettings,
+  onToggleCalendarVisibility
+}: {
+  calendars: CalendarRecord[]
+  activeCalendarId: string | null
+  activeSection: SettingsSection
+  onOpenCalendarSettings: (id: string) => void
+  onToggleCalendarVisibility: (id: string) => void
+}): ReactElement {
+  return (
+    <>
+      {calendars.map((cal) => (
+        <CalendarNavRow
+          key={cal.id}
+          calendar={cal}
+          active={activeSection === 'calendar-settings' && activeCalendarId === cal.id}
+          onOpen={() => onOpenCalendarSettings(cal.id)}
+          onToggleVisible={() => onToggleCalendarVisibility(cal.id)}
+        />
+      ))}
+    </>
   )
 }
 
@@ -1144,6 +1197,7 @@ export function SettingsPanel({
   onMainOpacityPreview
 }: SettingsPanelProps): ReactElement | null {
   const isFloating = surface === 'floating'
+  const navRowScroll = usePeriodRowScroll(open)
   const [section, setSection] = useState<SettingsSection>('general')
   const [selectedCalendarId, setSelectedCalendarId] = useState<string | null>(null)
   const [newCalName, setNewCalName] = useState('')
@@ -1157,6 +1211,22 @@ export function SettingsPanel({
     () => sortCalendarsByOrder(store.calendars.filter((c) => isSharedCalendar(c))),
     [store.calendars]
   )
+  const selectedCalendar = store.calendars.find((calendar) => calendar.id === selectedCalendarId)
+  const selectedIsShared = selectedCalendar ? isSharedCalendar(selectedCalendar) : false
+
+  const openMyCalendars = (): void => {
+    setSelectedCalendarId(null)
+    setSection('my-calendars')
+  }
+  const openSharedCalendars = (): void => {
+    setSelectedCalendarId(null)
+    setSection('shared-calendars')
+  }
+  const toggleCalendarVisibility = (id: string): void => {
+    const cal = store.calendars.find((c) => c.id === id)
+    if (!cal) return
+    void onPatchCalendar(id, { visible: cal.visible === false })
+  }
   useEffect(() => {
     if (!open) return
     setSection('general')
@@ -1179,16 +1249,27 @@ export function SettingsPanel({
 
     const onWheel = (event: WheelEvent): void => {
       const scrollable =
-        event.target instanceof Element ? event.target.closest('.settings-scroll') : null
+        event.target instanceof Element
+          ? event.target.closest('.settings-scroll, .settings-panel-nav-scroll')
+          : null
       if (scrollable instanceof HTMLElement) {
-        const { scrollTop, scrollHeight, clientHeight } = scrollable
+        const { scrollTop, scrollHeight, clientHeight, scrollLeft, scrollWidth, clientWidth } =
+          scrollable
+        const canY = scrollHeight > clientHeight + 1
+        const canX = scrollWidth > clientWidth + 1
+        const primarilyX = canX && Math.abs(event.deltaX) > Math.abs(event.deltaY)
+        if (primarilyX) {
+          const atStart = scrollLeft <= 0
+          const atEnd = scrollLeft + clientWidth >= scrollWidth - 1
+          if ((event.deltaX < 0 && atStart) || (event.deltaX > 0 && atEnd)) {
+            event.preventDefault()
+          }
+          event.stopPropagation()
+          return
+        }
         const atTop = scrollTop <= 0
         const atBottom = scrollTop + clientHeight >= scrollHeight - 1
-        if (
-          (event.deltaY < 0 && atTop)
-          || (event.deltaY > 0 && atBottom)
-          || scrollHeight <= clientHeight
-        ) {
+        if ((event.deltaY < 0 && atTop) || (event.deltaY > 0 && atBottom) || !canY) {
           event.preventDefault()
         }
         event.stopPropagation()
@@ -1218,7 +1299,7 @@ export function SettingsPanel({
 
   return (
     <div
-      className={isFloating ? 'h-full w-full' : 'interaction-ui fixed inset-0 z-[55]'}
+      className={isFloating ? 'h-full w-full' : 'interaction-ui settings-panel-overlay'}
       role="presentation"
       onClick={isFloating ? undefined : requestClose}
     >
@@ -1227,37 +1308,62 @@ export function SettingsPanel({
         className={
           isFloating
             ? 'flex h-full w-full'
-            : 'pointer-events-none fixed inset-0 z-[56] flex items-center justify-center'
+            : 'settings-panel-overlay-inner pointer-events-none flex items-center justify-center'
         }
         role="presentation"
       >
         <InteractionUI
-          className={`shell-solid-surface settings-panel-shell pointer-events-auto relative z-[1] flex min-h-0 overflow-hidden rounded-xl${isFloating ? '' : ' shadow-[0_8px_28px_rgba(0,0,0,0.18)]'} ${isFloating ? 'h-full w-full max-h-full' : 'h-[80%] w-[90%] max-h-[80%]'}`}
+          className={cn(
+            'shell-solid-surface settings-panel-shell pointer-events-auto relative z-[1] flex min-h-0 flex-col overflow-hidden',
+            isFloating
+              ? 'h-full w-full max-h-full'
+              : 'settings-panel-shell--overlay shadow-[0_8px_28px_rgba(0,0,0,0.18)]'
+          )}
           role="dialog"
           aria-label="설정"
           onClick={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
         >
-          <button
-            type="button"
-            className="absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full text-gcal-muted transition-colors hover:bg-gcal-surface-2 hover:text-gcal-heading"
-            onClick={requestClose}
-            onMouseDown={(e) => e.stopPropagation()}
-            aria-label="설정 닫기"
-          >
-            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-              <path
-                fill="currentColor"
-                d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
-              />
-            </svg>
-          </button>
+          <div className="settings-panel-toolbar">
+            <h2 className="settings-panel-toolbar-title">설정</h2>
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gcal-muted transition-colors hover:bg-gcal-surface-2 hover:text-gcal-heading"
+              onClick={requestClose}
+              onMouseDown={(e) => e.stopPropagation()}
+              aria-label="설정 닫기"
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+                />
+              </svg>
+            </button>
+          </div>
 
-          <aside
-            className="settings-panel-line-r flex w-72 shrink-0 flex-col overflow-hidden py-4"
-            style={{ backgroundColor: 'var(--gcal-page-solid)' }}
-          >
-            <nav className="settings-scroll flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2 pt-2">
+          <div className="settings-panel-body">
+          <aside className="settings-panel-nav">
+            {navRowScroll.canScrollLeft ? (
+              <button
+                type="button"
+                className="settings-panel-nav-scroll-btn is-start"
+                aria-label="메뉴 왼쪽으로"
+                title="메뉴 왼쪽으로"
+                onClick={() => navRowScroll.scrollByStep(-1)}
+              >
+                <ChevronLeftIcon />
+              </button>
+            ) : null}
+            <nav
+              ref={navRowScroll.scrollRef}
+              className={cn(
+                'settings-panel-nav-scroll',
+                navRowScroll.dragging && 'is-dragging'
+              )}
+              {...navRowScroll.scrollerProps}
+            >
+              <div className="settings-panel-nav-inner">
               <NavBtn active={section === 'general'} onClick={() => setSection('general')}>
                 일반
               </NavBtn>
@@ -1301,7 +1407,29 @@ export function SettingsPanel({
                 </>
               ) : null}
 
-              <div className="my-3" aria-hidden="true" />
+              <NavBtn
+                className="settings-panel-nav-cal-chip"
+                active={
+                  section === 'my-calendars'
+                  || (section === 'calendar-settings' && !selectedIsShared)
+                }
+                onClick={openMyCalendars}
+              >
+                내 캘린더
+              </NavBtn>
+              <NavBtn
+                className="settings-panel-nav-cal-chip"
+                active={
+                  section === 'shared-calendars'
+                  || (section === 'calendar-settings' && selectedIsShared)
+                }
+                onClick={openSharedCalendars}
+              >
+                고정 캘린더
+              </NavBtn>
+
+              <div className="settings-panel-nav-calendars">
+              <div className="settings-panel-nav-spacer my-3" aria-hidden="true" />
 
               <p className="settings-aside-label">내 캘린더</p>
               <MyCalendarsNavList
@@ -1310,31 +1438,36 @@ export function SettingsPanel({
                 activeCalendarId={selectedCalendarId}
                 activeSection={section}
                 onOpenCalendarSettings={openCalendarSettings}
-                onToggleCalendarVisibility={(id) => {
-                  const cal = store.calendars.find((c) => c.id === id)
-                  if (!cal) return
-                  void onPatchCalendar(id, { visible: cal.visible === false })
-                }}
+                onToggleCalendarVisibility={toggleCalendarVisibility}
                 onUpdateCalendar={onPatchCalendar}
                 onReorderCalendars={onReorderCalendars}
               />
 
               <p className="settings-aside-label settings-aside-label--gap">고정 캘린더</p>
-              {sharedCalendars.map((cal) => (
-                <CalendarNavRow
-                  key={cal.id}
-                  calendar={cal}
-                  active={section === 'calendar-settings' && selectedCalendarId === cal.id}
-                  onOpen={() => openCalendarSettings(cal.id)}
-                  onToggleVisible={() =>
-                    void onPatchCalendar(cal.id, { visible: cal.visible === false })
-                  }
-                />
-              ))}
+              <SharedCalendarsNavList
+                calendars={sharedCalendars}
+                activeCalendarId={selectedCalendarId}
+                activeSection={section}
+                onOpenCalendarSettings={openCalendarSettings}
+                onToggleCalendarVisibility={toggleCalendarVisibility}
+              />
+              </div>
+              </div>
             </nav>
+            {navRowScroll.canScrollRight ? (
+              <button
+                type="button"
+                className="settings-panel-nav-scroll-btn is-end"
+                aria-label="메뉴 오른쪽으로"
+                title="메뉴 오른쪽으로"
+                onClick={() => navRowScroll.scrollByStep(1)}
+              >
+                <ChevronRightIcon />
+              </button>
+            ) : null}
           </aside>
 
-          <div className="settings-scroll min-h-0 min-w-0 flex-1 overflow-y-auto px-8 py-8 pr-14 text-left md:px-10 md:pr-14">
+          <div className="settings-panel-content settings-scroll">
           {section === 'general' && (
             <ViewOptionsPanel
               storeSettings={store.settings}
@@ -1459,6 +1592,39 @@ export function SettingsPanel({
             />
           )}
 
+          {section === 'my-calendars' && (
+            <CalendarListPage
+              title="내 캘린더"
+              hint="캘린더를 눌러 설정을 열고, 눈 아이콘으로 표시를 바꿉니다. 왼쪽 점을 끌어 순서를 바꿀 수 있어요."
+            >
+              <MyCalendarsNavList
+                calendars={store.calendars}
+                currentLoginId={currentLoginId}
+                activeCalendarId={selectedCalendarId}
+                activeSection={section}
+                onOpenCalendarSettings={openCalendarSettings}
+                onToggleCalendarVisibility={toggleCalendarVisibility}
+                onUpdateCalendar={onPatchCalendar}
+                onReorderCalendars={onReorderCalendars}
+              />
+            </CalendarListPage>
+          )}
+
+          {section === 'shared-calendars' && (
+            <CalendarListPage
+              title="고정 캘린더"
+              hint="공휴일처럼 같이 보는 캘린더입니다. 눌러 설정을 열고, 눈 아이콘으로 표시를 바꿉니다."
+            >
+              <SharedCalendarsNavList
+                calendars={sharedCalendars}
+                activeCalendarId={selectedCalendarId}
+                activeSection={section}
+                onOpenCalendarSettings={openCalendarSettings}
+                onToggleCalendarVisibility={toggleCalendarVisibility}
+              />
+            </CalendarListPage>
+          )}
+
           {section === 'calendar-settings' && selectedCalendarId ? (
             <CalendarSettingsPanel
               calendarId={selectedCalendarId}
@@ -1472,14 +1638,16 @@ export function SettingsPanel({
               onDeleteCalendar={onDeleteCalendar}
               onImportIntoCalendar={onImportIntoCalendar}
               onDeleted={() => {
+                const back = selectedIsShared ? 'shared-calendars' : 'my-calendars'
                 setSelectedCalendarId(null)
-                setSection('general')
+                setSection(back)
               }}
               onDuplicated={(created) => {
                 if (created?.id) openCalendarSettings(created.id)
               }}
             />
           ) : null}
+          </div>
           </div>
         </InteractionUI>
       </div>

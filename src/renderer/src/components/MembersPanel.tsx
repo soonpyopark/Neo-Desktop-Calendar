@@ -417,7 +417,7 @@ export function MembersPanel({
         비밀번호가 .env 설정보다 우선합니다.
       </p>
 
-      <section className="mb-6 grid gap-3 rounded-lg border border-gcal-border bg-gcal-surface px-4 py-3 sm:grid-cols-2">
+      <section className="settings-stack-when-narrow mb-6 grid grid-cols-2 gap-3 rounded-lg border border-gcal-border bg-gcal-surface px-4 py-3">
         <div>
           <label className="flex cursor-pointer items-center gap-2 text-sm text-gcal-heading">
             <input

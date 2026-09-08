@@ -12,9 +12,9 @@ https://note4all.tistory.com
 아래 오픈소스·공개 데이터·런타임을 포함하거나 사용합니다.
 (각각 고유 라이선스가 있으며, 앱 본체 AGPL과 별개입니다.)
 
-1) 7-Zip (7za.exe) — Copyright (C) Igor Pavlov — GNU LGPL
-   백업 ZIP용 별도 실행 파일. 설치 폴더 resources/7zip/ 참고.
-   사용자는 해당 실행 파일을 교체할 수 있습니다.
+1) 7-Zip (7za / 7za.exe) — Copyright (C) Igor Pavlov — GNU LGPL
+   백업 ZIP용 별도 실행 파일. Windows는 7za.exe, macOS는 arm64·x64 7za.
+   설치 폴더 resources/7zip/ 참고. 사용자는 해당 실행 파일을 교체할 수 있습니다.
 
 2) Electron (Chromium / Node.js 포함)
    배포본에 포함된 LICENSE / Chromium 고지 파일을 참고하세요.
