@@ -153,7 +153,7 @@ Electron 캐시는 그 아래 `.neo-desktop-calendar/electron-profile`에 둡니
 | `npm run build:msi` | WiX MSI 설치판만 (`msi/*.msi`) |
 | `npm run build:portable` | 포터블 zip만 (`msi/*_portable.zip`, 7-Zip 필요) |
 | `npm run sync-version` | `constants.ts` 버전 → package.json / License.rtf / 고지 동기화 |
-| `npm run update:all` | npm 의존성 업데이트 (Electron 최신) 후 typecheck·export 검증 + desktop-hit 헬퍼 재빌드 |
+| `npm run update:all` | npm 직접 의존성 `@latest`(메이저 포함) 후 typecheck·export 검증 + desktop-hit 헬퍼 재빌드 |
 | `npm run build:update_all` | `update:all` 후 `build:release` (MSI + portable, 동일 스탬프) |
 | `npm run build:update_all:mac` | `update:all` 후 `build:dist:mac` (DMG + zip, 동일 스탬프, Mac에서만) |
 
@@ -169,8 +169,10 @@ NAS4USB와 같은 흐름입니다.
 npm run update:all
 ```
 
-옵션: `--skip-git` `--skip-npm` `--skip-verify` `--skip-hit` `--build` `--msi` `--release` `--release-mac`  
-Electron은 `electron@latest`로 올리고(메이저 포함), 나머지 패키지는 `package.json` 범위 안에서만 올립니다.  
+옵션: `--skip-git` `--skip-npm` `--skip-majors` `--skip-verify` `--skip-hit` `--build` `--msi` `--release` `--release-mac`  
+직접 의존성(dependencies·devDependencies)은 `pkg@latest`로 올리고 메이저도 포함합니다.  
+Vite 스택은 electron-vite peer에 맞춥니다(현재 Vite 8·plugin-react 6은 electron-vite 5와 같이 쓸 수 없음).  
+`--skip-majors`면 `package.json` 범위 안의 `npm update`만 하고, Electron만 latest로 올립니다.  
 의존성 업데이트 후 `typecheck`와 `verify:export`가 실패하면 릴리스를 만들지 않습니다.  
 예: `npm run update:all -- --build`  
 `npm run build:update_all` 은 `--release` 와 같습니다.  

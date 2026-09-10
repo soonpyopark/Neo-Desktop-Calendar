@@ -9,6 +9,9 @@
 .PARAMETER SkipNpm
   Skip npm install/update.
 
+.PARAMETER SkipMajors
+  Stay inside package.json ranges; Electron still goes to latest.
+
 .PARAMETER SkipHit
   Skip desktop-hit helper rebuild.
 
@@ -27,6 +30,7 @@
 param(
     [switch]$SkipGit,
     [switch]$SkipNpm,
+    [switch]$SkipMajors,
     [switch]$SkipHit,
     [switch]$Build,
     [switch]$Msi,
@@ -53,6 +57,7 @@ function Write-UpdateLog {
 $nodeArgs = @('scripts/update-all.mjs')
 if ($SkipGit) { $nodeArgs += '--skip-git' }
 if ($SkipNpm) { $nodeArgs += '--skip-npm' }
+if ($SkipMajors) { $nodeArgs += '--skip-majors' }
 if ($SkipHit) { $nodeArgs += '--skip-hit' }
 if ($Build) { $nodeArgs += '--build' }
 if ($Msi) { $nodeArgs += '--msi' }

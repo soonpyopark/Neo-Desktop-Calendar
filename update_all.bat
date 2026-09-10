@@ -60,6 +60,11 @@ if /I "%~1"=="skip-npm" (
     shift
     goto parse_args
 )
+if /I "%~1"=="skip-majors" (
+    set "EXTRA_ARGS=%EXTRA_ARGS% -SkipMajors"
+    shift
+    goto parse_args
+)
 if /I "%~1"=="skip-hit" (
     set "EXTRA_ARGS=%EXTRA_ARGS% -SkipHit"
     shift
@@ -77,7 +82,7 @@ echo ============================================================
 echo  Root : %APP_ROOT%
 echo  Log  : .cache\logs\update-all.log
 echo.
-echo  Options: build msi release release-mac skip-git skip-npm skip-hit
+echo  Options: build msi release release-mac skip-git skip-npm skip-majors skip-hit
 echo ============================================================
 echo.
 
