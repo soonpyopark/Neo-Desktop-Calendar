@@ -32,6 +32,7 @@ type User32Api = {
   GetWindow: (...args: unknown[]) => unknown
   GetWindowRect: (...args: unknown[]) => unknown
   ScreenToClient: (...args: unknown[]) => unknown
+  IsWindow: (...args: unknown[]) => unknown
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   EnumWindowsProc: any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -42,6 +43,12 @@ type User32Api = {
 
 let user32Api: User32Api | null = null
 let embeddedHwnd: bigint | null = null
+let cachedWorkerW = 0n
+let spawnedWorkerWThisSession = false
+let lastResortSpawnUsed = false
+const processStartedAt = Date.now()
+/** 0x052C (0xD, 0x1) recreates the desktop and scatters icons at logon. */
+const BOOT_SPAWN_GRACE_MS = 20_000
 
 function hwndFromBuffer(handle: Buffer): bigint {
   return process.arch === 'x64' || process.arch === 'arm64'
@@ -105,6 +112,7 @@ function getUser32(): User32Api {
       'void *',
       koffi.inout(koffi.pointer(POINT))
     ]),
+    IsWindow: user32.func('IsWindow', 'bool', ['void *']),
     EnumWindowsProc,
     RECT,
     POINT
@@ -113,25 +121,27 @@ function getUser32(): User32Api {
   return user32Api
 }
 
+function isWindowAlive(hwnd: bigint): boolean {
+  if (hwnd === 0n) return false
+  try {
+    return Boolean(getUser32().IsWindow(hwnd))
+  } catch {
+    return false
+  }
+}
+
 /**
- * Find the WorkerW that sits behind SHELLDLL_DefView.
- * On multi-monitor setups this host typically spans the virtual desktop.
+ * Locate an existing WorkerW behind SHELLDLL_DefView. Does not send 0x052C —
+ * that message recreates the desktop host and can scatter icons, especially
+ * when Explorer is still laying out a multi-monitor session at logon.
  */
-function findWorkerW(): bigint {
+function findExistingWorkerW(): bigint {
   const api = getUser32()
-  const progman = asHwnd(api.FindWindowW('Progman', null))
-  if (progman === 0n) return 0n
-
-  // Some Win10/11 builds need both (0,0) and (0xD,0x1) spawn variants.
-  api.SendMessageTimeoutW(progman, WM_SPAWN_WORKERW, 0n, 0n, SMTO_NORMAL, 1000, null)
-  api.SendMessageTimeoutW(progman, WM_SPAWN_WORKERW, 0xdn, 0x1n, SMTO_NORMAL, 1000, null)
-
   let workerw = 0n
   const callback = koffi.register((topHwnd: unknown) => {
     const top = asHwnd(topHwnd)
     const defView = asHwnd(api.FindWindowExW(top, 0n, 'SHELLDLL_DefView', null))
     if (defView !== 0n) {
-      // WorkerW immediately after the DefView host in Z-order.
       workerw = asHwnd(api.FindWindowExW(0n, top, 'WorkerW', null))
       return false
     }
@@ -145,7 +155,84 @@ function findWorkerW(): bigint {
   }
 
   if (workerw !== 0n) return workerw
+  const progman = asHwnd(api.FindWindowW('Progman', null))
+  if (progman === 0n) return 0n
   return asHwnd(api.FindWindowExW(progman, 0n, 'WorkerW', null))
+}
+
+/** Progman + SHELLDLL_DefView exist — Explorer finished the desktop shell. */
+export function isExplorerDesktopReady(): boolean {
+  if (process.platform !== 'win32') return true
+  try {
+    const api = getUser32()
+    const progman = asHwnd(api.FindWindowW('Progman', null))
+    if (progman === 0n) return false
+    return findDesktopShellWindow() !== 0n
+  } catch {
+    return false
+  }
+}
+
+export function isWorkerWHostAvailable(): boolean {
+  if (process.platform !== 'win32') return false
+  try {
+    return findWorkerW({ allowSpawn: false }) !== 0n
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Find the WorkerW that sits behind SHELLDLL_DefView.
+ * Reuse Explorer's existing host first. Spawn only when it is missing and
+ * the desktop shell is already up — never on every topology / embed call.
+ */
+function findWorkerW(options?: { allowSpawn?: boolean }): bigint {
+  if (cachedWorkerW !== 0n && isWindowAlive(cachedWorkerW)) return cachedWorkerW
+
+  let workerw = findExistingWorkerW()
+  if (workerw !== 0n) {
+    cachedWorkerW = workerw
+    return workerw
+  }
+
+  if (options?.allowSpawn === false) return 0n
+  if (!isExplorerDesktopReady()) {
+    console.warn('[wallpaper] Explorer desktop not ready — skip WorkerW spawn')
+    return 0n
+  }
+
+  const api = getUser32()
+  const progman = asHwnd(api.FindWindowW('Progman', null))
+  if (progman === 0n) return 0n
+
+  if (!spawnedWorkerWThisSession) {
+    spawnedWorkerWThisSession = true
+    console.log('[wallpaper] WorkerW missing — spawn (0,0) only')
+    api.SendMessageTimeoutW(progman, WM_SPAWN_WORKERW, 0n, 0n, SMTO_NORMAL, 1000, null)
+    workerw = findExistingWorkerW()
+    if (workerw !== 0n) {
+      cachedWorkerW = workerw
+      return workerw
+    }
+  }
+
+  // Some Win10/11 builds only create WorkerW via (0xD, 0x1). That variant
+  // rebuilds the desktop and scatters icons — never during logon grace.
+  if (!lastResortSpawnUsed && Date.now() - processStartedAt > BOOT_SPAWN_GRACE_MS) {
+    lastResortSpawnUsed = true
+    console.warn('[wallpaper] WorkerW still missing — last-resort spawn (0xD, 0x1)')
+    api.SendMessageTimeoutW(progman, WM_SPAWN_WORKERW, 0xdn, 0x1n, SMTO_NORMAL, 1000, null)
+    workerw = findExistingWorkerW()
+    if (workerw !== 0n) {
+      cachedWorkerW = workerw
+      return workerw
+    }
+  }
+
+  workerw = asHwnd(api.FindWindowExW(progman, 0n, 'WorkerW', null))
+  cachedWorkerW = workerw
+  return workerw
 }
 
 function findDesktopShellWindow(): bigint {
@@ -307,6 +394,19 @@ export function setAsWallpaper(win: BrowserWindow, bounds?: WidgetBounds): void 
     const hwnd = hwndFromBuffer(win.getNativeWindowHandle())
     win.setAlwaysOnTop(false)
     win.setBounds(footprint)
+
+    if (
+      embeddedHwnd === hwnd &&
+      cachedWorkerW !== 0n &&
+      isWindowAlive(cachedWorkerW)
+    ) {
+      placeChildOnVirtualDesktop(hwnd, cachedWorkerW, footprint)
+      console.log('[wallpaper] Repositioned on existing WorkerW', {
+        footprint,
+        displayId: display.id
+      })
+      return
+    }
 
     const workerw = findWorkerW()
     if (workerw !== 0n) {

@@ -221,6 +221,14 @@ export type StoreSettings = {
       offsetY: number
       width: number
       height: number
+      isPrimary?: boolean
+      boundsWidth?: number
+      boundsHeight?: number
+      scaleFactor?: number
+      originXFromPrimary?: number
+      originYFromPrimary?: number
+      label?: string
+      displayCount?: number
     } | null
   }
   dayColors: Record<string, string>

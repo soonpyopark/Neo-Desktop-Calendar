@@ -59,13 +59,27 @@ export type WidgetBounds = {
  * temporarily resolve to the wrong (nearest) display.
  */
 export type WidgetDisplayPlacement = {
-  /** Electron `Display.id` for the preferred monitor. */
+  /** Electron `Display.id` for the preferred monitor — may change across boots. */
   displayId: number
   /** DIP offset from that display's `bounds` origin. */
   offsetX: number
   offsetY: number
   width: number
   height: number
+  /**
+   * Stable-ish physical fingerprint. Electron display ids are recycled at
+   * logon; these fields let restore prefer the same monitor (primary /
+   * size / origin vs primary) instead of the first leftover id.
+   */
+  isPrimary?: boolean
+  boundsWidth?: number
+  boundsHeight?: number
+  scaleFactor?: number
+  originXFromPrimary?: number
+  originYFromPrimary?: number
+  label?: string
+  /** Attached display count when saved — wait at boot if fewer are up. */
+  displayCount?: number
 }
 
 export type AppSettings = {

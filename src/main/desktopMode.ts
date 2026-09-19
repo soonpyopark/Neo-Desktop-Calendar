@@ -3,12 +3,21 @@ import { DEFAULT_WIDGET_BOUNDS, MIN_WIDGET_HEIGHT, MIN_WIDGET_WIDTH } from '../s
 import type { LaunchMode, ModeStatus, WidgetBounds, WidgetDisplayPlacement } from '../shared/ipc'
 import type { SettingsStore } from './settingsStore'
 import {
+  attachedDisplayCount,
   captureDisplayPlacement,
   centerOnCursorDisplay,
+  findDisplayForPlacement,
   normalizeBoundsToDisplay,
+  placementHasFingerprint,
   resolveDisplayPlacement
 } from './displayGeometry'
-import { clearWallpaperPin, isWorkerEmbedded, setAsWallpaper } from './wallpaper'
+import {
+  clearWallpaperPin,
+  isExplorerDesktopReady,
+  isWorkerEmbedded,
+  isWorkerWHostAvailable,
+  setAsWallpaper
+} from './wallpaper'
 import { focusWindowForTextInput } from './windowFocus'
 
 type DesktopModeOptions = {
@@ -35,6 +44,13 @@ export class DesktopModeController {
   private switchGateTimer: ReturnType<typeof setTimeout> | null = null
   private topologyTimer: ReturnType<typeof setTimeout> | null = null
   private topologyRetryTimer: ReturnType<typeof setTimeout> | null = null
+  private bootSettleTimers: ReturnType<typeof setTimeout>[] = []
+  private bootEmbedDeadlineTimer: ReturnType<typeof setTimeout> | null = null
+  /** Cold-start / auto-start: wait for Explorer + preferred monitor before WorkerW. */
+  private desktopRestoreAt = 0
+  /** Idle/outside-click asked to embed, but the desktop host was not ready yet. */
+  private pendingIdleEmbed = false
+  private static readonly EMBED_WAIT_MS = 25_000
   private inputLockedUntil = 0
   private inputUnlockTimer: ReturnType<typeof setTimeout> | null = null
   /**
@@ -177,7 +193,13 @@ export class DesktopModeController {
     const resolved = resolveDisplayPlacement(preferred, absolute)
     this.lockedBounds = resolved.bounds
     if (resolved.matchedPreferredDisplay) {
-      this.preferredPlacement = captureDisplayPlacement(resolved.bounds)
+      // Do not stamp a recycled Electron id as a new fingerprint while the
+      // saved placement is still id-only and topology may be incomplete.
+      if (!preferred || placementHasFingerprint(preferred) || attachedDisplayCount() > 1) {
+        this.preferredPlacement = captureDisplayPlacement(resolved.bounds)
+      } else if (!this.preferredPlacement) {
+        this.preferredPlacement = preferred
+      }
     } else if (!this.preferredPlacement && preferred) {
       this.preferredPlacement = preferred
     } else if (!this.preferredPlacement) {
@@ -245,25 +267,99 @@ export class DesktopModeController {
     this.onModeChanged?.(this.getStatus())
   }
 
+  private clearBootSettleTimers(): void {
+    for (const timer of this.bootSettleTimers) clearTimeout(timer)
+    this.bootSettleTimers = []
+    if (this.bootEmbedDeadlineTimer) {
+      clearTimeout(this.bootEmbedDeadlineTimer)
+      this.bootEmbedDeadlineTimer = null
+    }
+  }
+
+  private armBootDisplaySettle(): void {
+    this.clearBootSettleTimers()
+    this.desktopRestoreAt = Date.now()
+    for (const ms of [2000, 6000, 12_000]) {
+      this.bootSettleTimers.push(
+        setTimeout(() => {
+          if (this.mode === 'desktop') this.applyDisplayTopology(`boot-settle-${ms}`)
+        }, ms)
+      )
+    }
+    this.bootEmbedDeadlineTimer = setTimeout(() => {
+      this.bootEmbedDeadlineTimer = null
+      if (this.pendingIdleEmbed && this.interactionSuspended) {
+        this.resumeUnderIcons()
+      }
+    }, DesktopModeController.EMBED_WAIT_MS + 800)
+  }
+
+  /**
+   * Auto-start often races Explorer and secondary GPUs. Do not SetParent until
+   * the preferred monitor is attached and WorkerW already exists (or we time out).
+   */
+  private shouldDeferWorkerWAttach(): boolean {
+    if (process.platform !== 'win32') return false
+    const waited = this.desktopRestoreAt ? Date.now() - this.desktopRestoreAt : 0
+    if (waited >= DesktopModeController.EMBED_WAIT_MS) return false
+
+    const preferred = this.preferredPlacement ?? this.readStoredPlacement()
+    if (preferred && !findDisplayForPlacement(preferred, this.lockedBounds)) {
+      return true
+    }
+    if (!isExplorerDesktopReady() || !isWorkerWHostAvailable()) {
+      return true
+    }
+    return false
+  }
+
   /** Embed unlocked desktop under icons (WorkerW). */
   resumeUnderIcons(): void {
     if (this.mode !== 'desktop' || !this.interactionSuspended) return
     const win = this.getWindow()
     if (!win || win.isDestroyed() || !this.lockedBounds) {
       this.interactionSuspended = false
+      this.pendingIdleEmbed = false
+      this.clearBootSettleTimers()
       return
     }
 
-    const { bounds: footprint } = this.resolveFootprint(this.lockedBounds)
-    this.interactionSuspended = false
+    if (this.shouldDeferWorkerWAttach()) {
+      this.pendingIdleEmbed = true
+      console.log('[desktop] Deferring WorkerW attach — waiting for Explorer / preferred display', {
+        explorerReady: isExplorerDesktopReady(),
+        workerW: isWorkerWHostAvailable(),
+        displayId: this.preferredPlacement?.displayId,
+        isPrimary: this.preferredPlacement?.isPrimary
+      })
+      return
+    }
+
+    const { bounds: footprint, matchedPreferredDisplay } = this.resolveFootprint(this.lockedBounds)
     win.setBounds(footprint)
     setAsWallpaper(win, footprint)
+
+    if (process.platform === 'win32' && !isWorkerEmbedded()) {
+      const waited = this.desktopRestoreAt ? Date.now() - this.desktopRestoreAt : 0
+      if (waited < DesktopModeController.EMBED_WAIT_MS) {
+        this.pendingIdleEmbed = true
+        console.warn('[desktop] WorkerW attach missed — keep unlocked and retry')
+        return
+      }
+      console.warn('[desktop] WorkerW attach timed out — overlay fallback')
+    }
+
+    this.pendingIdleEmbed = false
+    this.clearBootSettleTimers()
+    this.interactionSuspended = false
     win.setIgnoreMouseEvents(true)
     win.showInactive()
     this.settleDesktopVisuals(win)
     console.log('[desktop] Resumed under-icons (principle #1)', {
       footprint,
-      displayId: this.preferredPlacement?.displayId
+      displayId: this.preferredPlacement?.displayId,
+      matchedPreferredDisplay,
+      workerEmbedded: isWorkerEmbedded()
     })
     this.onModeChanged?.(this.getStatus())
   }
@@ -294,7 +390,12 @@ export class DesktopModeController {
       ? saved
       : centerOnCursorDisplay(DEFAULT_WIDGET_BOUNDS.width, DEFAULT_WIDGET_BOUNDS.height)
     const { bounds, matchedPreferredDisplay } = this.resolveFootprint(fallback)
-    if (!this.preferredPlacement || matchedPreferredDisplay) {
+    if (!this.preferredPlacement) {
+      this.preferredPlacement = captureDisplayPlacement(bounds)
+    } else if (
+      matchedPreferredDisplay &&
+      (placementHasFingerprint(this.preferredPlacement) || attachedDisplayCount() > 1)
+    ) {
       this.preferredPlacement = captureDisplayPlacement(bounds)
     }
 
@@ -303,12 +404,17 @@ export class DesktopModeController {
       mode,
       bounds,
       displayId: this.preferredPlacement.displayId,
+      isPrimary: this.preferredPlacement.isPrimary,
+      displayCount: this.preferredPlacement.displayCount,
       matchedPreferredDisplay
     })
 
     if (mode === 'desktop') {
       this.restoreDesktopUnlocked(bounds, {
-        updatePreferred: matchedPreferredDisplay || !this.preferredPlacement
+        updatePreferred:
+          !this.preferredPlacement ||
+          (matchedPreferredDisplay &&
+            (placementHasFingerprint(this.preferredPlacement) || attachedDisplayCount() > 1))
       })
       return
     }
@@ -343,6 +449,8 @@ export class DesktopModeController {
     // controller default (`window`) and the next reboot/auto-start restores window mode.
     this.mode = 'desktop'
     this.interactionSuspended = true
+    this.pendingIdleEmbed = false
+    this.armBootDisplaySettle()
     const footprint = this.commitFootprint(bounds, {
       persist: true,
       updatePreferred: options.updatePreferred !== false
@@ -462,6 +570,10 @@ export class DesktopModeController {
       })
     }
     this.onModeChanged?.(this.getStatus())
+
+    if (this.pendingIdleEmbed && this.interactionSuspended && !this.shouldDeferWorkerWAttach()) {
+      this.resumeUnderIcons()
+    }
   }
 
   enterDesktop(
@@ -508,6 +620,8 @@ export class DesktopModeController {
 
     this.mode = 'desktop'
     this.interactionSuspended = false
+    this.pendingIdleEmbed = false
+    this.clearBootSettleTimers()
     this.lockedBounds = this.commitFootprint(sourceBounds, { persist: options.persist !== false })
     this.armModeSwitchGate(250)
     this.lockInput(200)
@@ -557,6 +671,8 @@ export class DesktopModeController {
 
     this.mode = 'window'
     this.interactionSuspended = false
+    this.pendingIdleEmbed = false
+    this.clearBootSettleTimers()
     if (options.fromRestore) {
       this.blockDesktopEnterUntil = Date.now() + 4000
     }
