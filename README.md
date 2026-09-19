@@ -4,6 +4,7 @@ Lightweight Electron desktop wallpaper calendar with dynamic click-through.
 
 - 개발자 홈페이지(매뉴얼 및 개발 이력): [https://note4all.tistory.com](https://note4all.tistory.com/category/%EC%86%8C%ED%94%84%ED%8A%B8%EC%9B%A8%EC%96%B4%20%EC%97%B0%EA%B5%AC%EC%86%8C/Neo%20Desktop%20Calendar)
 
+![Neo Desktop Calendar](docs/screenshots/hero.jpg)
 
 **Windows**
 

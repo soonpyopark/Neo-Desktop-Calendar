@@ -25,6 +25,29 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const root = path.resolve(__dirname, '..')
 
 /**
+ * Quote so cmd.exe does not treat `^` as escape or `||` as OR.
+ * @param {string} arg
+ */
+function quoteWinArg(arg) {
+  if (!/[\s^|&<>()"]/.test(arg)) return arg
+  return `"${arg.replace(/"/g, '""')}"`
+}
+
+/**
+ * @param {string} command
+ * @param {string[]} args
+ * @param {import('node:child_process').SpawnSyncOptions} [extra]
+ */
+function spawnCommand(command, args, extra = {}) {
+  const win = process.platform === 'win32'
+  return spawnSync(command, win ? args.map(quoteWinArg) : args, {
+    cwd: root,
+    shell: win,
+    ...extra
+  })
+}
+
+/**
  * @param {string[]} argv
  */
 function parseArgs(argv) {
@@ -50,13 +73,10 @@ function parseArgs(argv) {
  */
 function run(label, command, args) {
   console.log(`[update-all] ${label}…`)
-  const result = spawnSync(command, args, {
-    cwd: root,
-    stdio: 'inherit',
-    shell: process.platform === 'win32'
-  })
+  const result = spawnCommand(command, args, { stdio: 'inherit' })
   if (result.status !== 0) {
-    throw new Error(`${label} failed (exit ${result.status ?? 1})`)
+    const detail = result.error?.message ? ` (${result.error.message})` : ''
+    throw new Error(`${label} failed (exit ${result.status ?? 1})${detail}`)
   }
 }
 
@@ -68,8 +88,7 @@ async function gitPull() {
     return
   }
 
-  const status = spawnSync('git', ['status', '--porcelain'], {
-    cwd: root,
+  const status = spawnCommand('git', ['status', '--porcelain'], {
     encoding: 'utf8'
   })
   if (status.stdout?.trim()) {
@@ -81,10 +100,8 @@ async function gitPull() {
 }
 
 function queryNpmVersion(pkgName) {
-  const result = spawnSync('npm', ['view', pkgName, 'version'], {
-    cwd: root,
-    encoding: 'utf8',
-    shell: process.platform === 'win32'
+  const result = spawnCommand('npm', ['view', pkgName, 'version'], {
+    encoding: 'utf8'
   })
   if (result.status !== 0) {
     throw new Error(`npm view ${pkgName} version failed (exit ${result.status ?? 1})`)
@@ -147,10 +164,8 @@ function collectDirectPackageNames(pkg) {
 
 function runCollect(label, command, args) {
   console.log(`[update-all] ${label}…`)
-  const result = spawnSync(command, args, {
-    cwd: root,
-    encoding: 'utf8',
-    shell: process.platform === 'win32'
+  const result = spawnCommand(command, args, {
+    encoding: 'utf8'
   })
   if (result.stdout) process.stdout.write(result.stdout)
   if (result.stderr) process.stderr.write(result.stderr)
@@ -158,18 +173,69 @@ function runCollect(label, command, args) {
 }
 
 function queryPeerDependency(pkgName, depName) {
-  const result = spawnSync('npm', ['view', pkgName, `peerDependencies.${depName}`], {
-    cwd: root,
-    encoding: 'utf8',
-    shell: process.platform === 'win32'
+  const result = spawnCommand('npm', ['view', pkgName, `peerDependencies.${depName}`], {
+    encoding: 'utf8'
   })
   if (result.status !== 0) return ''
   return (result.stdout.trim().split(/\r?\n/).at(-1) ?? '').replace(/^"|"$/g, '').trim()
 }
 
 /**
+ * Compare dotted numeric versions (pre-release ignored).
+ * @param {string} a
+ * @param {string} b
+ */
+function compareSemver(a, b) {
+  const pa = a.split('.').map((part) => Number.parseInt(part, 10) || 0)
+  const pb = b.split('.').map((part) => Number.parseInt(part, 10) || 0)
+  for (let i = 0; i < 3; i++) {
+    if (pa[i] !== pb[i]) return pa[i] - pb[i]
+  }
+  return 0
+}
+
+/**
+ * Latest version matching a peer range. Splits `||` here so cmd.exe does not.
+ * @param {string} pkgName
+ * @param {string} range
+ */
+function parseNpmViewVersionJson(stdout) {
+  const text = stdout.trim()
+  if (!text) return ''
+  try {
+    const data = JSON.parse(text)
+    const value = Array.isArray(data) ? data.at(-1) : data
+    return typeof value === 'string' ? value : ''
+  } catch {
+    const last = text.split(/\r?\n/).at(-1)?.trim() ?? ''
+    const quoted = last.match(/'(\d+\.\d+\.\d+(?:-[\w.]+)?)'/)
+    if (quoted) return quoted[1]
+    return /^\d+\.\d+\.\d+(?:-[\w.]+)?$/.test(last) ? last : ''
+  }
+}
+
+function queryLatestInRange(pkgName, range) {
+  const alternatives = range
+    .split('||')
+    .map((part) => part.trim())
+    .filter(Boolean)
+  let best = ''
+  for (const alt of alternatives) {
+    const result = spawnCommand('npm', ['view', `${pkgName}@${alt}`, 'version', '--json'], {
+      encoding: 'utf8'
+    })
+    if (result.status !== 0) continue
+    const version = parseNpmViewVersionJson(result.stdout ?? '')
+    if (!/^\d+\.\d+\.\d+(?:-[\w.]+)?$/.test(version)) continue
+    if (!best || compareSemver(version, best) > 0) best = version
+  }
+  return best
+}
+
+/**
  * electron-vite 5 accepts Vite 5–7; @vitejs/plugin-react 6 needs Vite 8.
  * Anchor the bundler stack on electron-vite so majors still move together.
+ * Never pass `||` ranges to npm on Windows — cmd.exe treats them as OR.
  * @param {string[]} names
  */
 function installElectronViteFamily(names) {
@@ -177,8 +243,12 @@ function installElectronViteFamily(names) {
   run('electron-vite latest', 'npm', ['install', 'electron-vite@latest', '--save-dev'])
   const viteRange = queryPeerDependency('electron-vite', 'vite')
   if (names.includes('vite') && viteRange) {
-    console.log(`[update-all] vite → latest in electron-vite peer ${viteRange}`)
-    run(`vite ${viteRange}`, 'npm', ['install', `vite@${viteRange}`, '--save-dev'])
+    const viteVersion = queryLatestInRange('vite', viteRange)
+    if (!viteVersion) {
+      throw new Error(`no vite version matches electron-vite peer ${viteRange}`)
+    }
+    console.log(`[update-all] vite ${viteVersion} (electron-vite peer ${viteRange})`)
+    run(`vite@${viteVersion}`, 'npm', ['install', `vite@${viteVersion}`, '--save-dev'])
   }
   if (!names.includes('@vitejs/plugin-react')) return
   const latestPlugin = runCollect('@vitejs/plugin-react latest', 'npm', [
@@ -187,10 +257,14 @@ function installElectronViteFamily(names) {
     '--save-dev'
   ])
   if (latestPlugin.status === 0) return
-  console.log('[update-all] @vitejs/plugin-react@latest needs a newer vite; using v5')
-  run('@vitejs/plugin-react v5', 'npm', [
+  const plugin5 = queryLatestInRange('@vitejs/plugin-react', '^5')
+  if (!plugin5) {
+    throw new Error('@vitejs/plugin-react@latest needs a newer vite; no v5 fallback')
+  }
+  console.log(`[update-all] @vitejs/plugin-react@latest needs a newer vite; using ${plugin5}`)
+  run(`@vitejs/plugin-react@${plugin5}`, 'npm', [
     'install',
-    '@vitejs/plugin-react@5',
+    `@vitejs/plugin-react@${plugin5}`,
     '--save-dev'
   ])
 }
