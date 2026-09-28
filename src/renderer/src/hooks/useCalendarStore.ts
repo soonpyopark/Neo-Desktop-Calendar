@@ -12,6 +12,7 @@ import type {
   TagRecord
 } from '../../../shared/calendarTypes'
 import { createEmptySnapshot } from '../../../shared/calendarDefaults'
+import { getDefaultSearchRange } from '../../../shared/searchCalendarEvents'
 import { headerTitleForBootstrap, writeCachedHeaderTitle } from '../../../shared/headerTitle'
 import {
   applyAccentColor,
@@ -71,6 +72,8 @@ export type UseCalendarStoreResult = {
   syncHolidays: (input?: SyncHolidaysInput) => Promise<SyncHolidaysResult>
   calendarsById: Map<string, CalendarRecord>
   visibleEvents: CalendarEvent[]
+  setEventRange: (from: string, to: string) => void
+  ensureEvent: (eventId: string) => Promise<CalendarEvent | null>
   undo: () => Promise<boolean>
   redo: () => Promise<boolean>
   canUndo: boolean
@@ -95,6 +98,8 @@ export function useCalendarStore(): UseCalendarStoreResult {
   const suppressHistoryRef = useRef(false)
   const storeRef = useRef(store)
   storeRef.current = store
+  const eventRangeRef = useRef(getDefaultSearchRange())
+  const eventRangeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const applyStore = useCallback(async (next: CalendarStoreSnapshot) => {
     storeRef.current = next
@@ -112,7 +117,11 @@ export function useCalendarStore(): UseCalendarStoreResult {
     if (!api?.getCalendarStore) return
     try {
       const next = await api.getCalendarStore()
-      await applyStore(next)
+      const range = eventRangeRef.current
+      const events = api.listCalendarEvents
+        ? await api.listCalendarEvents({ from: range.start, to: range.end })
+        : (next.events ?? [])
+      await applyStore({ ...next, events })
     } catch (err) {
       if (!isBrowserNeoCalendarHost()) {
         throw err
@@ -140,6 +149,58 @@ export function useCalendarStore(): UseCalendarStoreResult {
       setLoading(false)
     }
   }, [applyStore])
+
+  const setEventRange = useCallback(
+    (from: string, to: string) => {
+      const rawFrom = String(from ?? '').trim()
+      const rawTo = String(to ?? '').trim()
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(rawFrom) || !/^\d{4}-\d{2}-\d{2}$/.test(rawTo)) return
+      const start = rawFrom <= rawTo ? rawFrom : rawTo
+      const end = rawFrom <= rawTo ? rawTo : rawFrom
+      const prev = eventRangeRef.current
+      if (prev.start === start && prev.end === end) return
+      eventRangeRef.current = { start, end }
+      if (eventRangeTimerRef.current) clearTimeout(eventRangeTimerRef.current)
+      eventRangeTimerRef.current = setTimeout(() => {
+        eventRangeTimerRef.current = null
+        void refresh()
+      }, 50)
+    },
+    [refresh]
+  )
+
+  const ensureEvent = useCallback(
+    async (eventId: string): Promise<CalendarEvent | null> => {
+      const seriesId = String(eventId ?? '').split('::')[0]?.trim() ?? ''
+      if (!seriesId) return null
+      const existing = storeRef.current.events.find((item) => item.id === seriesId)
+      if (existing) return existing
+      const api = window.neoCalendar
+      if (!api?.getCalendarEvent) return null
+      const found = await api.getCalendarEvent(seriesId)
+      if (!found) return null
+      const current = storeRef.current
+      if (current.events.some((item) => item.id === found.id)) {
+        await applyStore({
+          ...current,
+          events: current.events.map((item) => (item.id === found.id ? found : item))
+        })
+      } else {
+        await applyStore({
+          ...current,
+          events: [...current.events, found]
+        })
+      }
+      return found
+    },
+    [applyStore]
+  )
+
+  useEffect(() => {
+    return () => {
+      if (eventRangeTimerRef.current) clearTimeout(eventRangeTimerRef.current)
+    }
+  }, [])
 
   const flushOfflineQueue = useCallback(async () => {
     if (!isBrowserNeoCalendarHost()) return
@@ -799,6 +860,8 @@ export function useCalendarStore(): UseCalendarStoreResult {
     syncHolidays,
     calendarsById,
     visibleEvents,
+    setEventRange,
+    ensureEvent,
     undo: history.undo,
     redo: history.redo,
     canUndo: history.canUndo,

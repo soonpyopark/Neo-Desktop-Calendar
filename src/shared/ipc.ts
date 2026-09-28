@@ -17,7 +17,10 @@ import type {
   StoreSettings,
   SyncHolidaysInput,
   SyncHolidaysResult,
-  TagRecord
+  TagRecord,
+  EventListQuery,
+  AttachmentUsage,
+  AttachmentPurgeResult
 } from './calendarTypes'
 import type { UpdateCheckResult } from './updateCheck'
 import type {
@@ -443,6 +446,15 @@ export type NeoCalendarApi = {
   patchSettings: (patch: Partial<AppSettings>) => Promise<AppSettings>
   /** MDC-compatible calendar store */
   getCalendarStore: () => Promise<CalendarStoreSnapshot>
+  listCalendarEvents: (query?: EventListQuery) => Promise<CalendarEvent[]>
+  searchCalendarEvents: (input: {
+    query: string
+    from?: string
+    to?: string
+  }) => Promise<CalendarEvent[]>
+  getCalendarEvent: (eventId: string) => Promise<CalendarEvent | null>
+  getAttachmentUsage: () => Promise<AttachmentUsage>
+  purgeOrphanAttachments: () => Promise<AttachmentPurgeResult>
   patchStoreSettings: (patch: Partial<StoreSettings>) => Promise<CalendarStoreSnapshot>
   replaceCalendarStore: (store: CalendarStoreSnapshot) => Promise<CalendarStoreSnapshot>
   /** MDC import: full replace (keep holidays-kr) or single-calendar merge */

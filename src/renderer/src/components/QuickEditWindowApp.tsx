@@ -62,7 +62,8 @@ export function QuickEditWindowApp(): ReactElement | null {
     removeEvent,
     patchStoreSettings,
     visibleEvents,
-    deleteCompletedForDay
+    deleteCompletedForDay,
+    setEventRange
   } = useCalendarStore()
 
   const [init, setInit] = useState<QuickEditWindowInit | null>(null)
@@ -123,6 +124,11 @@ export function QuickEditWindowApp(): ReactElement | null {
     if (!init?.dateKey) return null
     return parseDateKeyLocal(init.dateKey) ?? parseDateKey(init.dateKey)
   }, [init?.dateKey])
+
+  useEffect(() => {
+    if (!init?.dateKey) return
+    setEventRange(init.dateKey, init.dateKey)
+  }, [init?.dateKey, setEventRange])
 
   const dayColors = store.settings.dayColors ?? {}
   const dayHighlights = store.settings.dayHighlights ?? {}

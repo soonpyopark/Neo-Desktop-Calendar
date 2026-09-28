@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
 import { useAppDialog } from '../../components/AppDialogProvider'
 import { EventPopover } from '../../components/EventPopover'
 import { RecurrenceScopeDialog } from '../../components/RecurrenceScopeDialog'
@@ -35,8 +35,12 @@ export function EventDetailPanelHost({ init }: { init: Init }): ReactElement | n
   const { alert } = useAppDialog()
   const { closePanel, routePanel } = usePanelRouter()
   const { authReady, canEdit } = usePanelAuth()
-  const { store, loading, editEvent, removeEvent, addEvent } = useCalendarStore()
+  const { store, loading, editEvent, removeEvent, addEvent, ensureEvent } = useCalendarStore()
   usePanelTheme(store.settings, loading)
+
+  useEffect(() => {
+    void ensureEvent(init.eventId)
+  }, [ensureEvent, init.eventId])
 
   const [scopeDialog, setScopeDialog] = useState<{
     mode: 'complete' | 'delete' | 'shift'

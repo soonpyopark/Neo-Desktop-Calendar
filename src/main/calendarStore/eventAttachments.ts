@@ -15,7 +15,7 @@ import { shell } from 'electron'
 import { toNfc } from '../../shared/unicodeText.js'
 import { isImageAttachment } from '../../shared/attachmentKinds'
 import { HOLIDAYS_KR_CALENDAR_ID } from '../../shared/calendarDefaults'
-import type { CalendarEvent, EventAttachment } from '../../shared/calendarTypes'
+import type { AttachmentPurgeResult, AttachmentUsage, CalendarEvent, EventAttachment } from '../../shared/calendarTypes'
 import type { AttachmentImageResult } from '../../shared/ipc'
 import type { CalendarStore } from './CalendarStore'
 
@@ -96,6 +96,166 @@ export class EventAttachmentService {
     this.store = store
     this.attachmentsRoot = join(store.dataRoot, 'attachments')
     mkdirSync(this.attachmentsRoot, { recursive: true })
+  }
+
+  getUsage(): AttachmentUsage {
+    const referenced = new Set<string>()
+    for (const event of this.store.peekSnapshot().events) {
+      const eventId = String(event.id ?? '').trim()
+      if (!eventId) continue
+      for (const att of event.attachments ?? []) {
+        const stored = toNfc(basename(String(att.storedName ?? '')))
+        if (stored) referenced.add(`${eventId}/${stored}`)
+      }
+    }
+
+    let fileCount = 0
+    let bytes = 0
+    let orphanFileCount = 0
+    let orphanBytes = 0
+    let eventDirCount = 0
+    if (!existsSync(this.attachmentsRoot)) {
+      return {
+        fileCount,
+        bytes,
+        orphanFileCount,
+        orphanBytes,
+        eventDirCount,
+        maxAttachmentBytes: MAX_ATTACHMENT_BYTES,
+        maxAttachmentsPerEvent: MAX_ATTACHMENTS_PER_EVENT
+      }
+    }
+
+    for (const eventName of readdirSync(this.attachmentsRoot)) {
+      const eventDir = join(this.attachmentsRoot, eventName)
+      try {
+        if (!statSync(eventDir).isDirectory()) continue
+      } catch {
+        continue
+      }
+      eventDirCount += 1
+      let names: string[] = []
+      try {
+        names = readdirSync(eventDir)
+      } catch {
+        continue
+      }
+      for (const name of names) {
+        const path = join(eventDir, name)
+        try {
+          const stat = statSync(path)
+          if (!stat.isFile()) continue
+          fileCount += 1
+          bytes += stat.size
+          const key = `${eventName}/${toNfc(name)}`
+          if (!referenced.has(key)) {
+            orphanFileCount += 1
+            orphanBytes += stat.size
+          }
+        } catch {
+          /* skip */
+        }
+      }
+    }
+
+    return {
+      fileCount,
+      bytes,
+      orphanFileCount,
+      orphanBytes,
+      eventDirCount,
+      maxAttachmentBytes: MAX_ATTACHMENT_BYTES,
+      maxAttachmentsPerEvent: MAX_ATTACHMENTS_PER_EVENT
+    }
+  }
+
+  purgeOrphans(): AttachmentPurgeResult {
+    const usageBefore = this.getUsage()
+    const referenced = new Set<string>()
+    const liveEventIds = new Set<string>()
+    for (const event of this.store.peekSnapshot().events) {
+      const eventId = String(event.id ?? '').trim()
+      if (!eventId) continue
+      liveEventIds.add(eventId)
+      for (const att of event.attachments ?? []) {
+        const stored = toNfc(basename(String(att.storedName ?? '')))
+        if (stored) referenced.add(`${eventId}/${stored}`)
+      }
+    }
+
+    let removedFiles = 0
+    let removedBytes = 0
+    let removedDirs = 0
+    if (!existsSync(this.attachmentsRoot)) {
+      return { removedFiles, removedBytes, removedDirs }
+    }
+
+    for (const eventName of readdirSync(this.attachmentsRoot)) {
+      const eventDir = join(this.attachmentsRoot, eventName)
+      try {
+        if (!statSync(eventDir).isDirectory()) continue
+      } catch {
+        continue
+      }
+      if (!liveEventIds.has(eventName)) {
+        try {
+          const size = this.dirSize(eventDir)
+          rmSync(eventDir, { recursive: true, force: true })
+          removedDirs += 1
+          removedBytes += size
+          removedFiles += usageBefore.orphanFileCount > 0 ? 1 : 0
+        } catch {
+          /* ignore */
+        }
+        continue
+      }
+      let names: string[] = []
+      try {
+        names = readdirSync(eventDir)
+      } catch {
+        continue
+      }
+      for (const name of names) {
+        const path = join(eventDir, name)
+        try {
+          const stat = statSync(path)
+          if (!stat.isFile()) continue
+          const key = `${eventName}/${toNfc(name)}`
+          if (referenced.has(key)) continue
+          unlinkSync(path)
+          removedFiles += 1
+          removedBytes += stat.size
+        } catch {
+          /* skip */
+        }
+      }
+      this.tryDeleteEmptyEventDir(eventName)
+      try {
+        if (!existsSync(eventDir)) removedDirs += 1
+      } catch {
+        /* ignore */
+      }
+    }
+
+    return { removedFiles, removedBytes, removedDirs }
+  }
+
+  private dirSize(dir: string): number {
+    let total = 0
+    try {
+      for (const name of readdirSync(dir)) {
+        const path = join(dir, name)
+        try {
+          const stat = statSync(path)
+          if (stat.isFile()) total += stat.size
+        } catch {
+          /* skip */
+        }
+      }
+    } catch {
+      /* skip */
+    }
+    return total
   }
 
   eventDir(eventId: string): string {
@@ -308,7 +468,7 @@ export class EventAttachmentService {
   }
 
   private requireEditableEvent(eventId: string): CalendarEvent {
-    const found = this.store.getSnapshot().events.find((item) => item.id === eventId)
+    const found = this.store.peekSnapshot().events.find((item) => item.id === eventId)
     if (!found) throw new Error('일정을 찾을 수 없습니다.')
     if (found.calendarId === HOLIDAYS_KR_CALENDAR_ID) {
       throw new Error('대한민국의 휴일 일정에는 파일을 첨부할 수 없습니다.')

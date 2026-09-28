@@ -26,7 +26,9 @@ import type {
   MemberRecord,
   MemberSaveInput,
   StoreSettings,
-  TagRecord
+  TagRecord,
+  AttachmentUsage,
+  AttachmentPurgeResult
 } from '../shared/calendarTypes'
 
 const api: NeoCalendarApi = {
@@ -269,6 +271,16 @@ const api: NeoCalendarApi = {
     ipcRenderer.invoke('patch-settings', patch) as Promise<AppSettings>,
   getCalendarStore: () =>
     ipcRenderer.invoke('calendar:get-store') as Promise<CalendarStoreSnapshot>,
+  listCalendarEvents: (query) =>
+    ipcRenderer.invoke('calendar:list-events', query ?? {}) as Promise<CalendarEvent[]>,
+  searchCalendarEvents: (input) =>
+    ipcRenderer.invoke('calendar:search-events', input) as Promise<CalendarEvent[]>,
+  getCalendarEvent: (eventId) =>
+    ipcRenderer.invoke('calendar:get-event', eventId) as Promise<CalendarEvent | null>,
+  getAttachmentUsage: () =>
+    ipcRenderer.invoke('attachments:usage') as Promise<AttachmentUsage>,
+  purgeOrphanAttachments: () =>
+    ipcRenderer.invoke('attachments:purge-orphans') as Promise<AttachmentPurgeResult>,
   patchStoreSettings: (patch: Partial<StoreSettings>) =>
     ipcRenderer.invoke('calendar:patch-settings', patch) as Promise<CalendarStoreSnapshot>,
   replaceCalendarStore: (store: CalendarStoreSnapshot) =>

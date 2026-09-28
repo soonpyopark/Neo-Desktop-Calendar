@@ -299,6 +299,28 @@ export type CalendarStoreSnapshot = {
   updatedAt: string
 }
 
+export type EventListQuery = {
+  from?: string
+  to?: string
+  calendarId?: string
+}
+
+export type AttachmentUsage = {
+  fileCount: number
+  bytes: number
+  orphanFileCount: number
+  orphanBytes: number
+  eventDirCount: number
+  maxAttachmentBytes: number
+  maxAttachmentsPerEvent: number
+}
+
+export type AttachmentPurgeResult = {
+  removedFiles: number
+  removedBytes: number
+  removedDirs: number
+}
+
 export type EventInput = Partial<CalendarEvent> & {
   title: string
   calendarId: string

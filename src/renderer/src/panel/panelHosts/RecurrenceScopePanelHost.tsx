@@ -1,4 +1,4 @@
-import { useCallback, useMemo, type ReactElement } from 'react'
+import { useCallback, useEffect, useMemo, type ReactElement } from 'react'
 import { RecurrenceScopeDialog, type RecurrenceScope } from '../../components/RecurrenceScopeDialog'
 import { useAppDialog } from '../../components/AppDialogProvider'
 import { useCalendarStore } from '../../hooks/useCalendarStore'
@@ -31,7 +31,7 @@ function closeAfterDelete(): void {
 
 export function RecurrenceScopePanelHost({ init }: { init: Init }): ReactElement | null {
   const { alert } = useAppDialog()
-  const { store, loading, addEvent, editEvent, removeEvent } = useCalendarStore()
+  const { store, loading, addEvent, editEvent, removeEvent, ensureEvent } = useCalendarStore()
   const getEvents = useCallback(() => store.events, [store.events])
   const applyRecurringEdit = useApplyRecurringEdit({
     addEvent,
@@ -45,6 +45,10 @@ export function RecurrenceScopePanelHost({ init }: { init: Init }): ReactElement
     getEvents
   })
   usePanelTheme(store.settings, loading)
+
+  useEffect(() => {
+    void ensureEvent(init.eventId)
+  }, [ensureEvent, init.eventId])
 
   const master = useMemo(
     () => findMasterEvent(store.events, init.eventId),

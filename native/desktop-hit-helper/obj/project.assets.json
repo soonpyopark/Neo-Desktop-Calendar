@@ -429,7 +429,7 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\user\\AppData\\Local\\Temp\\cursor-sandbox-cache\\cf952d451df70e26ed18b20436f809e2\\nuget": {}
+    "C:\\Users\\user\\AppData\\Local\\Temp\\cursor-sandbox-cache\\3f11877284f70209462cd033a4667e5d\\nuget": {}
   },
   "project": {
     "version": "1.0.0",
@@ -437,7 +437,7 @@
       "projectUniqueName": "D:\\My_Cursor\\Neo Calendar\\native\\desktop-hit-helper\\DesktopHitHelper.csproj",
       "projectName": "Neo-Desktop-Calendar",
       "projectPath": "D:\\My_Cursor\\Neo Calendar\\native\\desktop-hit-helper\\DesktopHitHelper.csproj",
-      "packagesPath": "C:\\Users\\user\\AppData\\Local\\Temp\\cursor-sandbox-cache\\cf952d451df70e26ed18b20436f809e2\\nuget",
+      "packagesPath": "C:\\Users\\user\\AppData\\Local\\Temp\\cursor-sandbox-cache\\3f11877284f70209462cd033a4667e5d\\nuget",
       "outputPath": "D:\\My_Cursor\\Neo Calendar\\native\\desktop-hit-helper\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
@@ -477,7 +477,7 @@
             "autoReferenced": true
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.424\\RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.425\\RuntimeIdentifierGraph.json"
       }
     },
     "runtimes": {

@@ -399,6 +399,7 @@ export class CalendarWebServer {
             auth: this.options.auth,
             calendarStore: this.options.calendarStore,
             membersStore: this.options.membersStore,
+            attachments: this.options.attachments,
             getSyncInfo: () => this.getSyncInfo(),
             onStoreMutated
           },

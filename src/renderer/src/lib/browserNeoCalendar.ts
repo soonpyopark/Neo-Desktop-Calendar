@@ -6,7 +6,9 @@ import type {
   EventInput,
   MemberSaveInput,
   StoreSettings,
-  TagRecord
+  TagRecord,
+  AttachmentUsage,
+  AttachmentPurgeResult
 } from '../../../shared/calendarTypes'
 import { isImageAttachment } from '../../../shared/attachmentKinds'
 import { normalizeStoreBackup } from '../../../shared/storeBackup'
@@ -212,9 +214,8 @@ function pickLocalFiles(): Promise<File[]> {
 }
 
 async function findEventOrThrow(eventId: string): Promise<CalendarEvent> {
-  const store = await http<CalendarStoreSnapshot>('GET', '/api/store')
-  const found = store.events.find((e) => e.id === eventId)
-  if (!found) throw new Error('일정을 찾을 수 없습니다.')
+  const found = await http<CalendarEvent>('GET', `/api/events/${encodeURIComponent(eventId)}`)
+  if (!found?.id) throw new Error('일정을 찾을 수 없습니다.')
   return found
 }
 
@@ -538,6 +539,32 @@ export function installBrowserNeoCalendar(): void {
     },
 
     getCalendarStore: () => http<CalendarStoreSnapshot>('GET', '/api/store'),
+    listCalendarEvents: (query) => {
+      const params = new URLSearchParams()
+      if (query?.from) params.set('from', query.from)
+      if (query?.to) params.set('to', query.to)
+      if (query?.calendarId) params.set('calendarId', query.calendarId)
+      const qs = params.toString()
+      return http<CalendarEvent[]>(
+        'GET',
+        qs ? `/api/events?${qs}` : '/api/events'
+      )
+    },
+    searchCalendarEvents: (input) => {
+      const params = new URLSearchParams()
+      params.set('query', input.query ?? '')
+      if (input.from) params.set('from', input.from)
+      if (input.to) params.set('to', input.to)
+      return http<CalendarEvent[]>('GET', `/api/search?${params.toString()}`)
+    },
+    getCalendarEvent: (eventId) =>
+      http<CalendarEvent>(
+        'GET',
+        `/api/events/${encodeURIComponent(eventId)}`
+      ).catch(() => null),
+    getAttachmentUsage: () => http<AttachmentUsage>('GET', '/api/attachments/usage'),
+    purgeOrphanAttachments: () =>
+      http<AttachmentPurgeResult>('POST', '/api/attachments/purge-orphans', {}),
     patchStoreSettings: (patch: Partial<StoreSettings>) =>
       http<CalendarStoreSnapshot>('PATCH', '/api/settings', patch),
     replaceCalendarStore: (store) =>

@@ -495,6 +495,8 @@ export function CalendarGrid({
     saveMembers,
     syncHolidays,
     refresh,
+    setEventRange,
+    ensureEvent,
     undo,
     redo,
     canUndo,
@@ -1231,6 +1233,18 @@ export function CalendarGrid({
     const raw = generateWeekRange(weekRangeAnchor, weekStartsOn, WEEKS_BEFORE, WEEKS_AFTER)
     return raw.map((week) => mapWeekToDayCells(week, year, month))
   }, [weekRangeAnchor, weekStartsOn, year, month])
+
+  useEffect(() => {
+    if (viewMode === 'year') {
+      setEventRange(`${year}-01-01`, `${year}-12-31`)
+      return
+    }
+    const firstWeek = scrollWeeks[0]
+    const lastWeek = scrollWeeks[scrollWeeks.length - 1]
+    const first = firstWeek?.[0]
+    const last = lastWeek?.[lastWeek.length - 1]
+    if (first && last) setEventRange(first.dateKey, last.dateKey)
+  }, [viewMode, year, scrollWeeks, setEventRange])
 
   const effectiveWeeksInViewport =
     viewMode === 'week' ? 1 : viewMode === 'month' ? getWeeksInMonth(year, month, weekStartsOn) : 0
@@ -2150,6 +2164,7 @@ export function CalendarGrid({
     screenY: number
   }): void => {
     if (!requireEdit()) return
+    void ensureEvent(event.id)
     // Keep search open; detail opens at the click pointer.
     setViewDate(date)
     setSelectedKey(dayKey)
@@ -2161,7 +2176,7 @@ export function CalendarGrid({
     })
   }
 
-  const handleSearchEdit = ({
+  const handleSearchEdit = async ({
     event,
     date,
     dayKey
@@ -2173,12 +2188,12 @@ export function CalendarGrid({
     clientY: number
     screenX: number
     screenY: number
-  }): void => {
+  }): Promise<void> => {
     if (!requireEdit()) return
     setViewDate(date)
     setSelectedKey(dayKey)
     setViewMode('month')
-    const master = findMasterEvent(event)
+    const master = (await ensureEvent(event.id)) ?? findMasterEvent(event)
     if (!master) {
       void alert('일정을 찾을 수 없습니다.')
       return

@@ -1,4 +1,4 @@
-import { useMemo, type ReactElement } from 'react'
+import { useEffect, useMemo, type ReactElement } from 'react'
 import { EventResourceListDialog } from '../../components/EventResourceListDialog'
 import { useCalendarStore } from '../../hooks/useCalendarStore'
 import type { PanelWindowInit } from '../../../../shared/panelWindows'
@@ -8,13 +8,17 @@ type Init = Extract<PanelWindowInit, { kind: 'eventResourceList' }>
 
 export function EventResourceListPanelHost({ init }: { init: Init }): ReactElement | null {
   const { closePanel } = usePanelRouter()
-  const { store, loading } = useCalendarStore()
+  const { store, loading, ensureEvent } = useCalendarStore()
   usePanelTheme(store.settings, loading)
 
-  const event = useMemo(
-    () => store.events.find((item) => item.id === init.eventId) ?? null,
-    [init.eventId, store.events]
-  )
+  useEffect(() => {
+    void ensureEvent(init.eventId)
+  }, [ensureEvent, init.eventId])
+
+  const event = useMemo(() => {
+    const seriesId = init.eventId.split('::')[0] ?? init.eventId
+    return store.events.find((item) => item.id === seriesId) ?? null
+  }, [init.eventId, store.events])
 
   if (loading) return null
 

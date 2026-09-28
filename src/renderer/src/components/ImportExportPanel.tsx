@@ -9,6 +9,7 @@ import { getJsonExportTimestamp } from '../../../shared/exportTimestamp'
 import type { CalendarStoreSnapshot } from '../../../shared/calendarTypes'
 import { useAppDialog } from './AppDialogProvider'
 import { BackupSettingsPanel } from './BackupSettingsPanel'
+import { AttachmentStoragePanel } from './AttachmentStoragePanel'
 import { CalendarFileFormatButton } from './CalendarFileFormatButton'
 
 export type ImportExportPanelProps = {
@@ -44,8 +45,10 @@ export function ImportExportPanel({
         return
       }
 
+      const events =
+        (await window.neoCalendar.listCalendarEvents?.()) ?? store.events ?? []
       const { content, filename, mimeType } = exportFullStore(
-        store,
+        { ...store, events },
         format,
         getJsonExportTimestamp()
       )
@@ -200,6 +203,7 @@ export function ImportExportPanel({
       <div className="mt-12">
         <BackupSettingsPanel />
       </div>
+      <AttachmentStoragePanel />
     </div>
   )
 }

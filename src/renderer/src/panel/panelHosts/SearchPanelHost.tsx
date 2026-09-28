@@ -8,7 +8,7 @@ type Init = Extract<PanelWindowInit, { kind: 'search' }>
 
 export function SearchPanelHost({ init }: { init: Init }): ReactElement | null {
   const { closePanel, routePanel } = usePanelRouter()
-  const { store, loading, visibleEvents } = useCalendarStore()
+  const { store, loading, visibleEvents, ensureEvent } = useCalendarStore()
   usePanelTheme(store.settings, loading)
 
   // Mount immediately so the query input can focus on panel ready-to-show
@@ -23,6 +23,7 @@ export function SearchPanelHost({ init }: { init: Init }): ReactElement | null {
         tags={store.tags}
         onClose={closePanel}
         onSelectResult={({ event, dayKey, screenX, screenY }) => {
+          void ensureEvent(event.id)
           // Keep search open; open detail at the click pointer (screen DIP).
           routePanel({
             kind: 'eventDetail',
@@ -34,6 +35,7 @@ export function SearchPanelHost({ init }: { init: Init }): ReactElement | null {
           })
         }}
         onEditResult={({ event, dayKey }) => {
+          void ensureEvent(event.id)
           // Keep search open; open the full detail editor for this occurrence.
           routePanel({
             kind: 'eventEditor',

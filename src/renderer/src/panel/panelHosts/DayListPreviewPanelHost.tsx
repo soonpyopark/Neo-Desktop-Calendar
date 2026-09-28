@@ -1,4 +1,4 @@
-import { useCallback, type ReactElement } from 'react'
+import { useCallback, useEffect, type ReactElement } from 'react'
 import { DayListPreviewPanel } from '../../components/DayListPreviewPanel'
 import { useCalendarStore } from '../../hooks/useCalendarStore'
 import type { PanelWindowInit } from '../../../../shared/panelWindows'
@@ -8,8 +8,17 @@ type Init = Extract<PanelWindowInit, { kind: 'dayListPreview' }>
 
 export function DayListPreviewPanelHost({ init }: { init: Init }): ReactElement | null {
   const { closePanel, routePanel } = usePanelRouter()
-  const { store, loading, patchStoreSettings } = useCalendarStore()
+  const { store, loading, patchStoreSettings, setEventRange } = useCalendarStore()
   usePanelTheme(store.settings, loading)
+
+  useEffect(() => {
+    const monthIndex = Number(init.month)
+    const year = Number(init.year)
+    if (!Number.isFinite(year) || !Number.isFinite(monthIndex)) return
+    const last = new Date(year, monthIndex + 1, 0).getDate()
+    const mm = String(monthIndex + 1).padStart(2, '0')
+    setEventRange(`${year}-${mm}-01`, `${year}-${mm}-${String(last).padStart(2, '0')}`)
+  }, [init.month, init.year, setEventRange])
 
   const eventsHidden = Boolean(store.settings.viewOptions.eventsHidden)
 

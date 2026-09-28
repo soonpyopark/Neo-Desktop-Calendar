@@ -33,8 +33,13 @@ export function EventEditorPanelHost({ init }: { init: Init }): ReactElement | n
   const { alert } = useAppDialog()
   const { closePanel } = usePanelRouter()
   const { authReady, canEdit } = usePanelAuth()
-  const { store, loading, refresh, addEvent, editEvent, removeEvent } = useCalendarStore()
+  const { store, loading, refresh, addEvent, editEvent, removeEvent, ensureEvent } = useCalendarStore()
   usePanelTheme(store.settings, loading)
+
+  useEffect(() => {
+    if (!init.eventId) return
+    void ensureEvent(init.eventId)
+  }, [ensureEvent, init.eventId])
 
   const [editorEvent, setEditorEvent] = useState<CalendarEvent | null>(null)
   const [pendingEdit, setPendingEdit] = useState<{

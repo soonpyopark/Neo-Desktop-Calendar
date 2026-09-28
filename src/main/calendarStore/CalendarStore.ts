@@ -3,10 +3,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
-  readdirSync,
-  writeFileSync,
-  copyFileSync,
-  unlinkSync
+  rmSync
 } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { getDefaultCalendarColor } from '../../shared/calendarColorPalette'
@@ -28,6 +25,7 @@ import type {
   CalendarStoreSnapshot,
   ClientSurface,
   EventInput,
+  EventListQuery,
   StoreSettings,
   TagRecord
 } from '../../shared/calendarTypes'
@@ -39,9 +37,20 @@ import {
   projectViewOptionsForClient
 } from '../../shared/viewOptionsBySurface'
 import { normalizeStoreBackup } from '../../shared/storeBackup'
+import { eventOverlapsDateRange } from '../../shared/eventRange'
+import { searchCalendarEvents } from '../../shared/searchCalendarEvents'
 import { resolveAdminCredentials } from '../dotEnv'
 import { findHolidaySeedPath } from './holidaySeedPaths'
 import { resolveDataRoot, sanitizeDataKey } from './paths'
+import { writeJsonAtomic } from './atomicJson'
+import {
+  calendarTreeHasId,
+  clearCalendarTrees,
+  countCalendarTreeEvents,
+  migrateAndLoadCalendarTrees,
+  removeCalendarTree,
+  writeCalendarTree
+} from './yearCalendarFiles'
 import { getLegacyUserDataPath } from '../portableUserData'
 
 type SettingsFile = {
@@ -154,8 +163,13 @@ export class CalendarStore {
   }
 
   getSnapshot(): CalendarStoreSnapshot {
+    return structuredClone(this.peekSnapshot())
+  }
+
+  /** In-process snapshot. Callers must not mutate nested arrays/objects. */
+  peekSnapshot(): CalendarStoreSnapshot {
     if (!this.cache) this.cache = this.readFromDisk()
-    return structuredClone(this.cache)
+    return this.cache
   }
 
   /**
@@ -266,11 +280,70 @@ export class CalendarStore {
     return snap
   }
 
+  snapshotMetaForLogin(
+    loginId: string | null | undefined,
+    surface: ClientSurface = 'native',
+    isSuperAdmin?: boolean
+  ): CalendarStoreSnapshot {
+    const snap = this.getSnapshotForLogin(loginId, surface, isSuperAdmin)
+    snap.events = []
+    return snap
+  }
+
+  listEventsForLogin(
+    loginId: string | null | undefined,
+    query: EventListQuery = {},
+    surface: ClientSurface = 'native',
+    isSuperAdmin?: boolean
+  ): CalendarEvent[] {
+    const snap = this.getSnapshotForLogin(loginId, surface, isSuperAdmin)
+    return this.filterListedEvents(snap.events, query)
+  }
+
+  searchEventsForLogin(
+    loginId: string | null | undefined,
+    input: { query: string; from?: string; to?: string },
+    surface: ClientSurface = 'native',
+    isSuperAdmin?: boolean
+  ): CalendarEvent[] {
+    const snap = this.getSnapshotForLogin(loginId, surface, isSuperAdmin)
+    return searchCalendarEvents({
+      query: input.query,
+      events: snap.events,
+      calendars: snap.calendars,
+      tags: snap.tags,
+      rangeStart: input.from,
+      rangeEnd: input.to
+    })
+  }
+
+  findEventForLogin(
+    loginId: string | null | undefined,
+    eventId: string,
+    surface: ClientSurface = 'native',
+    isSuperAdmin?: boolean
+  ): CalendarEvent | null {
+    const id = String(eventId ?? '').trim()
+    if (!id) return null
+    const snap = this.getSnapshotForLogin(loginId, surface, isSuperAdmin)
+    return snap.events.find((event) => event.id === id) ?? null
+  }
+
+  private filterListedEvents(events: CalendarEvent[], query: EventListQuery): CalendarEvent[] {
+    const calendarId = String(query.calendarId ?? '').trim()
+    const from = query.from
+    const to = query.to
+    return events.filter((event) => {
+      if (calendarId && event.calendarId !== calendarId) return false
+      return eventOverlapsDateRange(event, from, to)
+    })
+  }
+
   getHiddenCalendarIdsForLogin(loginId: string | null | undefined): Set<string> {
     const owner = String(loginId ?? '').trim()
     const result = new Set<string>()
     if (!owner) return result
-    const byLogin = this.getSnapshot().settings.hiddenCalendarIdsByLoginId ?? {}
+    const byLogin = this.peekSnapshot().settings.hiddenCalendarIdsByLoginId ?? {}
     const key =
       Object.keys(byLogin).find((k) => k.toLowerCase() === owner.toLowerCase()) ?? null
     if (!key) return result
@@ -291,7 +364,7 @@ export class CalendarStore {
     const calId = calendarId.trim()
     if (!owner || !calId) return
 
-    const cur = this.getSnapshot()
+    const cur = this.peekSnapshot()
     const byLogin = { ...(cur.settings.hiddenCalendarIdsByLoginId ?? {}) }
     const key =
       Object.keys(byLogin).find((k) => k.toLowerCase() === owner.toLowerCase()) ?? owner
@@ -323,7 +396,7 @@ export class CalendarStore {
 
   /** Neo AppSettings projection for desktopMode / App.tsx (native surface). */
   getAppSettings(): AppSettings {
-    const s = projectViewOptionsForClient(this.getSnapshot().settings, 'native')
+    const s = projectViewOptionsForClient(this.peekSnapshot().settings, 'native')
     return {
       widget: {
         launchMode: s.widget.launchMode === 'desktop' ? 'desktop' : 'window',
@@ -339,7 +412,7 @@ export class CalendarStore {
   }
 
   patchAppSettings(patch: Partial<AppSettings>): AppSettings {
-    const cur = this.getSnapshot()
+    const cur = this.peekSnapshot()
     const widgetPatch: StoreSettings['widget'] = {
       ...cur.settings.widget,
       launchMode: patch.widget?.launchMode ?? cur.settings.widget.launchMode,
@@ -366,7 +439,6 @@ export class CalendarStore {
     }
     nextSettings = ensureViewOptionsBySurfaceMigrated(nextSettings)
     this.writeSettingsFile(nextSettings, cur.tags)
-    this.cache = null
     return this.getAppSettings()
   }
 
@@ -405,7 +477,7 @@ export class CalendarStore {
     dayColorsOwnerLoginId?: string | null,
     surface: ClientSurface = 'native'
   ): CalendarStoreSnapshot {
-    const cur = this.getSnapshot()
+    const cur = this.peekSnapshot()
     const owner = String(dayColorsOwnerLoginId ?? '').trim()
     const clientSurface = normalizeClientSurface(surface)
     const nextPatch: Partial<StoreSettings> = { ...patch }
@@ -439,24 +511,15 @@ export class CalendarStore {
       next = applyViewOptionsPatch(next, viewOptionsPatch, clientSurface)
     }
     this.writeSettingsFile(next, cur.tags)
-    this.cache = null
     return this.getSnapshot()
   }
 
   replaceStore(next: CalendarStoreSnapshot): CalendarStoreSnapshot {
     const settings = deepMergeSettings(createDefaultSettings(), next.settings ?? {})
     const tags = Array.isArray(next.tags) && next.tags.length > 0 ? next.tags : [...DEFAULT_TAGS]
+    this.cache = null
     this.writeSettingsFile(settings, tags)
-    // Clear and rewrite calendars
-    for (const file of readdirSync(this.calendarsDir)) {
-      if (file.endsWith('.json')) {
-        try {
-          unlinkSync(join(this.calendarsDir, file))
-        } catch {
-          /* ignore */
-        }
-      }
-    }
+    clearCalendarTrees(this.calendarsDir)
     const byCal = new Map<string, CalendarEvent[]>()
     for (const ev of next.events ?? []) {
       const list = byCal.get(ev.calendarId) ?? []
@@ -604,7 +667,7 @@ export class CalendarStore {
     },
     importerLoginId?: string | null
   ): CalendarStoreSnapshot {
-    const current = this.getSnapshot()
+    const current = this.peekSnapshot()
     const preservedHolidayCalendar =
       current.calendars.find((c) => c.id === HOLIDAYS_KR_CALENDAR_ID) ??
       DEFAULT_CALENDARS.find((c) => c.id === HOLIDAYS_KR_CALENDAR_ID)!
@@ -659,7 +722,7 @@ export class CalendarStore {
       throw new Error('대한민국의 휴일 캘린더는 가져오기로 변경할 수 없습니다.')
     }
 
-    const current = this.getSnapshot()
+    const current = this.peekSnapshot()
     const usedDataKeys = new Set(
       current.calendars
         .map((c) => c.dataKey ?? c.id)
@@ -757,7 +820,7 @@ export class CalendarStore {
   }
 
   addEvent(input: EventInput): CalendarEvent {
-    const snap = this.getSnapshot()
+    const snap = this.peekSnapshot()
     const now = new Date().toISOString()
     const event: CalendarEvent = {
       id: randomUUID(),
@@ -796,12 +859,11 @@ export class CalendarStore {
     const events = snap.events.filter((e) => e.calendarId === cal.id)
     events.push(event)
     this.writeCalendarFile(cal, events)
-    this.cache = null
     return event
   }
 
   editEvent(id: string, patch: Partial<CalendarEvent>): CalendarEvent {
-    const snap = this.getSnapshot()
+    const snap = this.peekSnapshot()
     const prev = snap.events.find((e) => e.id === id)
     if (!prev) throw new Error('일정을 찾을 수 없습니다.')
     if (prev.calendarId === HOLIDAYS_KR_CALENDAR_ID && patch.title !== undefined) {
@@ -836,12 +898,11 @@ export class CalendarStore {
         snap.events.map((e) => (e.id === id ? next : e)).filter((e) => e.calendarId === cal.id)
       )
     }
-    this.cache = null
     return next
   }
 
   removeEvent(id: string): void {
-    const snap = this.getSnapshot()
+    const snap = this.peekSnapshot()
     const prev = snap.events.find((e) => e.id === id)
     if (!prev) return
     if (prev.calendarId === HOLIDAYS_KR_CALENDAR_ID) {
@@ -853,11 +914,11 @@ export class CalendarStore {
       cal,
       snap.events.filter((e) => e.calendarId === cal.id && e.id !== id)
     )
-    this.cache = null
+    this.removeAttachmentDirs([id])
   }
 
   createCalendar(input: Partial<CalendarRecord> & { name: string; color: string }): CalendarRecord {
-    const snap = this.getSnapshot()
+    const snap = this.peekSnapshot()
     const id = sanitizeDataKey(input.id ?? randomUUID())
     const ownerLoginId = input.ownerLoginId?.trim() || undefined
     const ownerName =
@@ -877,12 +938,11 @@ export class CalendarStore {
       sortOrder: input.sortOrder ?? snap.calendars.length
     }
     this.writeCalendarFile(calendar, [])
-    this.cache = null
     return calendar
   }
 
   patchCalendar(id: string, patch: Partial<CalendarRecord>): CalendarRecord {
-    const snap = this.getSnapshot()
+    const snap = this.peekSnapshot()
     const prev = snap.calendars.find((c) => c.id === id)
     if (!prev) throw new Error('캘린더를 찾을 수 없습니다.')
     // Eye-toggle is per-login; never persist `visible` onto the shared calendar file.
@@ -890,7 +950,6 @@ export class CalendarStore {
     const next = { ...prev, ...rest, id: prev.id, visible: true }
     const events = snap.events.filter((e) => e.calendarId === id)
     this.writeCalendarFile(next, events)
-    this.cache = null
     return next
   }
 
@@ -900,7 +959,7 @@ export class CalendarStore {
    * reordered among their existing slots; other calendars keep their positions.
    */
   reorderCalendars(orderedIds: string[]): CalendarRecord[] {
-    const snap = this.getSnapshot()
+    const snap = this.peekSnapshot()
     const sorted = [...snap.calendars].sort((a, b) => {
       const ao = a.sortOrder ?? 0
       const bo = b.sortOrder ?? 0
@@ -931,7 +990,6 @@ export class CalendarStore {
       const events = snap.events.filter((e) => e.calendarId === cal.id)
       this.writeCalendarFile(updated, events)
     }
-    this.cache = null
     return this.getSnapshot().calendars
   }
 
@@ -939,17 +997,21 @@ export class CalendarStore {
     if (id === PRIMARY_CALENDAR_ID || id === HOLIDAYS_KR_CALENDAR_ID) {
       throw new Error('기본/공휴일 캘린더는 삭제할 수 없습니다.')
     }
-    const snap = this.getSnapshot()
+    const snap = this.peekSnapshot()
     const cal = snap.calendars.find((c) => c.id === id)
     if (!cal) return
-    const key = sanitizeDataKey(cal.dataKey ?? cal.id)
-    const path = join(this.calendarsDir, `${key}.json`)
-    try {
-      unlinkSync(path)
-    } catch {
-      /* ignore */
+    const eventIds = snap.events.filter((e) => e.calendarId === id).map((e) => e.id)
+    removeCalendarTree(this.calendarsDir, cal.dataKey ?? cal.id)
+    this.removeAttachmentDirs(eventIds)
+    if (this.cache) {
+      const now = new Date().toISOString()
+      this.cache = {
+        ...this.cache,
+        calendars: this.cache.calendars.filter((item) => item.id !== id),
+        events: this.cache.events.filter((item) => item.calendarId !== id),
+        updatedAt: now
+      }
     }
-    this.cache = null
   }
 
   /** Clear all events in a calendar without deleting the calendar (MDC ClearCalendarEvents). */
@@ -959,11 +1021,12 @@ export class CalendarStore {
     if (calendarId === HOLIDAYS_KR_CALENDAR_ID) {
       throw new Error('공휴일 캘린더는 초기화할 수 없습니다.')
     }
-    const snap = this.getSnapshot()
+    const snap = this.peekSnapshot()
     const cal = snap.calendars.find((c) => c.id === calendarId)
     if (!cal) throw new Error('캘린더를 찾을 수 없습니다.')
+    const eventIds = snap.events.filter((e) => e.calendarId === calendarId).map((e) => e.id)
     this.writeCalendarFile(cal, [])
-    this.cache = null
+    this.removeAttachmentDirs(eventIds)
   }
 
   /**
@@ -986,7 +1049,7 @@ export class CalendarStore {
     if (calendarId === HOLIDAYS_KR_CALENDAR_ID) {
       throw new Error('대한민국의 휴일 캘린더에는 가져올 수 없습니다.')
     }
-    const snap = this.getSnapshot()
+    const snap = this.peekSnapshot()
     const cal = snap.calendars.find((c) => c.id === calendarId)
     if (!cal) throw new Error('캘린더를 찾을 수 없습니다.')
 
@@ -1052,19 +1115,17 @@ export class CalendarStore {
     }
 
     this.writeCalendarFile(cal, [...existing, ...imported])
-    this.cache = null
     return { ok: true, importedCount: imported.length, calendarId, idMap }
   }
 
   setTags(tags: TagRecord[]): TagRecord[] {
-    const snap = this.getSnapshot()
+    const snap = this.peekSnapshot()
     this.writeSettingsFile(snap.settings, tags)
-    this.cache = null
     return structuredClone(tags)
   }
 
   createTag(input: { name: string; color: string; sortOrder?: number }): TagRecord {
-    const snap = this.getSnapshot()
+    const snap = this.peekSnapshot()
     const name = String(input.name ?? '').trim()
     if (!name) throw new Error('태그 이름을 입력해 주세요.')
     if (name.length > 32) throw new Error('태그 이름은 32자 이하여야 합니다.')
@@ -1083,12 +1144,11 @@ export class CalendarStore {
       sortOrder: typeof input.sortOrder === 'number' ? input.sortOrder : maxOrder + 1
     }
     this.writeSettingsFile(snap.settings, [...snap.tags, tag])
-    this.cache = null
     return structuredClone(tag)
   }
 
   patchTag(id: string, patch: Partial<Pick<TagRecord, 'name' | 'color' | 'sortOrder'>>): TagRecord {
-    const snap = this.getSnapshot()
+    const snap = this.peekSnapshot()
     const prev = snap.tags.find((t) => t.id === id)
     if (!prev) throw new Error('태그를 찾을 수 없습니다.')
     let name = prev.name
@@ -1115,12 +1175,11 @@ export class CalendarStore {
       snap.settings,
       snap.tags.map((t) => (t.id === id ? next : t))
     )
-    this.cache = null
     return structuredClone(next)
   }
 
   deleteTag(id: string): void {
-    const snap = this.getSnapshot()
+    const snap = this.peekSnapshot()
     if (!snap.tags.some((t) => t.id === id)) {
       throw new Error('태그를 찾을 수 없습니다.')
     }
@@ -1144,7 +1203,6 @@ export class CalendarStore {
         )
       this.writeCalendarFile(cal, events)
     }
-    this.cache = null
   }
 
   /**
@@ -1158,7 +1216,7 @@ export class CalendarStore {
     const admin = bootstrapAdminId.trim()
     if (!admin) return
 
-    const snap = this.getSnapshot()
+    const snap = this.peekSnapshot()
     const calendarOwner = new Map<string, string>()
     const seenCalendarIds = new Set<string>()
 
@@ -1183,8 +1241,7 @@ export class CalendarStore {
       }
     }
 
-    this.cache = null
-    const afterCal = this.getSnapshot()
+    const afterCal = this.peekSnapshot()
     const eventsByCal = new Map<string, CalendarEvent[]>()
     for (const ev of afterCal.events) {
       const list = eventsByCal.get(ev.calendarId) ?? []
@@ -1221,7 +1278,6 @@ export class CalendarStore {
       if (changed) this.writeCalendarFile(cal, nextEvents)
     }
 
-    this.cache = null
     this.ensurePersonalCalendar(admin, null, admin)
     if (memberLoginIds) {
       for (const loginId of memberLoginIds) {
@@ -1239,7 +1295,7 @@ export class CalendarStore {
   ): CalendarRecord {
     const owner = loginId.trim()
     if (!owner) throw new Error('로그인 아이디가 필요합니다.')
-    const snap = this.getSnapshot()
+    const snap = this.peekSnapshot()
     const existing = snap.calendars.find(
       (c) =>
         c.id !== HOLIDAYS_KR_CALENDAR_ID &&
@@ -1274,7 +1330,7 @@ export class CalendarStore {
     const owner = loginId.trim()
     if (!owner) return 0
     const ownerLower = owner.toLowerCase()
-    const snap = this.getSnapshot()
+    const snap = this.peekSnapshot()
     const toDelete = snap.calendars.filter(
       (c) =>
         c.id !== PRIMARY_CALENDAR_ID &&
@@ -1289,7 +1345,7 @@ export class CalendarStore {
       }
     }
 
-    const afterCal = this.getSnapshot()
+    const afterCal = this.peekSnapshot()
     const orphanEventIds = afterCal.events
       .filter((e) => String(e.ownerLoginId ?? '').trim().toLowerCase() === ownerLower)
       .map((e) => e.id)
@@ -1301,7 +1357,7 @@ export class CalendarStore {
       }
     }
 
-    const cur = this.getSnapshot()
+    const cur = this.peekSnapshot()
     const dayColorsByLoginId = { ...(cur.settings.dayColorsByLoginId ?? {}) }
     const dayHighlightsByLoginId = { ...(cur.settings.dayHighlightsByLoginId ?? {}) }
     const hiddenCalendarIdsByLoginId = {
@@ -1338,20 +1394,19 @@ export class CalendarStore {
   }
 
   ensureHolidaysKrCalendar(): CalendarRecord {
-    const snap = this.getSnapshot()
+    const snap = this.peekSnapshot()
     const existing = snap.calendars.find((c) => c.id === HOLIDAYS_KR_CALENDAR_ID)
     if (existing) return existing
     const meta = DEFAULT_CALENDARS.find((c) => c.id === HOLIDAYS_KR_CALENDAR_ID)!
     const events = snap.events.filter((e) => e.calendarId === HOLIDAYS_KR_CALENDAR_ID)
     this.writeCalendarFile(meta, events)
-    this.cache = null
     return meta
   }
 
   /** Full replace of holidays-kr events (API / seed sync). */
   replaceHolidaysKrEvents(events: CalendarEvent[]): void {
     const meta =
-      this.getSnapshot().calendars.find((c) => c.id === HOLIDAYS_KR_CALENDAR_ID)
+      this.peekSnapshot().calendars.find((c) => c.id === HOLIDAYS_KR_CALENDAR_ID)
       ?? DEFAULT_CALENDARS.find((c) => c.id === HOLIDAYS_KR_CALENDAR_ID)!
     const now = new Date().toISOString()
     const normalized = events.map((event) => ({
@@ -1367,7 +1422,6 @@ export class CalendarStore {
       createdBy: event.createdBy ?? 'holidays-kr-sync'
     }))
     this.writeCalendarFile({ ...meta, id: HOLIDAYS_KR_CALENDAR_ID }, normalized)
-    this.cache = null
   }
 
   getAuthSession(): { token: string; loginId: string } | null {
@@ -1378,19 +1432,11 @@ export class CalendarStore {
   setAuthSession(session: { token: string; loginId: string } | null): void {
     this.authToken = session?.token ?? null
     this.authLoginId = session?.loginId ?? null
-    writeFileSync(
-      this.sessionPath,
-      JSON.stringify(
-        {
-          token: this.authToken,
-          loginId: this.authLoginId,
-          updatedAt: new Date().toISOString()
-        },
-        null,
-        2
-      ),
-      'utf8'
-    )
+    writeJsonAtomic(this.sessionPath, {
+      token: this.authToken,
+      loginId: this.authLoginId,
+      updatedAt: new Date().toISOString()
+    })
   }
 
   private loadSession(): void {
@@ -1462,173 +1508,20 @@ export class CalendarStore {
   }
 
   private countHolidaysKrEvents(): number {
-    if (!existsSync(this.calendarsDir)) return 0
-    for (const name of readdirSync(this.calendarsDir)) {
-      if (!name.endsWith('.json')) continue
-      try {
-        const raw = JSON.parse(
-          readFileSync(join(this.calendarsDir, name), 'utf8')
-        ) as Partial<CalendarFile>
-        if (raw.calendar?.id !== HOLIDAYS_KR_CALENDAR_ID) continue
-        return Array.isArray(raw.events) ? raw.events.length : 0
-      } catch {
-        /* try next */
-      }
-    }
-    return 0
+    return countCalendarTreeEvents(this.calendarsDir, HOLIDAYS_KR_CALENDAR_ID)
   }
 
-  /** True if any calendars/*.json carries this calendar id (regardless of filename). */
+  /** True if any calendar tree (or leftover legacy file) carries this calendar id. */
   private hasCalendarWithId(calendarId: string): boolean {
-    if (!existsSync(this.calendarsDir)) return false
-    for (const name of readdirSync(this.calendarsDir)) {
-      if (!name.endsWith('.json')) continue
-      try {
-        const raw = JSON.parse(
-          readFileSync(join(this.calendarsDir, name), 'utf8')
-        ) as Partial<CalendarFile>
-        if (raw.calendar?.id === calendarId) return true
-      } catch {
-        /* skip empty/corrupt */
-      }
-    }
-    return false
+    return calendarTreeHasId(this.calendarsDir, calendarId)
   }
 
   /**
-   * Merge duplicate calendar files that share the same id (e.g. UUID primary +
-   * orphan primary.json). Keeps the richest file, dedupes events, deletes orphans.
+   * Flatten legacy `calendars/*.json` into year-split directories and merge
+   * duplicate trees that share the same calendar id.
    */
   private repairDuplicateCalendarFiles(): void {
-    if (!existsSync(this.calendarsDir)) return
-
-    type Loaded = {
-      path: string
-      name: string
-      calendar: CalendarRecord
-      events: CalendarEvent[]
-      bytes: number
-    }
-    const byId = new Map<string, Loaded[]>()
-
-    for (const name of readdirSync(this.calendarsDir)) {
-      if (!name.endsWith('.json')) continue
-      const path = join(this.calendarsDir, name)
-      let rawText = ''
-      try {
-        rawText = readFileSync(path, 'utf8')
-      } catch {
-        continue
-      }
-      if (!rawText.trim()) {
-        try {
-          unlinkSync(path)
-          console.warn('[calendar-store] Removed empty calendar file', name)
-        } catch {
-          /* ignore */
-        }
-        continue
-      }
-      try {
-        const raw = JSON.parse(rawText) as Partial<CalendarFile>
-        if (!raw.calendar?.id) continue
-        const list = byId.get(raw.calendar.id) ?? []
-        list.push({
-          path,
-          name,
-          calendar: raw.calendar,
-          events: Array.isArray(raw.events) ? raw.events : [],
-          bytes: Buffer.byteLength(rawText, 'utf8')
-        })
-        byId.set(raw.calendar.id, list)
-      } catch {
-        /* skip corrupt */
-      }
-    }
-
-    for (const [calendarId, files] of byId) {
-      if (files.length < 2) {
-        // Builtin calendars should use dataKey === id; migrate UUID primary → primary.json.
-        if (
-          (calendarId === PRIMARY_CALENDAR_ID || calendarId === HOLIDAYS_KR_CALENDAR_ID) &&
-          files.length === 1
-        ) {
-          const only = files[0]
-          const key = sanitizeDataKey(only.calendar.dataKey ?? only.calendar.id)
-          if (key !== calendarId) {
-            const events = dedupeEventsById(only.events)
-            this.writeCalendarFile(
-              { ...only.calendar, id: calendarId, dataKey: calendarId },
-              events
-            )
-            try {
-              unlinkSync(only.path)
-            } catch {
-              /* ignore */
-            }
-            console.log(
-              `[calendar-store] Migrated ${calendarId} from ${only.name} → ${calendarId}.json`
-            )
-          } else if (only.events.length !== dedupeEventsById(only.events).length) {
-            this.writeCalendarFile(only.calendar, dedupeEventsById(only.events))
-          }
-        } else if (files.length === 1) {
-          const only = files[0]
-          const deduped = dedupeEventsById(only.events)
-          if (deduped.length !== only.events.length) {
-            this.writeCalendarFile(only.calendar, deduped)
-          }
-        }
-        continue
-      }
-
-      files.sort((a, b) => {
-        const ae = a.events.length
-        const be = b.events.length
-        if (ae !== be) return be - ae
-        if (a.bytes !== b.bytes) return b.bytes - a.bytes
-        const aMatch = a.name === `${sanitizeDataKey(a.calendar.dataKey ?? a.calendar.id)}.json`
-        const bMatch = b.name === `${sanitizeDataKey(b.calendar.dataKey ?? b.calendar.id)}.json`
-        if (aMatch !== bMatch) return aMatch ? -1 : 1
-        return a.name.localeCompare(b.name)
-      })
-
-      const keeper = files[0]
-      const mergedEvents = dedupeEventsById(files.flatMap((f) => f.events))
-      const preferBuiltinKey =
-        calendarId === PRIMARY_CALENDAR_ID || calendarId === HOLIDAYS_KR_CALENDAR_ID
-      const nextCal: CalendarRecord = {
-        ...keeper.calendar,
-        id: calendarId,
-        dataKey: preferBuiltinKey
-          ? calendarId
-          : sanitizeDataKey(keeper.calendar.dataKey ?? keeper.calendar.id)
-      }
-      this.writeCalendarFile(nextCal, mergedEvents)
-      for (const extra of files.slice(1)) {
-        try {
-          unlinkSync(extra.path)
-          console.warn(
-            `[calendar-store] Removed duplicate calendar file ${extra.name} (id=${calendarId})`
-          )
-        } catch {
-          /* ignore */
-        }
-      }
-      // If we rewrote to builtin filename, drop the old UUID keeper path when different.
-      const writtenKey = sanitizeDataKey(nextCal.dataKey ?? nextCal.id)
-      const writtenPath = join(this.calendarsDir, `${writtenKey}.json`)
-      if (keeper.path !== writtenPath) {
-        try {
-          unlinkSync(keeper.path)
-        } catch {
-          /* ignore */
-        }
-      }
-      console.log(
-        `[calendar-store] Merged ${files.length} files for id=${calendarId} → ${writtenKey}.json (${mergedEvents.length} events)`
-      )
-    }
+    migrateAndLoadCalendarTrees(this.calendarsDir)
   }
 
   private seedHolidaysKr(): void {
@@ -1644,9 +1537,7 @@ export class CalendarStore {
       return
     }
     try {
-      const dest = join(this.calendarsDir, `${HOLIDAYS_KR_CALENDAR_ID}.json`)
-      copyFileSync(seedPath, dest)
-      const raw = JSON.parse(readFileSync(dest, 'utf8')) as Partial<CalendarFile> & {
+      const raw = JSON.parse(readFileSync(seedPath, 'utf8')) as Partial<CalendarFile> & {
         calendar?: CalendarRecord
         events?: CalendarEvent[]
       }
@@ -1711,54 +1602,10 @@ export class CalendarStore {
       }
     }
 
-    type LoadedCal = {
-      calendar: CalendarRecord
-      events: CalendarEvent[]
-      fileName: string
-      bytes: number
-    }
-    const bestById = new Map<string, LoadedCal>()
-    if (existsSync(this.calendarsDir)) {
-      for (const name of readdirSync(this.calendarsDir)) {
-        if (!name.endsWith('.json')) continue
-        try {
-          const text = readFileSync(join(this.calendarsDir, name), 'utf8')
-          if (!text.trim()) continue
-          const raw = JSON.parse(text) as Partial<CalendarFile>
-          if (!raw.calendar || !raw.calendar.id) continue
-          const events = Array.isArray(raw.events) ? raw.events : []
-          const bytes = Buffer.byteLength(text, 'utf8')
-          const prev = bestById.get(raw.calendar.id)
-          const score = (c: LoadedCal): number =>
-            c.events.length * 1_000_000 +
-            c.bytes +
-            (c.fileName === `${sanitizeDataKey(c.calendar.dataKey ?? c.calendar.id)}.json`
-              ? 1
-              : 0)
-          const candidate: LoadedCal = {
-            calendar: raw.calendar,
-            events,
-            fileName: name,
-            bytes
-          }
-          if (!prev || score(candidate) > score(prev)) {
-            // Preserve unique events from the losing file when swapping winners.
-            if (prev) {
-              candidate.events = dedupeEventsById([...candidate.events, ...prev.events])
-            }
-            bestById.set(raw.calendar.id, candidate)
-          } else {
-            prev.events = dedupeEventsById([...prev.events, ...events])
-          }
-        } catch {
-          /* skip bad file */
-        }
-      }
-    }
-
+    const trees = migrateAndLoadCalendarTrees(this.calendarsDir)
     const calendars: CalendarRecord[] = []
     const events: CalendarEvent[] = []
-    for (const loaded of bestById.values()) {
+    for (const loaded of trees) {
       calendars.push(loaded.calendar)
       events.push(...dedupeEventsById(loaded.events))
     }
@@ -1787,18 +1634,43 @@ export class CalendarStore {
       tags,
       updatedAt: new Date().toISOString()
     }
-    writeFileSync(this.settingsPath, JSON.stringify(payload, null, 2), 'utf8')
+    writeJsonAtomic(this.settingsPath, payload)
+    if (this.cache) {
+      this.cache = {
+        ...this.cache,
+        settings: payload.settings,
+        tags,
+        updatedAt: payload.updatedAt
+      }
+    }
   }
 
   private writeCalendarFile(calendar: CalendarRecord, events: CalendarEvent[]): void {
-    mkdirSync(this.calendarsDir, { recursive: true })
-    const key = sanitizeDataKey(calendar.dataKey ?? calendar.id)
-    const payload: CalendarFile = {
-      version: 1,
-      calendar: { ...calendar, dataKey: key },
-      events,
+    const key = writeCalendarTree(this.calendarsDir, calendar, events)
+    const nextCal: CalendarRecord = { ...calendar, dataKey: key }
+    if (!this.cache) return
+    const calendars = this.cache.calendars.some((item) => item.id === nextCal.id)
+      ? this.cache.calendars.map((item) => (item.id === nextCal.id ? nextCal : item))
+      : [...this.cache.calendars, nextCal].sort(
+          (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
+        )
+    this.cache = {
+      ...this.cache,
+      calendars,
+      events: [...this.cache.events.filter((item) => item.calendarId !== nextCal.id), ...events],
       updatedAt: new Date().toISOString()
     }
-    writeFileSync(join(this.calendarsDir, `${key}.json`), JSON.stringify(payload, null, 2), 'utf8')
+  }
+
+  private removeAttachmentDirs(eventIds: string[]): void {
+    for (const raw of eventIds) {
+      const id = String(raw ?? '').trim()
+      if (!id || id.includes('..') || /[<>:"/\\|?*\x00-\x1f]/.test(id)) continue
+      try {
+        rmSync(join(this.attachmentsDir, id), { recursive: true, force: true })
+      } catch {
+        /* ignore */
+      }
+    }
   }
 }

@@ -360,9 +360,47 @@ export function SearchPanel({
   }, [open, onClose, resourceDetail])
 
   const range = useMemo(() => normalizeSearchRange(rangeStart, rangeEnd), [rangeStart, rangeEnd])
+  const [remoteResults, setRemoteResults] = useState<CalendarEvent[] | null>(null)
+
+  useEffect(() => {
+    if (!open) {
+      setRemoteResults(null)
+      return undefined
+    }
+    const trimmedQuery = query.trim()
+    if (!trimmedQuery) {
+      setRemoteResults([])
+      return undefined
+    }
+    const api = window.neoCalendar
+    if (typeof api?.searchCalendarEvents !== 'function') {
+      setRemoteResults(null)
+      return undefined
+    }
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      void api
+        .searchCalendarEvents({
+          query: trimmedQuery,
+          from: range.start,
+          to: range.end
+        })
+        .then((found) => {
+          if (!cancelled) setRemoteResults(Array.isArray(found) ? found : [])
+        })
+        .catch(() => {
+          if (!cancelled) setRemoteResults(null)
+        })
+    }, 180)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [open, query, range.start, range.end])
 
   const allResults = useMemo(() => {
     if (!open) return []
+    if (remoteResults !== null) return remoteResults
     return searchCalendarEvents({
       query,
       events,
@@ -371,7 +409,7 @@ export function SearchPanel({
       rangeStart: range.start,
       rangeEnd: range.end
     })
-  }, [open, query, events, calendars, tags, range.start, range.end])
+  }, [open, query, events, calendars, tags, range.start, range.end, remoteResults])
 
   const total = allResults.length
   const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1)

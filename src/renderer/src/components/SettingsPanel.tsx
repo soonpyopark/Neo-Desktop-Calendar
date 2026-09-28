@@ -900,9 +900,9 @@ function CalendarSettingsPanel({
       })
 
       if (created?.id) {
-        const sourceEvents = (store.events ?? []).filter(
-          (event) => event.calendarId === calendar.id
-        )
+        const sourceEvents =
+          (await window.neoCalendar.listCalendarEvents?.({ calendarId: calendar.id })) ??
+          (store.events ?? []).filter((event) => event.calendarId === calendar.id)
         for (const event of sourceEvents) {
           await onAddEvent({ ...eventToMutationPayload(event), calendarId: created.id })
         }
@@ -930,9 +930,12 @@ function CalendarSettingsPanel({
         )
         return
       }
+      const events =
+        (await window.neoCalendar.listCalendarEvents?.({ calendarId: calendar.id })) ??
+        (store.events ?? []).filter((event) => event.calendarId === calendar.id)
       const exportData = {
         calendar,
-        events: (store.events ?? []).filter((event) => event.calendarId === calendar.id)
+        events
       }
       const { content, filename, mimeType } = exportSingleCalendar(
         exportData,

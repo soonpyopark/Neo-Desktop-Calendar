@@ -77,6 +77,7 @@ import type {
   CalendarRecord,
   CalendarStoreSnapshot,
   EventInput,
+  EventListQuery,
   MemberSaveInput,
   StoreSettings,
   SyncHolidaysInput,
@@ -911,7 +912,53 @@ function registerIpc(): void {
     mainWindow.webContents.send('main-opacity-preview', patch ?? {})
   })
 
-  ipcMain.handle('calendar:get-store', () => snapshotForUser())
+  ipcMain.handle('calendar:get-store', () => {
+    const user = auth.getUser()
+    const id = user?.loginId
+    return calendarStore.snapshotMetaForLogin(id, 'native', isSuperAdminUser(user))
+  })
+  ipcMain.handle('calendar:list-events', (_event, query?: EventListQuery) => {
+    const user = auth.getUser()
+    return calendarStore.listEventsForLogin(
+      user?.loginId,
+      query ?? {},
+      'native',
+      isSuperAdminUser(user)
+    )
+  })
+  ipcMain.handle(
+    'calendar:search-events',
+    (_event, input: { query?: string; from?: string; to?: string }) => {
+      const user = auth.getUser()
+      return calendarStore.searchEventsForLogin(
+        user?.loginId,
+        {
+          query: String(input?.query ?? ''),
+          from: input?.from,
+          to: input?.to
+        },
+        'native',
+        isSuperAdminUser(user)
+      )
+    }
+  )
+  ipcMain.handle('calendar:get-event', (_event, eventId: string) => {
+    const user = auth.getUser()
+    return calendarStore.findEventForLogin(
+      user?.loginId,
+      String(eventId ?? ''),
+      'native',
+      isSuperAdminUser(user)
+    )
+  })
+  ipcMain.handle('attachments:usage', () => {
+    requireCap('backupStore')
+    return attachmentService.getUsage()
+  })
+  ipcMain.handle('attachments:purge-orphans', () => {
+    requireCap('backupStore')
+    return attachmentService.purgeOrphans()
+  })
   ipcMain.handle('calendar:get-data-root', () => calendarStore.dataRoot)
   ipcMain.handle('calendar:patch-settings', (_event, patch: Partial<StoreSettings>) => {
     const user = auth.getUser()

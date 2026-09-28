@@ -2,8 +2,14 @@ import type { IncomingMessage } from 'node:http'
 import type { AuthService } from '../auth'
 import type { CalendarStore } from '../calendarStore/CalendarStore'
 import type { MembersStore } from '../calendarStore/membersStore'
-import type { EventInput, MemberSaveInput, SyncHolidaysInput, TagRecord } from '../../shared/calendarTypes'
+import type { EventAttachmentService } from '../calendarStore/eventAttachments'
 import type { AuthUser } from '../../shared/ipc'
+import type {
+  EventInput,
+  MemberSaveInput,
+  SyncHolidaysInput,
+  TagRecord
+} from '../../shared/calendarTypes'
 import {
   can,
   isSuperAdminUser,
@@ -23,6 +29,7 @@ export type ApiRouterDeps = {
   auth: AuthService
   calendarStore: CalendarStore
   membersStore: MembersStore
+  attachments: EventAttachmentService
   getSyncInfo: () => Record<string, unknown>
   onStoreMutated: () => void
 }
@@ -133,7 +140,49 @@ export async function handleApiRequest(
   const snapshot = () => calendarStore.getSnapshotForLogin(loginId, 'browser', asSuperAdmin)
 
   if (p === '/api/store' && m === 'GET') {
-    return { status: 200, body: snapshot() }
+    return { status: 200, body: calendarStore.snapshotMetaForLogin(loginId, 'browser', asSuperAdmin) }
+  }
+
+  if (p === '/api/events' && m === 'GET') {
+    const url = new URL(req.url ?? '/api/events', 'http://127.0.0.1')
+    const events = calendarStore.listEventsForLogin(
+      loginId,
+      {
+        from: url.searchParams.get('from') || undefined,
+        to: url.searchParams.get('to') || undefined,
+        calendarId: url.searchParams.get('calendarId') || undefined
+      },
+      'browser',
+      asSuperAdmin
+    )
+    return { status: 200, body: events }
+  }
+
+  if (p === '/api/search' && m === 'GET') {
+    const url = new URL(req.url ?? '/api/search', 'http://127.0.0.1')
+    const results = calendarStore.searchEventsForLogin(
+      loginId,
+      {
+        query: url.searchParams.get('query') ?? '',
+        from: url.searchParams.get('from') || undefined,
+        to: url.searchParams.get('to') || undefined
+      },
+      'browser',
+      asSuperAdmin
+    )
+    return { status: 200, body: results }
+  }
+
+  if (p === '/api/attachments/usage' && m === 'GET') {
+    const denied = requireCap(user, 'backupStore')
+    if (denied) return denied
+    return { status: 200, body: deps.attachments.getUsage() }
+  }
+
+  if (p === '/api/attachments/purge-orphans' && m === 'POST') {
+    const denied = requireCap(user, 'backupStore')
+    if (denied) return denied
+    return { status: 200, body: deps.attachments.purgeOrphans() }
   }
 
   if (p === '/api/settings' && m === 'PATCH') {
@@ -170,6 +219,11 @@ export async function handleApiRequest(
   const eventMatch = p.match(/^\/api\/events\/([^/]+)$/)
   if (eventMatch) {
     const id = decodeURIComponent(eventMatch[1])
+    if (m === 'GET') {
+      const found = calendarStore.findEventForLogin(loginId, id, 'browser', asSuperAdmin)
+      if (!found) return jsonError(404, '일정을 찾을 수 없습니다.')
+      return { status: 200, body: found }
+    }
     if (m === 'PUT' || m === 'PATCH') {
       const updated = calendarStore.editEvent(id, (body ?? {}) as never)
       onStoreMutated()
