@@ -17,7 +17,9 @@ import { withNativeDialog } from '../nativeDialogGuard'
 import { createZipFromDirectory, extractZipToDirectory } from '../sevenZip'
 import { nfcWalk, sameUnicodeText, toNfc } from '../../shared/unicodeText.js'
 import type { CalendarStore } from './CalendarStore'
-import type { CalendarStoreSnapshot } from '../../shared/calendarTypes'
+import type { CalendarStoreSnapshot, StoreSettings, TagRecord } from '../../shared/calendarTypes'
+import { readJsonFile, writeJsonAtomic } from './atomicJson'
+import { migrateAndLoadCalendarTrees, writeCalendarTree } from './yearCalendarFiles'
 
 export type BackupZipResult = {
   ok: boolean
@@ -55,16 +57,86 @@ function tryDeleteDir(path: string): void {
   }
 }
 
+function isFile(path: string): boolean {
+  try {
+    return statSync(path).isFile()
+  } catch {
+    return false
+  }
+}
+
+function isDirectory(path: string): boolean {
+  try {
+    return statSync(path).isDirectory()
+  } catch {
+    return false
+  }
+}
+
 function findStoreJson(extractDir: string): string | null {
   const root = join(extractDir, 'store.json')
-  if (existsSync(root)) return root
+  if (isFile(root)) return root
   for (const name of readdirSync(extractDir)) {
     const nested = join(extractDir, name, 'store.json')
-    if (existsSync(nested) && statSync(join(extractDir, name)).isDirectory()) {
+    if (isFile(nested) && isDirectory(join(extractDir, name))) {
       return nested
     }
   }
   return null
+}
+
+function calendarTreeLooksPopulated(calendarsDir: string): boolean {
+  if (!isDirectory(calendarsDir)) return false
+  try {
+    for (const name of readdirSync(calendarsDir)) {
+      const path = join(calendarsDir, name)
+      if (isDirectory(path) && isFile(join(path, 'meta.json'))) return true
+      if (name.endsWith('.json') && isFile(path)) return true
+    }
+  } catch {
+    /* ignore */
+  }
+  return false
+}
+
+function isLiveTreeRoot(dir: string): boolean {
+  const calendarsDir = join(dir, 'calendars')
+  if (calendarTreeLooksPopulated(calendarsDir)) return true
+  return isFile(join(dir, 'settings.json')) && isDirectory(calendarsDir)
+}
+
+/** Root of a year-split backup (`settings.json` + `calendars/`), including one nested folder. */
+function findLiveTreeRoot(extractDir: string): string | null {
+  if (isLiveTreeRoot(extractDir)) return extractDir
+  try {
+    for (const name of readdirSync(extractDir)) {
+      const nested = join(extractDir, name)
+      if (isDirectory(nested) && isLiveTreeRoot(nested)) return nested
+    }
+  } catch {
+    /* ignore */
+  }
+  return null
+}
+
+function loadLiveTreeSnapshot(root: string): CalendarStoreSnapshot {
+  const settingsFile = readJsonFile<{
+    version?: number
+    settings?: StoreSettings
+    tags?: TagRecord[]
+    updatedAt?: string
+  }>(join(root, 'settings.json'))
+  const trees = migrateAndLoadCalendarTrees(join(root, 'calendars'))
+  const calendars = trees.map((item) => item.calendar)
+  const events = trees.flatMap((item) => item.events)
+  return nfcWalk({
+    version: typeof settingsFile?.version === 'number' ? settingsFile.version : 2,
+    settings: settingsFile?.settings ?? ({} as StoreSettings),
+    calendars,
+    events,
+    tags: Array.isArray(settingsFile?.tags) ? settingsFile.tags : [],
+    updatedAt: settingsFile?.updatedAt ?? new Date().toISOString()
+  }) as CalendarStoreSnapshot
 }
 
 function extractZipSafe(zipPath: string, destDir: string): void {
@@ -111,18 +183,43 @@ function replaceAttachmentsFrom(
   return fileCount
 }
 
+function findAttachmentsDir(extractDir: string): string | null {
+  const liveRoot = findLiveTreeRoot(extractDir)
+  if (liveRoot) {
+    const fromLive = join(liveRoot, 'attachments')
+    if (isDirectory(fromLive)) return fromLive
+  }
+  const storePath = findStoreJson(extractDir)
+  if (storePath) {
+    const sibling = join(dirname(storePath), 'attachments')
+    if (isDirectory(sibling)) return sibling
+  }
+  const root = join(extractDir, 'attachments')
+  return isDirectory(root) ? root : null
+}
+
 function stageBackupZip(store: CalendarStore): {
   staging: string
   fileCount: number
   eventCount: number
 } {
   const staging = mkdtempSync(join(tmpdir(), 'neo-backup-'))
-  const snapshot = store.getSnapshot()
-  writeFileSync(
-    join(staging, 'store.json'),
-    `${JSON.stringify(nfcWalk(snapshot), null, 2)}\n`,
-    'utf8'
-  )
+  const snapshot = nfcWalk(store.getSnapshot()) as CalendarStoreSnapshot
+  writeJsonAtomic(join(staging, 'settings.json'), {
+    version: 2,
+    settings: snapshot.settings,
+    tags: snapshot.tags,
+    updatedAt: snapshot.updatedAt
+  })
+  const calendarsDir = join(staging, 'calendars')
+  mkdirSync(calendarsDir, { recursive: true })
+  for (const calendar of snapshot.calendars) {
+    writeCalendarTree(
+      calendarsDir,
+      calendar,
+      snapshot.events.filter((event) => event.calendarId === calendar.id)
+    )
+  }
 
   const attachStaging = join(staging, 'attachments')
   mkdirSync(attachStaging, { recursive: true })
@@ -196,22 +293,27 @@ function restoreFromExtractedDir(
   extractDir: string,
   importerLoginId?: string | null
 ): BackupZipResult {
+  const liveRoot = findLiveTreeRoot(extractDir)
   const storePath = findStoreJson(extractDir)
-  if (!storePath) {
-    throw new Error('ZIP에 store.json이 없습니다. 이 앱의 백업 ZIP인지 확인해 주세요.')
-  }
-
   let payload: unknown
-  try {
-    payload = nfcWalk(JSON.parse(readFileSync(storePath, 'utf8')))
-  } catch (error) {
+  if (liveRoot) {
+    payload = loadLiveTreeSnapshot(liveRoot)
+  } else if (storePath) {
+    try {
+      payload = nfcWalk(JSON.parse(readFileSync(storePath, 'utf8')))
+    } catch (error) {
+      throw new Error(
+        `store.json을 읽지 못했습니다: ${error instanceof Error ? error.message : String(error)}`
+      )
+    }
+  } else {
     throw new Error(
-      `store.json을 읽지 못했습니다: ${error instanceof Error ? error.message : String(error)}`
+      '지원하는 백업 ZIP이 아닙니다. settings.json과 calendars 폴더, 또는 예전 store.json이 있어야 합니다.'
     )
   }
 
   const imported = store.importStore(payload, importerLoginId)
-  const zipAttachments = join(dirname(storePath), 'attachments')
+  const zipAttachments = findAttachmentsDir(extractDir) ?? join(extractDir, 'attachments')
   const fileCount = replaceAttachmentsFrom(join(store.dataRoot, 'attachments'), zipAttachments)
 
   return {
@@ -316,7 +418,7 @@ function findCalendarExportJson(extractDir: string): string | null {
   }
   for (const name of readdirSync(extractDir)) {
     if (!name.toLowerCase().endsWith('.json')) continue
-    if (name === 'store.json') continue
+    if (name === 'store.json' || name === 'settings.json') continue
     const path = join(extractDir, name)
     if (statSync(path).isFile()) return path
   }
@@ -331,6 +433,11 @@ function readEventsFromCalendarZip(extractDir: string): unknown[] {
     }
     if (Array.isArray(payload?.events)) return payload.events
     if (Array.isArray(payload)) return payload as unknown[]
+  }
+  const liveRoot = findLiveTreeRoot(extractDir)
+  if (liveRoot) {
+    const events = loadLiveTreeSnapshot(liveRoot).events
+    if (events.length > 0) return events
   }
   const storePath = findStoreJson(extractDir)
   if (storePath) {
@@ -347,8 +454,8 @@ function restoreAttachmentsForIdMap(
   extractDir: string,
   idMap: Array<{ sourceId: string; newId: string }>
 ): number {
-  const zipAttachments = join(extractDir, 'attachments')
-  if (!existsSync(zipAttachments)) return 0
+  const zipAttachments = findAttachmentsDir(extractDir)
+  if (!zipAttachments) return 0
   const attachmentsRoot = join(store.dataRoot, 'attachments')
   let fileCount = 0
   for (const { sourceId, newId } of idMap) {

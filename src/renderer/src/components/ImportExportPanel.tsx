@@ -176,8 +176,8 @@ export function ImportExportPanel({
             <p>
               <span className="font-medium text-gcal-heading">ZIP</span>
               {' — '}
-              일정 데이터(JSON)와 첨부 파일을 함께 담는 전체 백업입니다. 가져오면 현재 데이터를
-              백업 내용으로 바꿉니다.
+              설정·연도별 캘린더 파일과 첨부 파일을 함께 담는 전체 백업입니다. 가져오면 현재
+              데이터를 백업 내용으로 바꿉니다. 예전 store.json ZIP도 가져올 수 있습니다.
             </p>
             <p>
               <span className="font-medium text-gcal-heading">JSON</span>
