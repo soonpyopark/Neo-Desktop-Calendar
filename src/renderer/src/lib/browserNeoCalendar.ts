@@ -11,7 +11,7 @@ import type {
   AttachmentPurgeResult
 } from '../../../shared/calendarTypes'
 import { isImageAttachment } from '../../../shared/attachmentKinds'
-import { normalizeStoreBackup } from '../../../shared/storeBackup'
+import { normalizeStoreBackup, type StoreBackupStatus } from '../../../shared/storeBackup'
 import { clearOfflineQueue, clearOfflineSnapshot } from './offlineStore'
 
 const TOKEN_KEY = 'neo-calendar-auth-token'
@@ -603,13 +603,7 @@ export function installBrowserNeoCalendar(): void {
       throw new Error('브라우저에서는 파일 선택으로 ZIP을 가져와 주세요.')
     },
     getStoreBackupStatus: async () => {
-      const snap = await http<CalendarStoreSnapshot>('GET', '/api/store')
-      return {
-        config: normalizeStoreBackup(snap.settings.storeBackup),
-        running: false,
-        last: null,
-        archives: []
-      }
+      return http<StoreBackupStatus>('GET', '/api/store-backup')
     },
     saveStoreBackupConfig: async (patch) => {
       const snap = await http<CalendarStoreSnapshot>('PATCH', '/api/settings', {

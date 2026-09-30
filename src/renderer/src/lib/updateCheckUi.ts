@@ -1,10 +1,16 @@
-import type { UpdateCheckResult } from '../../../shared/updateCheck'
+import type { UpdateCheckResult, SkippedUpdateNotice } from '../../../shared/updateCheck'
 import {
   RELEASES_PAGE_URL,
+  isStartupNoticeSkipped,
   isUpdateAvailable,
   resolveUpdateKind,
+  updateNoticeKey,
   versionLabel
 } from '../../../shared/updateCheck'
+import { isBrowserNeoCalendarHost } from './browserNeoCalendar'
+import type { DialogChoice } from '../components/AppDialogProvider'
+
+const SKIPPED_UPDATE_KEY = 'neo-calendar-skipped-update'
 
 type DialogApi = {
   alert: (
@@ -15,6 +21,15 @@ type DialogApi = {
     message: string,
     options?: { title?: string; confirmLabel?: string; cancelLabel?: string }
   ) => Promise<boolean>
+  choice?: (
+    message: string,
+    options: {
+      title?: string
+      confirmLabel?: string
+      cancelLabel?: string
+      extraLabel: string
+    }
+  ) => Promise<DialogChoice>
 }
 
 /**
@@ -70,6 +85,57 @@ export async function presentUpdateCheckResult(
   await dialog.alert(`최신 버전입니다.\n\n현재 버전: ${currentHint}`, { title })
 }
 
+function runtimeUpdatePlatform(): string {
+  if (isBrowserNeoCalendarHost()) return 'browser'
+  const ua = navigator.userAgent
+  if (/Windows/i.test(ua)) return 'win32'
+  if (/Mac OS X|Macintosh/i.test(ua)) return 'darwin'
+  return 'linux'
+}
+
+function readSkippedUpdate(): SkippedUpdateNotice | null {
+  try {
+    const raw = localStorage.getItem(SKIPPED_UPDATE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<SkippedUpdateNotice>
+    const platform = String(parsed.platform ?? '').trim()
+    const version = String(parsed.version ?? '').trim()
+    if (!platform || !version) return null
+    return {
+      platform,
+      version,
+      stamp: String(parsed.stamp ?? '').trim()
+    }
+  } catch {
+    return null
+  }
+}
+
+function writeSkippedUpdate(notice: SkippedUpdateNotice): void {
+  try {
+    localStorage.setItem(SKIPPED_UPDATE_KEY, JSON.stringify(notice))
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+function availableUpdateMessage(result: UpdateCheckResult): string {
+  const current = versionLabel(result.current)
+  const currentHint = result.currentBuildStamp
+    ? `${current} (${result.currentBuildStamp})`
+    : current
+  const kind = resolveUpdateKind(result)
+  const latest = versionLabel(result.latest || '')
+  const stampHint =
+    kind === 'build' && result.latestBuildStamp
+      ? `\n최신 빌드: ${result.latestBuildStamp}`
+      : ''
+  if (kind === 'build') {
+    return `같은 버전의 새 빌드가 있습니다: ${latest}\n\n현재 버전: ${currentHint}${stampHint}`
+  }
+  return `새 버전이 있습니다: ${latest}\n\n현재 버전: ${currentHint}`
+}
+
 /** Run GitHub Releases check then show the result dialog. */
 export async function runUpdateCheck(dialog: DialogApi): Promise<void> {
   const api = window.neoCalendar
@@ -79,4 +145,36 @@ export async function runUpdateCheck(dialog: DialogApi): Promise<void> {
   }
   const result = await api.checkForUpdates()
   await presentUpdateCheckResult(result, dialog)
+}
+
+/**
+ * Tiny PDF Editor–style silent startup check: prompt only when an update exists
+ * and the user has not dismissed this exact release.
+ */
+export async function runStartupUpdateCheck(dialog: DialogApi): Promise<void> {
+  const api = window.neoCalendar
+  if (!api?.checkForUpdates) return
+  const result = await api.checkForUpdates()
+  if (!isUpdateAvailable(result)) return
+  const platform = runtimeUpdatePlatform()
+  if (isStartupNoticeSkipped(readSkippedUpdate(), result, platform)) return
+
+  if (!dialog.choice) {
+    await presentUpdateCheckResult(result, dialog)
+    return
+  }
+
+  const picked = await dialog.choice(availableUpdateMessage(result), {
+    title: '업데이트',
+    confirmLabel: '다운로드',
+    cancelLabel: '나중에',
+    extraLabel: '이 버전은 알리지 않기'
+  })
+  if (picked === 'confirm') {
+    await api.openExternal?.(result.releaseUrl || RELEASES_PAGE_URL)
+    return
+  }
+  if (picked === 'extra') {
+    writeSkippedUpdate(updateNoticeKey(result, platform))
+  }
 }

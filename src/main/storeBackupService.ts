@@ -62,7 +62,7 @@ export function assertBackupDestAllowed(destPath: string, dataRoot: string): str
 }
 
 function readConfig(): StoreBackupSettings {
-  return normalizeStoreBackup(requireStore().getSnapshot().settings.storeBackup)
+  return normalizeStoreBackup(requireStore().peekSnapshot().settings.storeBackup)
 }
 
 function statePath(): string {
@@ -113,39 +113,61 @@ async function pruneDayBackups(dayDir: string, maxPerDay: number): Promise<void>
   }
 }
 
-async function collectBackupArchives(destDir: string): Promise<Array<{ fileName: string; filePath: string }>> {
-  let entries: Array<{ name: string; isDirectory: () => boolean }>
+async function readDirNames(dir: string): Promise<string[]> {
   try {
-    entries = await readdir(destDir, { withFileTypes: true })
+    return await readdir(dir)
   } catch {
     return []
   }
+}
 
+async function pathKind(target: string): Promise<'file' | 'dir' | 'other'> {
+  try {
+    const info = await stat(target)
+    if (info.isDirectory()) return 'dir'
+    if (info.isFile()) return 'file'
+    return 'other'
+  } catch {
+    return 'other'
+  }
+}
+
+async function collectBackupArchives(
+  destDir: string
+): Promise<Array<{ fileName: string; filePath: string }>> {
   const found: Array<{ fileName: string; filePath: string }> = []
-  for (const entry of entries) {
-    if (!entry.isDirectory()) {
-      if (isStoreBackupFileName(entry.name)) {
-        found.push({ fileName: entry.name, filePath: join(destDir, entry.name) })
+  for (const name of await readDirNames(destDir)) {
+    const full = join(destDir, name)
+    const kind = await pathKind(full)
+    if (kind === 'file') {
+      if (isStoreBackupFileName(name)) {
+        found.push({ fileName: name, filePath: full })
       }
       continue
     }
-    if (!isStoreBackupDayFolder(entry.name)) continue
+    if (kind !== 'dir' || !isStoreBackupDayFolder(name)) continue
 
-    let dayNames: string[] = []
-    try {
-      dayNames = await readdir(join(destDir, entry.name))
-    } catch {
-      continue
-    }
-    for (const name of dayNames) {
-      if (!isStoreBackupFileName(name)) continue
+    for (const zipName of await readDirNames(full)) {
+      if (!isStoreBackupFileName(zipName)) continue
+      const zipPath = join(full, zipName)
+      if ((await pathKind(zipPath)) !== 'file') continue
       found.push({
-        fileName: `${entry.name}/${name}`,
-        filePath: join(destDir, entry.name, name)
+        fileName: `${name}/${zipName}`,
+        filePath: zipPath
       })
     }
   }
   return found
+}
+
+function sortArchives(items: StoreBackupArchive[]): StoreBackupArchive[] {
+  items.sort((left, right) => {
+    const stampLeft = extractBackupStamp(left.fileName) ?? ''
+    const stampRight = extractBackupStamp(right.fileName) ?? ''
+    if (stampLeft !== stampRight) return stampRight.localeCompare(stampLeft)
+    return left.fileName.localeCompare(right.fileName, 'ko')
+  })
+  return items
 }
 
 export async function listStoreBackups(): Promise<StoreBackupArchive[]> {
@@ -168,13 +190,32 @@ export async function listStoreBackups(): Promise<StoreBackupArchive[]> {
       /* skip unreadable */
     }
   }
-  items.sort((left, right) => {
-    const stampLeft = extractBackupStamp(left.fileName) ?? ''
-    const stampRight = extractBackupStamp(right.fileName) ?? ''
-    if (stampLeft !== stampRight) return stampRight.localeCompare(stampLeft)
-    return left.fileName.localeCompare(right.fileName, 'ko')
-  })
-  return items
+
+  const last = lastResult
+  if (last?.filePath && !last.error) {
+    const already = items.some(
+      (item) =>
+        normalizeAbs(item.filePath) === normalizeAbs(last.filePath) ||
+        item.fileName.replace(/\\/g, '/') === last.fileName.replace(/\\/g, '/')
+    )
+    if (!already) {
+      try {
+        const info = await stat(last.filePath)
+        if (info.isFile()) {
+          items.push({
+            fileName: last.fileName,
+            filePath: last.filePath,
+            bytes: info.size,
+            at: last.at
+          })
+        }
+      } catch {
+        /* last file already gone */
+      }
+    }
+  }
+
+  return sortArchives(items)
 }
 
 async function removeEmptyDayFolder(dayDir: string): Promise<void> {

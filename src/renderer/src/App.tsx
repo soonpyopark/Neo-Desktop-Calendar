@@ -8,9 +8,12 @@ import {
   subscribeAuthUserSync
 } from './lib/browserNeoCalendar'
 import { applyOpacitySettings } from './lib/opacitySettings'
+import { useAppDialog } from './components/AppDialogProvider'
+import { runStartupUpdateCheck } from './lib/updateCheckUi'
 import type { AppSettings, AuthUser, LaunchMode, ModeStatus } from '../../shared/ipc'
 
 export default function App(): ReactElement {
+  const { alert, confirm, choice } = useAppDialog()
   const [mode, setMode] = useState<LaunchMode>('window')
   /** True only while WorkerW-embedded (not while temporarily undocked). */
   const [embedded, setEmbedded] = useState(false)
@@ -69,6 +72,14 @@ export default function App(): ReactElement {
       unsubAuth?.()
     }
   }, [])
+
+  useEffect(() => {
+    if (!authReady) return undefined
+    const timer = window.setTimeout(() => {
+      void runStartupUpdateCheck({ alert, confirm, choice })
+    }, 1500)
+    return () => window.clearTimeout(timer)
+  }, [alert, authReady, choice, confirm])
 
   const handleSettingsSaved = async (patch: Partial<AppSettings>): Promise<void> => {
     const next = await window.neoCalendar.patchSettings(patch)

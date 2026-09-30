@@ -66,6 +66,7 @@ export function BackupSettingsPanel(): ReactElement {
     try {
       const next = await window.neoCalendar.saveStoreBackupConfig({ ...config, ...patch })
       setConfig(normalizeStoreBackup(next))
+      await refresh()
       return true
     } catch (error) {
       await alert(error instanceof Error ? error.message : '백업 설정을 저장하지 못했습니다.', {
@@ -81,7 +82,7 @@ export function BackupSettingsPanel(): ReactElement {
     if (!electron) return
     const picked = await window.neoCalendar.pickStoreBackupDest()
     if (!picked) return
-    if (await persist({ destPath: picked })) await refresh()
+    await persist({ destPath: picked })
   }
 
   const addTime = async (): Promise<void> => {
@@ -302,8 +303,19 @@ export function BackupSettingsPanel(): ReactElement {
       </section>
 
       <section className="rounded-lg border border-gcal-border bg-gcal-surface p-5">
-        <h3 className="mb-2 text-base font-medium text-gcal-heading">최근 백업</h3>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-base font-medium text-gcal-heading">최근 백업</h3>
+          <button type="button" className={btnSecondary} disabled={busy} onClick={() => void refresh()}>
+            새로고침
+          </button>
+        </div>
         {last?.error ? <p className="mb-2 text-sm text-red-600">{last.error}</p> : null}
+        {last && !last.error ? (
+          <p className="mb-3 text-sm text-gcal-muted">
+            마지막 {last.trigger === 'auto' ? '자동' : '수동'} 백업 · {formatWhen(last.at)}
+            {typeof last.bytes === 'number' ? ` · ${formatByteSize(last.bytes)}` : ''}
+          </p>
+        ) : null}
         {archives.length === 0 ? (
           <p className="text-sm text-gcal-muted">아직 백업 파일이 없습니다.</p>
         ) : (

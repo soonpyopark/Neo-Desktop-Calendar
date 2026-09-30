@@ -109,3 +109,36 @@ export function buildStampToMs(stamp: string): number | null {
 export function versionLabel(version: string): string {
   return version.startsWith('v') ? version : `v${version}`
 }
+
+export type SkippedUpdateNotice = {
+  platform: string
+  version: string
+  stamp: string
+}
+
+/** Identity of the release a startup notice would be about. */
+export function updateNoticeKey(
+  result: UpdateCheckResult,
+  platform: string
+): SkippedUpdateNotice {
+  return {
+    platform: String(platform ?? '').trim(),
+    version: String(result.latest ?? '').trim(),
+    stamp: String(result.latestBuildStamp ?? '').trim()
+  }
+}
+
+export function isStartupNoticeSkipped(
+  skipped: SkippedUpdateNotice | null | undefined,
+  result: UpdateCheckResult,
+  platform: string
+): boolean {
+  if (!skipped) return false
+  const key = updateNoticeKey(result, platform)
+  if (!key.version) return false
+  return (
+    skipped.platform === key.platform &&
+    skipped.version === key.version &&
+    skipped.stamp === key.stamp
+  )
+}

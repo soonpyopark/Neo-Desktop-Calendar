@@ -40,19 +40,40 @@ type ConfirmDialog = {
   resolve: (ok: boolean) => void
 }
 
-type AppDialog = AlertDialog | ConfirmDialog
+export type DialogChoice = 'confirm' | 'cancel' | 'extra'
+
+type ChoiceDialog = {
+  type: 'choice'
+  message: string
+  title?: string
+  confirmLabel?: string
+  cancelLabel?: string
+  extraLabel: string
+  variant?: DialogVariant
+  resolve: (result: DialogChoice) => void
+}
+
+type AppDialog = AlertDialog | ConfirmDialog | ChoiceDialog
+
+type ChoiceOptions = DialogOptions & { extraLabel: string }
 
 type AppDialogApi = {
   alert: (message: string, options?: DialogOptions) => Promise<void>
   confirm: (message: string, options?: DialogOptions) => Promise<boolean>
+  /** Three-way prompt (e.g. 다운로드 / 나중에 / 이 버전은 알리지 않기). */
+  choice: (message: string, options: ChoiceOptions) => Promise<DialogChoice>
   /** Cancel open + queued dialogs (confirm → false). Used on WorkerW re-embed. */
   dismissAll: () => void
 }
 
 const AppDialogContext = createContext<AppDialogApi | null>(null)
 
-function resolveDialog(dialog: AppDialog, result: boolean): void {
-  if (dialog.type === 'confirm') dialog.resolve(result)
+function resolveDialog(dialog: AppDialog, result: boolean | 'extra'): void {
+  if (dialog.type === 'choice') {
+    dialog.resolve(result === true ? 'confirm' : result === 'extra' ? 'extra' : 'cancel')
+    return
+  }
+  if (dialog.type === 'confirm') dialog.resolve(result === true)
   else dialog.resolve()
 }
 
@@ -61,7 +82,7 @@ function AppDialogModal({
   onClose
 }: {
   dialog: AppDialog | null
-  onClose: (result: boolean) => void
+  onClose: (result: boolean | 'extra') => void
 }): ReactElement | null {
   useEffect(() => {
     if (!dialog) return undefined
@@ -74,9 +95,10 @@ function AppDialogModal({
 
   if (!dialog) return null
 
-  const isConfirm = dialog.type === 'confirm'
+  const isConfirm = dialog.type === 'confirm' || dialog.type === 'choice'
   const confirmLabel = dialog.confirmLabel ?? '확인'
   const cancelLabel = isConfirm ? (dialog.cancelLabel ?? '취소') : '취소'
+  const extraLabel = dialog.type === 'choice' ? dialog.extraLabel : ''
 
   return (
     <InteractionUI
@@ -85,7 +107,10 @@ function AppDialogModal({
       role="presentation"
     >
       <div
-        className="neo-modal-shell settings-scroll max-h-[calc(100vh-2rem)] w-full max-w-[360px] overflow-y-auto"
+        className={cn(
+          'neo-modal-shell settings-scroll max-h-[calc(100vh-2rem)] w-full overflow-y-auto',
+          dialog.type === 'choice' ? 'max-w-[420px]' : 'max-w-[360px]'
+        )}
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -103,7 +128,16 @@ function AppDialogModal({
         >
           {dialog.message}
         </p>
-        <div className="neo-modal-shell-footer flex justify-end gap-2 px-4 py-3">
+        <div className="neo-modal-shell-footer flex flex-wrap justify-end gap-2 px-4 py-3">
+          {dialog.type === 'choice' ? (
+            <button
+              type="button"
+              className="mr-auto rounded-full px-5 py-2 text-sm font-medium text-gcal-body transition-colors hover:bg-gcal-surface-2"
+              onClick={() => onClose('extra')}
+            >
+              {extraLabel}
+            </button>
+          ) : null}
           {isConfirm ? (
             <button
               type="button"
@@ -155,7 +189,7 @@ export function AppDialogProvider({ children }: { children: ReactNode }): ReactE
   )
 
   const closeDialog = useCallback(
-    (result: boolean) => {
+    (result: boolean | 'extra') => {
       // Same click can fall through after the modal unmounts and wipe sibling panels (quickEdit).
       window.neoCalendar?.blockPanelOutsideClose?.(450)
       const current = dialogRef.current
@@ -211,6 +245,24 @@ export function AppDialogProvider({ children }: { children: ReactNode }): ReactE
     [enqueue]
   )
 
+  const choice = useCallback(
+    (message: string, options: ChoiceOptions) => {
+      return new Promise<DialogChoice>((resolve) => {
+        enqueue({
+          type: 'choice',
+          message,
+          title: options.title,
+          confirmLabel: options.confirmLabel,
+          cancelLabel: options.cancelLabel,
+          extraLabel: options.extraLabel,
+          variant: options.variant,
+          resolve
+        })
+      })
+    },
+    [enqueue]
+  )
+
   // WorkerW re-embed / enter desktop under icons — never leave a modal on click-through.
   useEffect(() => {
     const api = window.neoCalendar
@@ -222,7 +274,10 @@ export function AppDialogProvider({ children }: { children: ReactNode }): ReactE
     })
   }, [dismissAll])
 
-  const value = useMemo(() => ({ alert, confirm, dismissAll }), [alert, confirm, dismissAll])
+  const value = useMemo(
+    () => ({ alert, confirm, choice, dismissAll }),
+    [alert, confirm, choice, dismissAll]
+  )
 
   return (
     <AppDialogContext.Provider value={value}>

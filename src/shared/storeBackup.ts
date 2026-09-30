@@ -97,9 +97,16 @@ export function isStoreBackupDayFolder(name: string): boolean {
   return /^\d{8}$/.test(String(name ?? ''))
 }
 
+function toNfc(value: unknown): string {
+  return String(value ?? '').normalize('NFC')
+}
+
+function backupFileBaseName(name: string): string {
+  return toNfc(name).split(/[/\\]/).pop() ?? ''
+}
+
 export function extractBackupStamp(name: string): string | null {
-  const base = String(name ?? '').split(/[/\\]/).pop() ?? ''
-  const match = /_(\d{6}_\d{6})\.zip$/i.exec(base)
+  const match = /_(\d{6}_\d{6})\.zip$/i.exec(backupFileBaseName(name))
   return match ? match[1] : null
 }
 
@@ -108,12 +115,13 @@ export function storeBackupFileName(date = new Date()): string {
 }
 
 export function isStoreBackupFileName(name: string): boolean {
-  const base = String(name ?? '').split(/[/\\]/).pop() ?? ''
+  const base = backupFileBaseName(name)
+  const prefix = toNfc(STORE_BACKUP_FILE_PREFIX)
   if (!base || base.includes('..')) return false
-  if (!base.startsWith(STORE_BACKUP_FILE_PREFIX) || !base.toLowerCase().endsWith('.zip')) {
+  if (!base.startsWith(prefix) || !base.toLowerCase().endsWith('.zip')) {
     return false
   }
-  const rest = base.slice(STORE_BACKUP_FILE_PREFIX.length, -4)
+  const rest = base.slice(prefix.length, -4)
   return /^\d{6}_\d{6}$/.test(rest)
 }
 

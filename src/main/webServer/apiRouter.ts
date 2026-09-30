@@ -24,6 +24,7 @@ import {
   deleteLoginAudit,
   listLoginAudit
 } from '../calendarStore/loginAuditService'
+import { getStoreBackupStatus } from '../storeBackupService'
 
 export type ApiRouterDeps = {
   auth: AuthService
@@ -410,6 +411,17 @@ export async function handleApiRequest(
     return {
       status: 200,
       body: await deleteLoginAudit(decodeURIComponent(auditDeleteMatch[1]), calendarStore.dataRoot)
+    }
+  }
+
+  if (p === '/api/store-backup' && m === 'GET') {
+    const denied = requireCap(user, 'backupStore')
+    if (denied) return denied
+    try {
+      return { status: 200, body: await getStoreBackupStatus() }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '백업 상태를 불러오지 못했습니다.'
+      return jsonError(400, message)
     }
   }
 
