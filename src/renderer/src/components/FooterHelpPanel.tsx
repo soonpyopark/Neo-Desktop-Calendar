@@ -145,7 +145,7 @@ export function FooterHelpPanel({
               className="inline-flex h-9 shrink-0 items-center justify-center rounded-full px-3 text-sm font-medium leading-none text-gcal-blue transition-colors hover:bg-gcal-blue-soft disabled:opacity-60"
               onClick={handleUpdateCheck}
               disabled={updateChecking}
-              title="GitHub Releases에서 새 버전 확인"
+              title="GitHub Releases에서 새 버전·이 OS용 빌드를 확인합니다"
             >
               {updateChecking ? '확인 중…' : '업데이트 확인'}
             </button>

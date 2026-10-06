@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * Build portable zip for Neo Desktop Calendar (Electron).
- * Requires 7-Zip on the build machine (default: C:\Program Files\7-Zip\7z.exe).
+ * Neo Desktop Calendar 포터블 zip 빌드.
+ * 빌드 머신에 7-Zip 필요 (기본: C:\Program Files\7-Zip\7z.exe).
  *
- * Flow:
- * 1) stamp APP_BUILD_STAMP + sync-version (same YYMMDD_HHMMSS as zip filename)
- * 2) build desktop-hit helper + electron-vite build + electron-builder --win --dir
- * 3) stage win-unpacked (+ .env without holiday API key; no data/)
+ * 흐름:
+ * 1) APP_BUILD_STAMP 찍고 sync-version (zip 파일명의 YYMMDD_HHMMSS와 동일)
+ * 2) desktop-hit 헬퍼 + electron-vite build + electron-builder --win --dir
+ * 3) win-unpacked 스테이징 (+ 공휴일 API 키 없는 .env, data/ 없음)
  * 4) 7z a -tzip → msi/Neo Desktop Calendar v{version}_YYMMDD_HHMMSS_portable.zip
  */
 

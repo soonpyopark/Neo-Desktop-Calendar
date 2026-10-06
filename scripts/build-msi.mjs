@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Build per-user Windows MSI for Neo Desktop Calendar (Electron).
- * Requires WiX CLI 7+ (winget install WiXToolset.WiXCLI) and: wix eula accept wix7
+ * Neo Desktop Calendar Windows MSI (현재 사용자 설치) 빌드.
+ * WiX CLI 7+ 필요 (winget install WiXToolset.WiXCLI) 후: wix eula accept wix7
  *
- * Flow:
- * 1) stamp APP_BUILD_STAMP + sync-version (same YYMMDD_HHMMSS as MSI filename)
- * 2) build desktop-hit helper + electron-vite build + electron-builder --win --dir → release/win-unpacked/
- * 3) stage into a no-space temp work dir (repo path has spaces; WiX Files Include splits on them)
- *    (+ .env without any 공휴일 API key — the key never leaves the build machine)
+ * 흐름:
+ * 1) APP_BUILD_STAMP 찍고 sync-version (MSI 파일명의 YYMMDD_HHMMSS와 동일)
+ * 2) desktop-hit 헬퍼 + electron-vite build + electron-builder --win --dir → release/win-unpacked/
+ * 3) 공백 없는 임시 작업 폴더에 스테이징 (저장소 경로에 공백이 있으면 WiX Files Include가 깨짐)
+ *    (+ .env에서 공휴일 API 키 제거 — 키는 빌드 머신을 떠나지 않음)
  * 4) wix build Product.wxs → msi/Neo Desktop Calendar v{version}_YYMMDD_HHMMSS.msi
  *
  * 대한민국 공휴일은 커밋된 src/shared/seed/holidays-kr.json 을 그대로 번들한다.

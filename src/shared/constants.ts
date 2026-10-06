@@ -1,11 +1,11 @@
 /** Continues the My Desktop Calendar line (dev 1.1.x) rather than restarting at 1.0. */
 export const APP_VERSION = '1.2.3'
 /**
- * Package build id (YYMMDD_HHMMSS) — matches MSI/portable filename suffix.
- * Refreshed by `build:release` / `build:msi` / `build:portable` for update checks
- * when the published version is unchanged (same-version republish).
+ * 패키지 빌드 스탬프 (YYMMDD_HHMMSS) — MSI·포터블·macOS 파일명 접미와 동일.
+ * `build:release` / `build:msi` / `build:portable` / `build:dist:mac`이 갱신한다.
+ * 공개 버전이 같아도 재배포 시 업데이트 확인(OS별 스탬프 비교)에 쓴다.
  */
-export const APP_BUILD_STAMP = '260930_115723'
+export const APP_BUILD_STAMP = '261006_225245'
 export const APP_NAME = 'Neo Desktop Calendar'
 export const APP_TITLE = `${APP_NAME} v${APP_VERSION}`
 export const SITE_URL = 'https://note4all.tistory.com'

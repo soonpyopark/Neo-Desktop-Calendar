@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 /**
- * Build MSI + portable zip from one electron publish, one APP_BUILD_STAMP.
+ * Electron을 한 번 빌드한 뒤 같은 APP_BUILD_STAMP로 MSI + 포터블 zip을 만든다.
  *
- * Output (same YYMMDD_HHMMSS):
+ * 산출물 (동일 YYMMDD_HHMMSS):
  *   msi/Neo Desktop Calendar v{version}_{stamp}.msi
  *   msi/Neo Desktop Calendar v{version}_{stamp}_portable.zip
+ *
+ * 업데이트 확인은 Windows에서 위 자산 스탬프만 본다 (macOS 자산과 섞지 않음).
  */
 
 import { execSync } from 'node:child_process'

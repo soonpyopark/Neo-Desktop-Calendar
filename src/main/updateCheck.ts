@@ -2,16 +2,19 @@ import { APP_BUILD_STAMP, APP_NAME, APP_VERSION } from '../shared/constants'
 import {
   RELEASES_LATEST_API,
   RELEASES_PAGE_URL,
-  maxBuildStamp,
+  maxBuildStampForPlatform,
+  normalizeUpdatePlatform,
   parseReleaseTag,
   type UpdateCheckResult
 } from '../shared/updateCheck'
 
 const USER_AGENT = `${APP_NAME}/${APP_VERSION}`
 
+/** GitHub latest 릴리스를 조회하고, 이 OS용 자산 스탬프만 골라 비교 결과를 만든다. */
 export async function fetchLatestRelease(timeoutMs = 12_000): Promise<UpdateCheckResult> {
   const current = APP_VERSION
   const currentBuildStamp = APP_BUILD_STAMP
+  const updatePlatform = normalizeUpdatePlatform(process.platform)
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
 
@@ -31,6 +34,7 @@ export async function fetchLatestRelease(timeoutMs = 12_000): Promise<UpdateChec
         ok: false,
         current,
         currentBuildStamp,
+        updatePlatform,
         error: `GitHub 응답 오류 (HTTP ${response.status})`
       }
     }
@@ -49,6 +53,7 @@ export async function fetchLatestRelease(timeoutMs = 12_000): Promise<UpdateChec
         ok: false,
         current,
         currentBuildStamp,
+        updatePlatform,
         error: `릴리스 버전을 해석할 수 없습니다: ${tagName || '(없음)'}`
       }
     }
@@ -56,7 +61,7 @@ export async function fetchLatestRelease(timeoutMs = 12_000): Promise<UpdateChec
     const assetNames = Array.isArray(payload.assets)
       ? payload.assets.map((item) => String(item?.name || ''))
       : []
-    const latestBuildStamp = maxBuildStamp(assetNames)
+    const latestBuildStamp = maxBuildStampForPlatform(assetNames, updatePlatform)
     const releaseUpdatedAt =
       String(payload.updated_at || payload.published_at || '').trim() || null
     const htmlUrl = String(payload.html_url || '').trim() || RELEASES_PAGE_URL
@@ -67,6 +72,7 @@ export async function fetchLatestRelease(timeoutMs = 12_000): Promise<UpdateChec
       currentBuildStamp,
       latest,
       latestBuildStamp,
+      updatePlatform,
       releaseUpdatedAt,
       releaseUrl: htmlUrl
     }
@@ -81,6 +87,7 @@ export async function fetchLatestRelease(timeoutMs = 12_000): Promise<UpdateChec
       ok: false,
       current,
       currentBuildStamp,
+      updatePlatform,
       error: message
     }
   } finally {

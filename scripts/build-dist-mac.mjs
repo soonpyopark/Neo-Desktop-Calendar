@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 /**
- * Build macOS DMG + zip from one electron publish, one APP_BUILD_STAMP.
+ * Electron을 한 번 빌드한 뒤 같은 APP_BUILD_STAMP로 macOS DMG + zip을 만든다.
  *
- * Must run on macOS (electron-builder cannot produce .app/.dmg on Windows).
+ * macOS에서만 실행 (Windows에서는 electron-builder가 .app/.dmg를 만들지 않음).
  *
- * Output (same YYMMDD_HHMMSS):
+ * 산출물 (동일 YYMMDD_HHMMSS):
  *   msi/Neo Desktop Calendar v{version}_{stamp}_macOS.dmg
  *   msi/Neo Desktop Calendar v{version}_{stamp}_macOS.zip
  *
- * Desktop WorkerW embed is Windows-only; the Mac build is a normal app window.
- * Packaged listen port is 3012 (Windows / npm run dev stay on 3010).
+ * 바탕화면 WorkerW 임베드는 Windows 전용 — Mac은 일반 앱 창.
+ * 패키지 기본 접속 포트는 3012 (Windows / npm run dev는 3010).
+ * 업데이트 확인은 macOS에서 위 `_macOS.*` 스탬프만 본다.
  */
 
 import { execSync } from 'node:child_process'

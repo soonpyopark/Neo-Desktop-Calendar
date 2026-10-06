@@ -578,6 +578,6 @@ export type NeoCalendarApi = {
   getDataRoot: () => Promise<string>
   /** Open http(s) URL in the system browser. */
   openExternal: (url: string) => Promise<void>
-  /** Compare app version with GitHub Releases latest. */
+  /** GitHub Releases latest와 버전·(이 OS) 빌드 스탬프를 비교. */
   checkForUpdates: () => Promise<UpdateCheckResult>
 }

@@ -101,7 +101,7 @@ npm run build:release
 ```
 
 Electron을 한 번만 빌드한 뒤 MSI와 portable zip을 **같은** `YYMMDD_HHMMSS`로 만듭니다
-(업데이트 확인 C — 같은 버전에서 자산 스탬프 비교용).
+(업데이트 확인 — 같은 버전에서도 Windows 설치본끼리 빌드 스탬프를 비교할 때 사용).
 
 개별 빌드:
 
@@ -124,6 +124,16 @@ npm run build:portable
 캘린더 데이터는 설치/포터블 폴더의 `data/`, Electron 캐시는 `.neo-desktop-calendar/electron-profile`에 둡니다 (`%APPDATA%`에는 쓰지 않습니다).  
 MSI에는 Electron 런타임이 포함됩니다 (`Neo Desktop Calendar.exe` + `resources/app.asar` + DLL). 별도 Electron 설치 불필요.
 
+### 업데이트 확인 (GitHub Releases)
+
+앱 시작 시·도움말의 **업데이트 확인**은 GitHub latest 릴리스와 비교합니다.
+
+- **버전**이 더 높으면 새 버전으로 안내합니다.
+- **버전이 같으면** 파일명에 들어간 빌드 스탬프(`YYMMDD_HHMMSS`)만 비교합니다.
+- **OS별로 나눕니다.** Windows는 `.msi` / `_portable.zip`만, macOS는 `_macOS.dmg` / `_macOS.zip`만 봅니다.  
+  다른 OS 자산을 나중에 올려도 상대 OS에는 “같은 버전의 더 최신 빌드”로 뜨지 않습니다.
+- 시작 알림의 「이 버전은 알리지 않기」도 OS·버전·스탬프 단위로 기억합니다.
+
 ### macOS DMG + zip (동일 빌드 스탬프)
 
 ```bash
@@ -142,6 +152,8 @@ npm run build:update_all:mac
 
 → `msi/Neo Desktop Calendar v{버전}_YYMMDD_HHMMSS_macOS.dmg`  
 → `msi/Neo Desktop Calendar v{버전}_YYMMDD_HHMMSS_macOS.zip`
+
+업데이트 확인 시 macOS는 위 `_macOS.*` 자산의 스탬프만 보며, Windows MSI·포터블과는 섞지 않습니다.
 
 캘린더 데이터는 `~/Library/Application Support/Neo Desktop Calendar/data/`에 두고,
 Electron 캐시는 그 아래 `.neo-desktop-calendar/electron-profile`에 둡니다.

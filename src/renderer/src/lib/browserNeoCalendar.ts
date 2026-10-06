@@ -804,9 +804,16 @@ export function installBrowserNeoCalendar(): void {
       const {
         RELEASES_LATEST_API,
         RELEASES_PAGE_URL,
-        maxBuildStamp,
+        maxBuildStampForPlatform,
+        normalizeUpdatePlatform,
         parseReleaseTag
       } = await import('../../../shared/updateCheck')
+      const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+      const updatePlatform = /Windows/i.test(ua)
+        ? normalizeUpdatePlatform('win32')
+        : /Mac OS X|Macintosh/i.test(ua)
+          ? normalizeUpdatePlatform('darwin')
+          : normalizeUpdatePlatform('browser')
       try {
         const response = await fetch(RELEASES_LATEST_API, {
           headers: {
@@ -819,6 +826,7 @@ export function installBrowserNeoCalendar(): void {
             ok: false,
             current: APP_VERSION,
             currentBuildStamp: APP_BUILD_STAMP,
+            updatePlatform,
             error: `GitHub 응답 오류 (HTTP ${response.status})`
           }
         }
@@ -835,6 +843,7 @@ export function installBrowserNeoCalendar(): void {
             ok: false,
             current: APP_VERSION,
             currentBuildStamp: APP_BUILD_STAMP,
+            updatePlatform,
             error: `릴리스 버전을 해석할 수 없습니다: ${payload.tag_name || '(없음)'}`
           }
         }
@@ -846,7 +855,8 @@ export function installBrowserNeoCalendar(): void {
           current: APP_VERSION,
           currentBuildStamp: APP_BUILD_STAMP,
           latest,
-          latestBuildStamp: maxBuildStamp(assetNames),
+          latestBuildStamp: maxBuildStampForPlatform(assetNames, updatePlatform),
+          updatePlatform,
           releaseUpdatedAt:
             String(payload.updated_at || payload.published_at || '').trim() || null,
           releaseUrl: String(payload.html_url || '').trim() || RELEASES_PAGE_URL
@@ -856,6 +866,7 @@ export function installBrowserNeoCalendar(): void {
           ok: false,
           current: APP_VERSION,
           currentBuildStamp: APP_BUILD_STAMP,
+          updatePlatform,
           error: error instanceof Error ? error.message || '네트워크 오류' : '네트워크 오류'
         }
       }

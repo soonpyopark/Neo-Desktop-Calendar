@@ -33,7 +33,7 @@ type DialogApi = {
 }
 
 /**
- * Tiny PDF Editor–style result UI via AppDialog (help panel / in-app).
+ * Tiny PDF Editor와 같은 결과 UI (앱 안 대화상자 / 도움말).
  */
 export async function presentUpdateCheckResult(
   result: UpdateCheckResult,
@@ -136,7 +136,7 @@ function availableUpdateMessage(result: UpdateCheckResult): string {
   return `새 버전이 있습니다: ${latest}\n\n현재 버전: ${currentHint}`
 }
 
-/** Run GitHub Releases check then show the result dialog. */
+/** GitHub Releases를 확인한 뒤 결과 대화상자를 띄운다. */
 export async function runUpdateCheck(dialog: DialogApi): Promise<void> {
   const api = window.neoCalendar
   if (!api?.checkForUpdates) {
@@ -148,8 +148,8 @@ export async function runUpdateCheck(dialog: DialogApi): Promise<void> {
 }
 
 /**
- * Tiny PDF Editor–style silent startup check: prompt only when an update exists
- * and the user has not dismissed this exact release.
+ * Tiny PDF Editor처럼 조용히 시작 확인: 업데이트가 있고
+ * 이 릴리스(OS·버전·스탬프)를 「알리지 않기」하지 않았을 때만 묻는다.
  */
 export async function runStartupUpdateCheck(dialog: DialogApi): Promise<void> {
   const api = window.neoCalendar
