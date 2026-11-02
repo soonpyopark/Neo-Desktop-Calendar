@@ -37,7 +37,7 @@
     "exceljs": "^4.4.0",
     "koffi": "^3.3.6",
     "kor-lunar": "^1.7.0",
-    "node-forge": "github:digitalbazaar/forge#723240415b25120d47146f982809fa69344ab890",
+    "node-forge": "^1.4.2",
     "pdfkit": "^0.20.2",
     "solarlunar": "^3.1.0",
     "ws": "^8.22.1"
@@ -157,7 +157,9 @@
   },
   "overrides": {
     "uuid": "^11.1.1",
-    "@electron/get": "^5.1.0"
+    "@electron/get": "^5.1.0",
+    "minimatch": "^11.0.1",
+    "node-forge": "^1.4.2"
   },
   "allowScripts": {
     "esbuild@0.25.12": true,
