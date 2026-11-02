@@ -145,9 +145,12 @@ export class CalendarStore {
   private readonly calendarsDir: string
   private readonly attachmentsDir: string
   private readonly sessionPath: string
+  /** Browser "로그인 유지" tokens — separate from Electron shell admin-sessions.json. */
+  private readonly browserSessionsPath: string
   private cache: CalendarStoreSnapshot | null = null
   private authToken: string | null = null
   private authLoginId: string | null = null
+  private browserRemembered = new Map<string, string>()
 
   constructor(dataRoot = resolveDataRoot()) {
     this.dataRoot = dataRoot
@@ -155,11 +158,13 @@ export class CalendarStore {
     this.calendarsDir = join(dataRoot, 'calendars')
     this.attachmentsDir = join(dataRoot, 'attachments')
     this.sessionPath = join(dataRoot, 'admin-sessions.json')
+    this.browserSessionsPath = join(dataRoot, 'browser-sessions.json')
     mkdirSync(this.calendarsDir, { recursive: true })
     mkdirSync(this.attachmentsDir, { recursive: true })
     this.migrateLegacyNeoSettings()
     this.ensureSeeded()
     this.loadSession()
+    this.loadBrowserSessions()
   }
 
   getSnapshot(): CalendarStoreSnapshot {
@@ -1439,6 +1444,49 @@ export class CalendarStore {
     })
   }
 
+  /** Remembered browser Bearer tokens (로그인 유지). Independent of shell session. */
+  listBrowserSessions(): Array<{ token: string; loginId: string }> {
+    return Array.from(this.browserRemembered.entries()).map(([token, loginId]) => ({
+      token,
+      loginId
+    }))
+  }
+
+  getBrowserSession(token: string | null | undefined): { token: string; loginId: string } | null {
+    const t = String(token ?? '').trim()
+    if (!t) return null
+    const loginId = this.browserRemembered.get(t)
+    return loginId ? { token: t, loginId } : null
+  }
+
+  putBrowserSession(session: { token: string; loginId: string }): void {
+    const token = String(session.token ?? '').trim()
+    const loginId = String(session.loginId ?? '').trim()
+    if (!token || !loginId) return
+    this.browserRemembered.set(token, loginId)
+    this.persistBrowserSessions()
+  }
+
+  deleteBrowserSession(token: string | null | undefined): void {
+    const t = String(token ?? '').trim()
+    if (!t) return
+    if (!this.browserRemembered.delete(t)) return
+    this.persistBrowserSessions()
+  }
+
+  deleteBrowserSessionsForLoginId(loginId: string | null | undefined): void {
+    const target = String(loginId ?? '').trim().toLowerCase()
+    if (!target) return
+    let changed = false
+    for (const [token, id] of this.browserRemembered) {
+      if (id.toLowerCase() === target) {
+        this.browserRemembered.delete(token)
+        changed = true
+      }
+    }
+    if (changed) this.persistBrowserSessions()
+  }
+
   private loadSession(): void {
     if (!existsSync(this.sessionPath)) return
     try {
@@ -1451,6 +1499,45 @@ export class CalendarStore {
     } catch {
       /* ignore */
     }
+  }
+
+  private loadBrowserSessions(): void {
+    this.browserRemembered.clear()
+    if (!existsSync(this.browserSessionsPath)) {
+      // One-time migrate: older builds stored browser remember in admin-sessions.json.
+      if (this.authToken && this.authLoginId) {
+        this.browserRemembered.set(this.authToken, this.authLoginId)
+        this.persistBrowserSessions()
+      }
+      return
+    }
+    try {
+      const raw = JSON.parse(readFileSync(this.browserSessionsPath, 'utf8')) as {
+        sessions?: Record<string, { loginId?: string } | string>
+      }
+      const sessions = raw.sessions && typeof raw.sessions === 'object' ? raw.sessions : {}
+      for (const [token, value] of Object.entries(sessions)) {
+        const t = String(token ?? '').trim()
+        if (!t) continue
+        const loginId =
+          typeof value === 'string'
+            ? value.trim()
+            : String(value?.loginId ?? '').trim()
+        if (!loginId) continue
+        this.browserRemembered.set(t, loginId)
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  private persistBrowserSessions(): void {
+    const sessions: Record<string, { loginId: string; updatedAt: string }> = {}
+    const updatedAt = new Date().toISOString()
+    for (const [token, loginId] of this.browserRemembered) {
+      sessions[token] = { loginId, updatedAt }
+    }
+    writeJsonAtomic(this.browserSessionsPath, { version: 1, sessions, updatedAt })
   }
 
   private migrateLegacyNeoSettings(): void {

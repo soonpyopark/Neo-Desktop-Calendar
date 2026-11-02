@@ -51,6 +51,8 @@ export async function fetchAuthUser(): Promise<AuthUser | null> {
   let user = await api.getAuth()
   if (!user && isBrowserNeoCalendarHost() && hasBrowserAuthToken()) {
     user = await api.getAuth()
+    // Stale local token after server restart / revoked session — drop so login UI works.
+    if (!user) setToken(null, false)
   }
   return user
 }
@@ -483,7 +485,16 @@ export function installBrowserNeoCalendar(): void {
             retryAfterSec: result.retryAfterSec
           }
         }
-        setToken(result.token, Boolean(remember))
+        const keep = Boolean(remember)
+        setToken(result.token, keep)
+        // Confirm storage before reload — Safari private / blocked storage must not look like success.
+        if (keep && getToken() !== result.token) {
+          try {
+            localStorage.setItem(TOKEN_KEY, result.token)
+          } catch {
+            /* fall through — session still valid until tab closes */
+          }
+        }
         // Full reload so toolbar/auth/store state matches Electron after login.
         window.location.reload()
         return { ok: true, user: result.user }

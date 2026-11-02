@@ -107,6 +107,12 @@ export class AuthService {
       this.sessionToken = saved.token
       this.sessionUser = this.resolveUserByLoginId(saved.loginId)
     }
+    // Warm remembered browser tokens so cold start /api/auth/session works.
+    for (const session of store.listBrowserSessions()) {
+      const user = this.resolveUserByLoginId(session.loginId)
+      if (user) this.browserSessions.set(session.token, user)
+      else this.store.deleteBrowserSession(session.token)
+    }
   }
 
   getUser(): AuthUser | null {
@@ -167,10 +173,8 @@ export class AuthService {
     const token = randomBytes(24).toString('hex')
     this.browserSessions.set(token, member.user)
     if (remember) {
-      // Persist browser token alongside shell format for cold start convenience.
-      this.store.setAuthSession({ token, loginId: member.user.loginId })
-    } else {
-      this.store.setAuthSession(null)
+      // Persist in browser-sessions.json — never touch Electron shell admin-sessions.
+      this.store.putBrowserSession({ token, loginId: member.user.loginId })
     }
     return { ok: true, user: member.user, token }
   }
@@ -185,6 +189,8 @@ export class AuthService {
     const t = String(token ?? '').trim()
     if (!t) return
     this.browserSessions.delete(t)
+    this.store.deleteBrowserSession(t)
+    // Legacy: older builds stored browser remember in admin-sessions.json.
     const saved = this.store.getAuthSession()
     if (saved?.token === t) this.store.setAuthSession(null)
   }
@@ -197,17 +203,31 @@ export class AuthService {
       const fresh = this.resolveUserByLoginId(cached.loginId)
       if (!fresh) {
         this.browserSessions.delete(t)
+        this.store.deleteBrowserSession(t)
         return null
       }
       this.browserSessions.set(t, fresh)
       return { ...fresh }
     }
-    // Accept persisted token from previous run (restore into map).
+
+    const remembered = this.store.getBrowserSession(t)
+    if (remembered?.loginId) {
+      const restored = this.resolveUserByLoginId(remembered.loginId)
+      if (!restored) {
+        this.store.deleteBrowserSession(t)
+        return null
+      }
+      this.browserSessions.set(t, restored)
+      return { ...restored }
+    }
+
+    // Legacy fallback: browser remember used to share admin-sessions.json with the shell.
     const saved = this.store.getAuthSession()
     if (saved?.token === t && saved.loginId) {
       const restored = this.resolveUserByLoginId(saved.loginId)
       if (!restored) return null
       this.browserSessions.set(t, restored)
+      this.store.putBrowserSession({ token: t, loginId: saved.loginId })
       return { ...restored }
     }
     return null
@@ -235,6 +255,7 @@ export class AuthService {
     for (const [token, user] of this.browserSessions) {
       if (user.loginId.toLowerCase() === target) this.browserSessions.delete(token)
     }
+    this.store.deleteBrowserSessionsForLoginId(loginId)
     if (this.sessionUser?.loginId.toLowerCase() === target) {
       this.logout()
     }

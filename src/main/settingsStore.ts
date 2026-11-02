@@ -37,4 +37,24 @@ export class SettingsStore {
   setAuthSession(session: { token: string; loginId: string } | null): void {
     this.calendarStore.setAuthSession(session)
   }
+
+  listBrowserSessions(): Array<{ token: string; loginId: string }> {
+    return this.calendarStore.listBrowserSessions()
+  }
+
+  getBrowserSession(token: string | null | undefined): { token: string; loginId: string } | null {
+    return this.calendarStore.getBrowserSession(token)
+  }
+
+  putBrowserSession(session: { token: string; loginId: string }): void {
+    this.calendarStore.putBrowserSession(session)
+  }
+
+  deleteBrowserSession(token: string | null | undefined): void {
+    this.calendarStore.deleteBrowserSession(token)
+  }
+
+  deleteBrowserSessionsForLoginId(loginId: string | null | undefined): void {
+    this.calendarStore.deleteBrowserSessionsForLoginId(loginId)
+  }
 }
