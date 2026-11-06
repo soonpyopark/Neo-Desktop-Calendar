@@ -399,7 +399,11 @@ export class DesktopModeController {
       this.preferredPlacement = captureDisplayPlacement(bounds)
     }
 
-    const mode = settings.widget.launchMode === 'desktop' ? 'desktop' : 'window'
+    // WorkerW desktop embed is Windows-only — macOS always restores as a normal window.
+    const mode =
+      process.platform === 'win32' && settings.widget.launchMode === 'desktop'
+        ? 'desktop'
+        : 'window'
     console.log('[desktop] Restoring session', {
       mode,
       bounds,
@@ -588,6 +592,11 @@ export class DesktopModeController {
   ): ModeStatus {
     const win = this.getWindow()
     if (!win) return this.getStatus()
+
+    if (process.platform !== 'win32') {
+      console.log('[desktop] Ignoring enterDesktop — desktop embed is Windows-only')
+      return this.getStatus()
+    }
 
     if (!options.intentional) {
       console.log('[desktop] Ignoring non-intentional enterDesktop')

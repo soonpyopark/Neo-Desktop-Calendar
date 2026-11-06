@@ -329,6 +329,8 @@ export function DayQuickEditPopover({
   const panelRef = useRef<HTMLDivElement | null>(null)
   const eventClickTimerRef = useRef<number | null>(null)
   const suppressEventClickRef = useRef(false)
+  /** True after a row drag so the trailing click does not open event detail. */
+  const rowDragMovedRef = useRef(false)
   const bodyExtra = expandBody ? QUICK_EDIT_BODY_EXTRA_MONTH : 0
   const styleOptions = {
     viewMode,
@@ -954,6 +956,9 @@ export function DayQuickEditPopover({
                       draggable={canDrag}
                       onDragStart={(e) => {
                         if (!canDrag) return
+                        rowDragMovedRef.current = true
+                        suppressEventClickRef.current = true
+                        clearEventClickTimer()
                         e.dataTransfer.effectAllowed = 'move'
                         e.dataTransfer.setData('text/plain', seriesId)
                         setDragSeriesId(seriesId)
@@ -962,6 +967,11 @@ export function DayQuickEditPopover({
                       onDragEnd={() => {
                         setDragSeriesId(null)
                         setDropSeriesId(null)
+                        // Keep suppress through the synthetic click that follows dragend.
+                        window.setTimeout(() => {
+                          rowDragMovedRef.current = false
+                          suppressEventClickRef.current = false
+                        }, 0)
                       }}
                       onDragOver={(e) => {
                         if (!canDrag || !dragSeriesId || dragSeriesId === seriesId) return
@@ -1030,6 +1040,11 @@ export function DayQuickEditPopover({
                         tabIndex={0}
                         onClick={(e) => {
                           e.stopPropagation()
+                          if (rowDragMovedRef.current || suppressEventClickRef.current) {
+                            rowDragMovedRef.current = false
+                            suppressEventClickRef.current = false
+                            return
+                          }
                           openEventDetailFromRow(item, {
                             x: e.clientX,
                             y: e.clientY,

@@ -996,13 +996,6 @@ textarea {
   opacity: 1;
 }
 
-.event-bar.is-draggable {
-  cursor: grab;
-}
-
-.event-bar.is-draggable:active {
-  cursor: grabbing;
-}
 
 .event-bar.is-dragging {
   opacity: 0.45;
@@ -2480,11 +2473,18 @@ body.is-resizing-window {
   background: var(--gcal-surface-2);
 }
 
-.day-quick-edit-row.is-draggable {
+/* html/body set -webkit-user-drag:none; Electron/macOS needs an explicit element. */
+[draggable='true'],
+.day-quick-edit-row.is-draggable,
+.event-bar.is-draggable,
+.day-events-popover-item.is-draggable {
+  -webkit-user-drag: element;
   cursor: grab;
 }
 
-.day-quick-edit-row.is-draggable:active {
+.day-quick-edit-row.is-draggable:active,
+.event-bar.is-draggable:active,
+.day-events-popover-item.is-draggable:active {
   cursor: grabbing;
 }
 
@@ -3726,13 +3726,6 @@ html.neo-panel-window.dark form.shell-solid-surface.rounded-lg {
   background: var(--gcal-surface-2);
 }
 
-.day-events-popover-item.is-draggable {
-  cursor: grab;
-}
-
-.day-events-popover-item.is-draggable:active {
-  cursor: grabbing;
-}
 
 .day-events-popover li.is-dragging {
   opacity: 0.45;

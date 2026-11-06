@@ -339,24 +339,33 @@ export function createAppTray(options: {
         click: () => hideToTray()
       },
       { type: 'separator' },
-      {
-        label: mode === 'desktop' ? '✓ 바탕화면 모드' : '바탕화면 모드',
-        click: () => {
-          if (options.desktopMode.getLaunchMode() === 'desktop') return
-          const win = options.getWindow()
-          if (win && !win.isVisible()) win.showInactive()
-          options.desktopMode.enterDesktop({
-            intentional: true,
-            force: true,
-            fromTray: true
-          })
-          rebuild()
-        }
-      },
-      {
-        label: mode === 'window' ? '✓ 창 모드 (Unlock)' : '창 모드 (Unlock)',
-        click: () => showFromTray()
-      },
+      ...(process.platform === 'win32'
+        ? [
+            {
+              label: mode === 'desktop' ? '✓ 바탕화면 모드' : '바탕화면 모드',
+              click: () => {
+                if (options.desktopMode.getLaunchMode() === 'desktop') return
+                const win = options.getWindow()
+                if (win && !win.isVisible()) win.showInactive()
+                options.desktopMode.enterDesktop({
+                  intentional: true,
+                  force: true,
+                  fromTray: true
+                })
+                rebuild()
+              }
+            } as Electron.MenuItemConstructorOptions,
+            {
+              label: mode === 'window' ? '✓ 창 모드 (Unlock)' : '창 모드 (Unlock)',
+              click: () => showFromTray()
+            } as Electron.MenuItemConstructorOptions
+          ]
+        : [
+            {
+              label: '창 보이기',
+              click: () => showFromTray()
+            } as Electron.MenuItemConstructorOptions
+          ]),
       { type: 'separator' },
       {
         label: '업데이트 확인',

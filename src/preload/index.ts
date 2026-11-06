@@ -35,6 +35,7 @@ const api: NeoCalendarApi = {
   setIgnoreMouse: (ignore: boolean, options: SetIgnoreMouseOptions = { forwardToOverlay: true }) => {
     ipcRenderer.send('set-ignore-mouse', ignore, options)
   },
+  supportsDesktopEmbed: process.platform === 'win32',
   getModeStatus: () => ipcRenderer.invoke('get-mode-status') as Promise<ModeStatus>,
   enterDesktop: () => ipcRenderer.invoke('enter-desktop') as Promise<ModeStatus>,
   enterWindow: () => ipcRenderer.invoke('enter-window') as Promise<ModeStatus>,

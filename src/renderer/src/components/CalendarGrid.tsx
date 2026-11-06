@@ -2039,7 +2039,10 @@ export function CalendarGrid({
     void openExternalUrl(webEditUrl)
   }
 
+  const supportsDesktopEmbed = window.neoCalendar?.supportsDesktopEmbed === true
+
   const enterDesktop = async (): Promise<void> => {
+    if (!supportsDesktopEmbed) return
     setModeBusy(true)
     try {
       const status = await window.neoCalendar.enterDesktop()
@@ -3117,33 +3120,35 @@ export function CalendarGrid({
             >
               <HelpIcon />
             </InteractionUI>
-            <InteractionUI
-              as="button"
-              className={cn(
-                desktopModeIconBtnClass,
-                densityIconBtnClass,
-                iconBtnDisabledClass,
-                mode === 'desktop' && softBlueIconBtnMutedClass
-              )}
-              captureOnHover={captureToolbarOnHover}
-              data-toolbar-action={CHROME_TOOLBAR_ACTIONS.enterDesktop}
-              aria-label="바탕화면모드"
-              aria-pressed={mode === 'desktop'}
-              title={
-                mode === 'desktop'
-                  ? '바탕화면 모드 — 아이콘 아래'
-                  : !switchReady
-                    ? '잠시만 기다려 주세요'
-                    : '바탕화면에 고정 (아이콘 아래로 들어감)'
-              }
-              disabled={modeBusy || mode === 'desktop' || !switchReady}
-              onClick={() => {
-                if (!switchReady || modeBusy) return
-                void enterDesktop()
-              }}
-            >
-              <DesktopModeIcon />
-            </InteractionUI>
+            {supportsDesktopEmbed ? (
+              <InteractionUI
+                as="button"
+                className={cn(
+                  desktopModeIconBtnClass,
+                  densityIconBtnClass,
+                  iconBtnDisabledClass,
+                  mode === 'desktop' && softBlueIconBtnMutedClass
+                )}
+                captureOnHover={captureToolbarOnHover}
+                data-toolbar-action={CHROME_TOOLBAR_ACTIONS.enterDesktop}
+                aria-label="바탕화면모드"
+                aria-pressed={mode === 'desktop'}
+                title={
+                  mode === 'desktop'
+                    ? '바탕화면 모드 — 아이콘 아래'
+                    : !switchReady
+                      ? '잠시만 기다려 주세요'
+                      : '바탕화면에 고정 (아이콘 아래로 들어감)'
+                }
+                disabled={modeBusy || mode === 'desktop' || !switchReady}
+                onClick={() => {
+                  if (!switchReady || modeBusy) return
+                  void enterDesktop()
+                }}
+              >
+                <DesktopModeIcon />
+              </InteractionUI>
+            ) : null}
             <InteractionUI
               as="button"
               className={cn(

@@ -365,6 +365,7 @@ export function installBrowserNeoCalendar(): void {
 
   const browserApi: NeoCalendarApi = {
     setIgnoreMouse: () => undefined,
+    supportsDesktopEmbed: false,
     getModeStatus: async () => ({
       mode: 'window',
       embedded: false,

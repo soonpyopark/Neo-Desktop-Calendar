@@ -309,6 +309,11 @@ export type AttachmentImageResult =
 
 export type NeoCalendarApi = {
   setIgnoreMouse: (ignore: boolean, options?: SetIgnoreMouseOptions) => void
+  /**
+   * True when WorkerW desktop-under-icons is available (Windows only).
+   * macOS builds keep a normal app window — hide desktop-mode chrome when false.
+   */
+  supportsDesktopEmbed: boolean
   getModeStatus: () => Promise<ModeStatus>
   enterDesktop: () => Promise<ModeStatus>
   enterWindow: () => Promise<ModeStatus>
