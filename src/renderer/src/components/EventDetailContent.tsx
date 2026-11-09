@@ -96,7 +96,7 @@ export function EventDetailContent({
           <h3
             className={cn(
               'm-0 flex flex-wrap items-center gap-1.5 text-xl font-normal leading-snug text-gcal-heading',
-              completed && 'line-through opacity-70',
+              completed && 'opacity-70',
               titleEditable && 'cursor-pointer'
             )}
             title={titleEditable ? '더블클릭하여 편집' : undefined}

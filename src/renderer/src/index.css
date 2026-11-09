@@ -1836,7 +1836,6 @@ input[type='search']::-ms-clear,
 }
 
 .search-result-title.is-completed {
-  text-decoration: line-through;
   color: var(--gcal-muted);
 }
 
@@ -4360,7 +4359,8 @@ button.is-primary:hover:not(:disabled) {
 }
 
 .settings-panel-shell--overlay {
-  width: min(90%, var(--app-width, 90dvw));
+  /* Same 1024px cap as 세로보기 / 검색 / 도움말 / 첨부 보기. */
+  width: min(100%, 1024px, var(--app-width, 90dvw));
   height: min(80%, var(--app-height, 80dvh));
   max-height: min(80%, var(--app-height, 80dvh));
   border-radius: 0.75rem;

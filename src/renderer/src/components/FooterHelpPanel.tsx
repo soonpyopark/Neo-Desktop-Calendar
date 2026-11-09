@@ -96,7 +96,7 @@ export function FooterHelpPanel({
             'search-panel-shell shell-solid-surface pointer-events-auto relative z-[1] flex min-h-0 overflow-hidden rounded-xl',
             isFloating
               ? 'h-full w-full max-h-full flex-col'
-              : 'h-[80%] w-[90%] max-h-[80%] flex-col shadow-[0_8px_28px_rgba(0,0,0,0.18)]'
+              : 'h-[80%] w-full max-w-[1024px] max-h-[80%] flex-col shadow-[0_8px_28px_rgba(0,0,0,0.18)]'
           )}
           role="dialog"
           aria-modal="true"

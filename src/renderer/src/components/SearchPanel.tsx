@@ -465,7 +465,7 @@ export function SearchPanel({
         role="presentation"
       >
         <div
-          className={`search-panel-shell shell-solid-surface pointer-events-auto relative z-[1] flex min-h-0 overflow-hidden rounded-xl${isFloating ? '' : ' shadow-[0_8px_28px_rgba(0,0,0,0.18)]'} ${isFloating ? 'h-full w-full max-h-full flex-col' : 'h-[80%] w-[90%] max-h-[80%] flex-col'}`}
+          className={`search-panel-shell shell-solid-surface pointer-events-auto relative z-[1] flex min-h-0 overflow-hidden rounded-xl${isFloating ? '' : ' shadow-[0_8px_28px_rgba(0,0,0,0.18)]'} ${isFloating ? 'h-full w-full max-h-full flex-col' : 'h-[80%] w-full max-w-[1024px] max-h-[80%] flex-col'}`}
           ref={shellRef}
           role="dialog"
           aria-modal="true"
@@ -759,7 +759,7 @@ export function SearchPanel({
                             <span
                               className={cn(
                                 'min-w-0 flex-1 truncate text-sm font-medium text-gcal-heading',
-                                completed && 'line-through opacity-70'
+                                completed && 'opacity-70'
                               )}
                             >
                               {event.title || '(제목 없음)'}

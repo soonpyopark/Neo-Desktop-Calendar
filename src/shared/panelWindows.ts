@@ -412,7 +412,8 @@ export function computePanelWindowBounds(options: {
       mainOrigin,
       mainSize,
       workArea,
-      width: computeMainPanelWidth(mainSize.width),
+      // Same 1024 cap as 세로보기 (shrinks when the calendar is narrower).
+      width: computeDayListPreviewWidth(mainSize.width, workArea.width),
       height: Math.min(computeMainPanelHeight(mainSize.height), workArea.height - VIEWPORT_PAD * 2)
     })
   }

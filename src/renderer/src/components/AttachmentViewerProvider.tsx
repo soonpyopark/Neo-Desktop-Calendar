@@ -279,7 +279,7 @@ export function AttachmentImageViewer({
     )
   }
 
-  // Browser / no-panel fallback — same footprint as search/settings (90% × 80%).
+  // Browser / no-panel fallback — same footprint as search/settings (≤1024px × 80%).
   return (
     <InteractionUI
       className="attachment-viewer-root fixed inset-0 z-[110] flex items-center justify-center bg-black/35 p-4"
@@ -287,7 +287,7 @@ export function AttachmentImageViewer({
       role="presentation"
     >
       <div className="pointer-events-none absolute inset-0" aria-hidden />
-      <div className="relative z-[1] h-[80%] max-h-[80%] w-[90%] max-w-[90%]">
+      <div className="relative z-[1] h-[80%] max-h-[80%] w-full max-w-[1024px]">
         {shell}
       </div>
     </InteractionUI>
