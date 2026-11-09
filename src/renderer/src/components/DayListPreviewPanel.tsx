@@ -785,7 +785,7 @@ export function DayListPreviewPanel({
             'day-list-preview-shell shell-solid-surface pointer-events-auto relative z-[1] flex min-h-0 flex-col overflow-hidden rounded-xl',
             isFloating
               ? 'h-full max-h-full w-full'
-              : 'h-[80%] max-h-[80%] w-[90%] shadow-[0_8px_28px_rgba(0,0,0,0.18)]'
+              : 'h-[80%] max-h-[80%] w-full max-w-[1024px] shadow-[0_8px_28px_rgba(0,0,0,0.18)]'
           )}
           role="dialog"
           aria-modal="true"
@@ -870,6 +870,21 @@ export function DayListPreviewPanel({
               </button>
               <button
                 type="button"
+                className={cn('day-quick-edit-close', findOpen && 'is-active')}
+                onClick={() => setFindOpen((prev) => !prev)}
+                aria-label="화면 내 검색"
+                title="화면 내 검색 (Ctrl+F)"
+                aria-pressed={findOpen}
+              >
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
                 className="day-quick-edit-close"
                 disabled={exporting}
                 onClick={() => void exportShownMonth('excel')}
@@ -900,21 +915,6 @@ export function DayListPreviewPanel({
               </button>
             </div>
             <div className="flex shrink-0 items-center gap-1">
-              <button
-                type="button"
-                className="day-quick-edit-close"
-                onClick={() => setFindOpen((prev) => !prev)}
-                aria-label="화면 내 검색"
-                title="화면 내 검색 (Ctrl+F)"
-                aria-pressed={findOpen}
-              >
-                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                  <path
-                    fill="currentColor"
-                    d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"
-                  />
-                </svg>
-              </button>
               <button
                 type="button"
                 className={cn('day-quick-edit-close', sortDir === 'asc' && 'is-active')}

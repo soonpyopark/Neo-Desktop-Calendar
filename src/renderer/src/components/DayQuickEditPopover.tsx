@@ -131,6 +131,7 @@ export type DayQuickEditPopoverProps = {
   /** Copy selected event onto another date (single instance; closes panel after). */
   onCopyEvent?: (event: CalendarEvent, targetDateKey: string) => void | Promise<void>
   onOpenMore: (event?: CalendarEvent | null) => void
+  /** @deprecated Row click selects only; use onEditEvent / footer edit. Kept for callers. */
   onOpenEvent?: (
     event: CalendarEvent,
     pointer?: { x: number; y: number; screenX?: number; screenY?: number }
@@ -144,8 +145,8 @@ export type DayQuickEditPopoverProps = {
   /** Raise this panel above sibling overlays (e.g. event detail). */
   onRaise?: () => void
   /**
-   * Close a sibling event-detail popover when the user goes back to working in
-   * this panel (padding, checkbox, marker, footer) — event titles keep opening it.
+   * Close a sibling event-detail popover when the user selects a row or works in
+   * this panel (padding, checkbox, marker, footer).
    */
   onDismissEventDetail?: () => void
 }
@@ -293,7 +294,6 @@ export function DayQuickEditPopover({
   onCopyEvent,
   onOpenMore,
   onEditEvent,
-  onOpenEvent,
   onAttachFiles,
   onDeleteCompleted,
   zIndex = 35,
@@ -327,9 +327,9 @@ export function DayQuickEditPopover({
   const highlightTriggerRef = useRef<HTMLButtonElement>(null)
   const highlightFlyoutRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
-  const eventClickTimerRef = useRef<number | null>(null)
+  /** Suppress the synthetic click that follows dragend / dblclick. */
   const suppressEventClickRef = useRef(false)
-  /** True after a row drag so the trailing click does not open event detail. */
+  /** True after a row drag so the trailing click does not change selection oddly. */
   const rowDragMovedRef = useRef(false)
   const bodyExtra = expandBody ? QUICK_EDIT_BODY_EXTRA_MONTH : 0
   const styleOptions = {
@@ -355,36 +355,6 @@ export function DayQuickEditPopover({
     setOptimisticDayColor(dayColor)
     setOptimisticDayHighlight(dayHighlight)
   }, [dateKey, dayColor, dayHighlight])
-
-  const clearEventClickTimer = (): void => {
-    if (eventClickTimerRef.current != null) {
-      window.clearTimeout(eventClickTimerRef.current)
-      eventClickTimerRef.current = null
-    }
-  }
-
-  useEffect(
-    () => () => {
-      clearEventClickTimer()
-    },
-    []
-  )
-
-  const openEventDetailFromRow = (
-    item: CalendarEvent,
-    pointer?: { x: number; y: number; screenX?: number; screenY?: number }
-  ): void => {
-    setSelectedEvent(item)
-    clearEventClickTimer()
-    eventClickTimerRef.current = window.setTimeout(() => {
-      eventClickTimerRef.current = null
-      if (suppressEventClickRef.current) {
-        suppressEventClickRef.current = false
-        return
-      }
-      onOpenEvent?.(item, pointer)
-    }, 250)
-  }
 
   const [style, setStyle] = useState<CSSProperties | undefined>(() =>
     buildQuickEditStyle(anchorRect, styleOptions)
@@ -608,6 +578,21 @@ export function DayQuickEditPopover({
       next.map((event, index) => ({ event, sortOrder: index })),
       resolvedDayKey
     )
+  }
+
+  const moveSelectedBy = (delta: -1 | 1): void => {
+    if (!canEdit || !selectedEvent || !onReorderEvents) return
+    if (selectedEvent.calendarId === HOLIDAYS_KR_CALENDAR_ID) return
+    const movable = dayEvents.filter((event) => event.calendarId !== HOLIDAYS_KR_CALENDAR_ID)
+    const selectedSid = getSeriesId(selectedEvent) || selectedEvent.id
+    const fromIndex = movable.findIndex(
+      (event) => (getSeriesId(event) || event.id) === selectedSid
+    )
+    if (fromIndex < 0) return
+    const toIndex = fromIndex + delta
+    if (toIndex < 0 || toIndex >= movable.length) return
+    const target = movable[toIndex]
+    reorderMovable(selectedSid, getSeriesId(target) || target.id)
   }
 
   // Keep selected row in sync when store patches the same occurrence (MDC).
@@ -914,6 +899,8 @@ export function DayQuickEditPopover({
 
           <ul
             className="day-quick-edit-list settings-scroll"
+            role="listbox"
+            aria-label="이 날의 일정"
             onMouseDown={(e) => {
               // Empty list area below items — clear the selected row highlight / footer target.
               if (e.target === e.currentTarget) {
@@ -953,12 +940,41 @@ export function DayQuickEditPopover({
                       className={`day-quick-edit-row${completed ? ' is-completed' : ''}${
                         isSelected ? ' is-selected' : ''
                       }${canDrag ? ' is-draggable' : ''}`}
+                      role="option"
+                      aria-selected={isSelected}
+                      tabIndex={0}
+                      title={item.title}
                       draggable={canDrag}
+                      onClick={() => {
+                        if (rowDragMovedRef.current || suppressEventClickRef.current) {
+                          rowDragMovedRef.current = false
+                          suppressEventClickRef.current = false
+                          return
+                        }
+                        setSelectedEvent(item)
+                        onDismissEventDetail?.()
+                      }}
+                      onDoubleClick={(e) => {
+                        if ((e.target as HTMLElement | null)?.closest?.('.day-quick-edit-check')) {
+                          return
+                        }
+                        e.preventDefault()
+                        suppressEventClickRef.current = true
+                        setSelectedEvent(item)
+                        if (isHoliday) return
+                        onEditEvent?.(item)
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key !== 'Enter' && e.key !== ' ') return
+                        e.preventDefault()
+                        setSelectedEvent(item)
+                        onDismissEventDetail?.()
+                        if (e.key === 'Enter' && !isHoliday) onEditEvent?.(item)
+                      }}
                       onDragStart={(e) => {
                         if (!canDrag) return
                         rowDragMovedRef.current = true
                         suppressEventClickRef.current = true
-                        clearEventClickTimer()
                         e.dataTransfer.effectAllowed = 'move'
                         e.dataTransfer.setData('text/plain', seriesId)
                         setDragSeriesId(seriesId)
@@ -993,11 +1009,13 @@ export function DayQuickEditPopover({
                         if (fromId) reorderMovable(fromId, seriesId)
                       }}
                     >
+                      {/* Checkbox alone toggles complete; rest of row selects. */}
                       <input
                         type="checkbox"
                         className="day-quick-edit-check"
                         checked={completed}
                         disabled={!canEdit || isHoliday}
+                        aria-label="일정 완료"
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => {
                           if (isHoliday) return
@@ -1005,25 +1023,7 @@ export function DayQuickEditPopover({
                           onToggleCompleted(item, e.target.checked)
                         }}
                       />
-                      {/* Marks focus the row (footer target); dblclick opens the editor. */}
-                      <span
-                        className="day-quick-edit-row-marks"
-                        role="presentation"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          clearEventClickTimer()
-                          setSelectedEvent(item)
-                        }}
-                        onDoubleClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          clearEventClickTimer()
-                          suppressEventClickRef.current = true
-                          setSelectedEvent(item)
-                          if (isHoliday) return
-                          onEditEvent?.(item)
-                        }}
-                      >
+                      <span className="day-quick-edit-row-marks" aria-hidden="true">
                         <EventAccentGlyph
                           shapeId={item.markerShape}
                           color={accent}
@@ -1033,45 +1033,7 @@ export function DayQuickEditPopover({
                         />
                         <EventTagIcons event={item} tags={tags} />
                       </span>
-                      <span
-                        className="day-quick-edit-item-title"
-                        title={item.title}
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (rowDragMovedRef.current || suppressEventClickRef.current) {
-                            rowDragMovedRef.current = false
-                            suppressEventClickRef.current = false
-                            return
-                          }
-                          openEventDetailFromRow(item, {
-                            x: e.clientX,
-                            y: e.clientY,
-                            screenX: e.screenX,
-                            screenY: e.screenY
-                          })
-                        }}
-                        onDoubleClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          clearEventClickTimer()
-                          suppressEventClickRef.current = true
-                          setSelectedEvent(item)
-                          if (isHoliday) return
-                          onEditEvent?.(item)
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key !== 'Enter' && e.key !== ' ') return
-                          e.preventDefault()
-                          e.stopPropagation()
-                          clearEventClickTimer()
-                          setSelectedEvent(item)
-                          if (e.key === 'Enter') onOpenEvent?.(item)
-                        }}
-                      >
-                        {item.title}
-                      </span>
+                      <span className="day-quick-edit-item-title">{item.title}</span>
                       {hasLinkOrAttach ? (
                         <span className="day-quick-edit-trailing">
                           <EventLinkIcon event={item} />
@@ -1189,6 +1151,57 @@ export function DayQuickEditPopover({
                 if (selectedEvent) void onAttachFiles?.(selectedEvent)
               }}
             />
+            {(() => {
+              const movable = dayEvents.filter(
+                (event) => event.calendarId !== HOLIDAYS_KR_CALENDAR_ID
+              )
+              const selectedSid = selectedEvent
+                ? getSeriesId(selectedEvent) || selectedEvent.id
+                : null
+              const selectedIndex = selectedSid
+                ? movable.findIndex((event) => (getSeriesId(event) || event.id) === selectedSid)
+                : -1
+              const canReorder =
+                canEdit &&
+                Boolean(onReorderEvents) &&
+                Boolean(selectedEvent) &&
+                selectedEvent?.calendarId !== HOLIDAYS_KR_CALENDAR_ID &&
+                selectedIndex >= 0
+              return (
+                <div className="day-quick-edit-order-stack" role="group" aria-label="일정 순서">
+                  <button
+                    type="button"
+                    title="위로 이동"
+                    aria-label="위로 이동"
+                    disabled={!canReorder || selectedIndex <= 0}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      moveSelectedBy(-1)
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden>
+                      <path fill="currentColor" d="M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    title="아래로 이동"
+                    aria-label="아래로 이동"
+                    disabled={!canReorder || selectedIndex >= movable.length - 1}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      moveSelectedBy(1)
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden>
+                      <path fill="currentColor" d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z" />
+                    </svg>
+                  </button>
+                </div>
+              )
+            })()}
             {[-1, 1].map((deltaDays) => {
               const label = deltaDays < 0 ? '-1D' : '+1D'
               const disabled =

@@ -2439,6 +2439,7 @@ body.is-resizing-window {
   min-height: 0;
   flex: 1;
   list-style: none;
+  overflow-x: hidden;
   overflow-y: auto;
   padding: 0;
 }
@@ -2451,6 +2452,8 @@ body.is-resizing-window {
 
 .day-quick-edit-item {
   margin: 0;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .day-quick-edit-item.is-dragging {
@@ -2462,15 +2465,27 @@ body.is-resizing-window {
 }
 
 .day-quick-edit-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: calc(0.35rem * var(--event-density, 1));
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   border-radius: 0.375rem;
   padding: calc(0.2rem * var(--event-density, 1)) 0.25rem;
+  padding-left: calc(0.25rem + 3px);
+  cursor: pointer;
 }
 
 .day-quick-edit-row:hover {
   background: var(--gcal-surface-2);
+}
+
+.day-quick-edit-row:focus-visible {
+  outline: 2px solid var(--gcal-blue, #1a73e8);
+  outline-offset: -2px;
 }
 
 /* html/body set -webkit-user-drag:none; Electron/macOS needs an explicit element. */
@@ -2490,6 +2505,11 @@ body.is-resizing-window {
 
 .day-quick-edit-row.is-selected {
   background: var(--gcal-blue-soft);
+  box-shadow: inset 3px 0 0 var(--gcal-blue, #1a73e8);
+}
+
+.day-quick-edit-row.is-selected:hover {
+  background: var(--gcal-blue-soft);
 }
 
 .day-quick-edit-check {
@@ -2503,7 +2523,6 @@ body.is-resizing-window {
 .day-quick-edit-item-title {
   min-width: 0;
   flex: 1;
-  cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2560,6 +2579,8 @@ body.is-resizing-window {
   flex-shrink: 0;
   align-items: center;
   gap: 0.375rem;
+  min-width: 0;
+  overflow: hidden;
   border-top: 1px solid var(--neo-panel-divider);
   padding: 0.375rem 0.5rem;
 }
@@ -2576,8 +2597,58 @@ body.is-resizing-window {
 .day-quick-edit-footer-left {
   position: relative;
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   gap: 0.25rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Compact ▲▼ stack — one toolbar slot so extra reorder controls do not widen the panel. */
+.day-quick-edit-order-stack {
+  display: inline-flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  align-items: stretch;
+  justify-content: center;
+  width: 1.625rem;
+  height: 1.625rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--gcal-surface-2, #f1f3f4);
+  color: var(--gcal-muted, #5f6368);
+}
+
+.day-quick-edit-order-stack button {
+  display: inline-flex;
+  flex: 1 1 50%;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  line-height: 0;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.day-quick-edit-order-stack button:hover:not(:disabled) {
+  color: var(--gcal-heading, #202124);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.day-quick-edit-order-stack button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.day-quick-edit-order-stack button svg {
+  width: 10px;
+  height: 10px;
+  display: block;
+  flex-shrink: 0;
 }
 
 .day-quick-edit-footer-left .day-quick-edit-color-trigger,
@@ -3373,10 +3444,18 @@ html.neo-panel-window.dark form.shell-solid-surface.rounded-lg {
 
 .day-quick-edit-row-marks {
   display: inline-flex;
-  flex-shrink: 0;
+  flex-shrink: 1;
   align-items: center;
   gap: 0.5rem;
-  cursor: pointer;
+  min-width: 0;
+  max-width: min(40%, 6.5rem);
+  overflow: hidden;
+  cursor: inherit;
+}
+
+.day-quick-edit-row-marks .event-tag-icons {
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* Quick edit rows: the 6px calendar dot needs a bigger hover target for its tooltip. */

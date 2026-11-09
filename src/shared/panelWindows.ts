@@ -129,6 +129,9 @@ export const MAIN_PANEL_WIDTH_RATIO = 0.9
 /** Main panel height — 80% of main calendar / shell height (settings + search). */
 export const MAIN_PANEL_HEIGHT_RATIO = 0.8
 
+/** 세로보기 preferred / max width (DIP). Shrinks when the calendar is narrower. */
+export const DAY_LIST_PREVIEW_PANEL_WIDTH = 1024
+
 export function computeMainPanelWidth(containerWidth: number): number {
   const inner = Math.max(0, containerWidth)
   return Math.max(280, Math.round(inner * MAIN_PANEL_WIDTH_RATIO))
@@ -137,6 +140,19 @@ export function computeMainPanelWidth(containerWidth: number): number {
 export function computeMainPanelHeight(containerHeight: number): number {
   const inner = Math.max(0, containerHeight)
   return Math.max(240, Math.round(inner * MAIN_PANEL_HEIGHT_RATIO))
+}
+
+/** Cap 세로보기 at 1024 when space allows; otherwise fit the available width. */
+export function computeDayListPreviewWidth(
+  containerWidth: number,
+  workAreaWidth?: number
+): number {
+  const pad = VIEWPORT_PAD * 2
+  const available = Math.min(
+    Math.max(0, containerWidth - pad),
+    Math.max(0, (workAreaWidth ?? containerWidth) - pad)
+  )
+  return Math.max(280, Math.min(DAY_LIST_PREVIEW_PANEL_WIDTH, Math.round(available)))
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -376,10 +392,19 @@ export function computePanelWindowBounds(options: {
     })
   }
 
+  if (init.kind === 'dayListPreview') {
+    return centerInMainWindow({
+      mainOrigin,
+      mainSize,
+      workArea,
+      width: computeDayListPreviewWidth(mainSize.width, workArea.width),
+      height: Math.min(computeMainPanelHeight(mainSize.height), workArea.height - VIEWPORT_PAD * 2)
+    })
+  }
+
   if (
     init.kind === 'settings'
     || init.kind === 'search'
-    || init.kind === 'dayListPreview'
     || init.kind === 'attachmentViewer'
     || init.kind === 'footerHelp'
   ) {

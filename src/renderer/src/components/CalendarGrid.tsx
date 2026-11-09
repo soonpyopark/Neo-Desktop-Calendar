@@ -2830,6 +2830,34 @@ export function CalendarGrid({
               as="button"
               className={cn(
                 desktopModeIconBtnClass,
+                softBlueIconBtnClass,
+                searchOpen && softBlueIconBtnActiveClass,
+                (!canEdit || settingsOpen) && LOGIN_MUTED_CLASS
+              )}
+              captureOnHover={captureToolbarOnHover}
+              data-toolbar-action={CHROME_TOOLBAR_ACTIONS.search}
+              aria-label="검색"
+              aria-pressed={searchOpen}
+              title={
+                !canEdit
+                  ? LOGIN_REQUIRED_TITLE
+                  : settingsOpen
+                    ? '설정을 닫은 후 검색할 수 있습니다'
+                    : '검색'
+              }
+              disabled={canEdit ? settingsOpen : false}
+              onClick={() => {
+                if (!requireEdit()) return
+                if (settingsOpen) return
+                openSearch()
+              }}
+            >
+              <SearchIcon />
+            </InteractionUI>
+            <InteractionUI
+              as="button"
+              className={cn(
+                desktopModeIconBtnClass,
                 dayListPreviewIconBtnClass,
                 dayListPreviewOpen && dayListPreviewIconBtnActiveClass,
                 !canEdit && LOGIN_MUTED_CLASS
@@ -3036,33 +3064,6 @@ export function CalendarGrid({
               }
             >
               <LetterSpacingUpIcon />
-            </InteractionUI>
-            <InteractionUI
-              as="button"
-              className={cn(
-                desktopModeIconBtnClass,
-                densityIconBtnClass,
-                (!canEdit || settingsOpen) && LOGIN_MUTED_CLASS
-              )}
-              captureOnHover={captureToolbarOnHover}
-              data-toolbar-action={CHROME_TOOLBAR_ACTIONS.search}
-              aria-label="검색"
-              aria-pressed={searchOpen}
-              title={
-                !canEdit
-                  ? LOGIN_REQUIRED_TITLE
-                  : settingsOpen
-                    ? '설정을 닫은 후 검색할 수 있습니다'
-                    : '검색'
-              }
-              disabled={canEdit ? settingsOpen : false}
-              onClick={() => {
-                if (!requireEdit()) return
-                if (settingsOpen) return
-                openSearch()
-              }}
-            >
-              <SearchIcon />
             </InteractionUI>
             <InteractionUI
               as="button"
