@@ -2,7 +2,9 @@ export const QUICK_EDIT_CHROME_HEIGHT = 82
 export const QUICK_EDIT_BODY_EXTRA_MONTH = 96
 export const QUICK_EDIT_YEAR_VISIBLE_ITEMS = 6
 export const QUICK_EDIT_ITEM_ROW_PX = 32
-export const QUICK_EDIT_CREATE_ROW_PX = 36
+/** Extra body height when the create form wraps onto a second row (single row now → 0). */
+export const QUICK_EDIT_CREATE_EXTRA_PX = 0
+export const QUICK_EDIT_CREATE_ROW_PX = 36 + QUICK_EDIT_CREATE_EXTRA_PX
 export const QUICK_EDIT_BODY_LAYOUT_PX = 24
 export const QUICK_EDIT_MIN_BODY_HEIGHT = 72
 export const QUICK_EDIT_VIEWPORT_PAD = 5
@@ -11,7 +13,7 @@ export const QUICK_EDIT_VIEWPORT_PAD = 5
  * Wide enough for footer tools (color / mark / link / attach / edit / trash / ±1D / copy).
  */
 export const QUICK_EDIT_MONTH_YEAR_WIDTH = 330
-export const QUICK_EDIT_MONTH_YEAR_HEIGHT = 357
+export const QUICK_EDIT_MONTH_YEAR_HEIGHT = 357 + QUICK_EDIT_CREATE_EXTRA_PX
 
 export type QuickEditViewMode = 'year' | 'week' | 'month'
 
@@ -155,7 +157,7 @@ export function computeQuickEditPanelSize(options: {
     floorBody,
     Math.round(usableAnchor.height) + bodyExtra,
     bodyExtra > 0 ? 160 : QUICK_EDIT_MIN_BODY_HEIGHT
-  )
+  ) + QUICK_EDIT_CREATE_EXTRA_PX
   const height = desiredBody + QUICK_EDIT_CHROME_HEIGHT
   return { width, height }
 }

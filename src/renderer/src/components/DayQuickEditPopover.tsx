@@ -46,6 +46,7 @@ import type { DayReorderItem } from '../lib/dayReorder'
 
 import {
   QUICK_EDIT_CHROME_HEIGHT,
+  QUICK_EDIT_CREATE_EXTRA_PX,
   QUICK_EDIT_BODY_EXTRA_MONTH,
   QUICK_EDIT_MIN_BODY_HEIGHT,
   QUICK_EDIT_MONTH_YEAR_HEIGHT,
@@ -229,7 +230,7 @@ function buildQuickEditStyle(
     floorBody,
     Math.round(usableAnchor.height) + bodyExtra,
     bodyExtra > 0 ? 160 : QUICK_EDIT_MIN_BODY_HEIGHT
-  )
+  ) + QUICK_EDIT_CREATE_EXTRA_PX
   const height = desiredBody + QUICK_EDIT_CHROME_HEIGHT
   const left = usableAnchor.left + usableAnchor.width / 2 - width / 2
   const top = usableAnchor.top + usableAnchor.height / 2 - height / 2
@@ -859,6 +860,24 @@ export function DayQuickEditPopover({
               inputRef.current?.focus({ preventScroll: true })
             }}
           >
+            <EventMarkerShapeButton
+              value={selectedEvent?.markerShape}
+              color={
+                selectedEvent
+                  ? (calendars.find((c) => c.id === selectedEvent.calendarId)?.color ??
+                    selectedEvent.color ??
+                    '#1a73e8')
+                  : '#1a73e8'
+              }
+              disabled={
+                !canEdit
+                || !selectedEvent
+                || selectedEvent.calendarId === HOLIDAYS_KR_CALENDAR_ID
+              }
+              onChange={(shapeId) => {
+                if (selectedEvent) onEventMarkerShapeChange?.(selectedEvent, shapeId)
+              }}
+            />
             <EmojiPickerButton
               title="이모지 추가"
               disabled={!canEdit || saving}
@@ -888,7 +907,7 @@ export function DayQuickEditPopover({
             <input
               ref={inputRef}
               type="text"
-              className="day-quick-edit-input flex-1"
+              className="day-quick-edit-input"
               placeholder={canEdit ? '일정 추가 (종일)' : '로그인 후 추가할 수 있습니다'}
               value={title}
               disabled={!canEdit || saving}
@@ -1113,24 +1132,6 @@ export function DayQuickEditPopover({
                 </svg>
               ) : null}
             </button>
-            <EventMarkerShapeButton
-              value={selectedEvent?.markerShape}
-              color={
-                selectedEvent
-                  ? (calendars.find((c) => c.id === selectedEvent.calendarId)?.color ??
-                    selectedEvent.color ??
-                    '#1a73e8')
-                  : '#1a73e8'
-              }
-              disabled={
-                !canEdit
-                || !selectedEvent
-                || selectedEvent.calendarId === HOLIDAYS_KR_CALENDAR_ID
-              }
-              onChange={(shapeId) => {
-                if (selectedEvent) onEventMarkerShapeChange?.(selectedEvent, shapeId)
-              }}
-            />
             <EventLinkButton
               links={linkList}
               onChange={handleLinksChange}
@@ -1182,7 +1183,7 @@ export function DayQuickEditPopover({
                     }}
                   >
                     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
-                      <path fill="currentColor" d="M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z" />
+                      <path fill="currentColor" d="M12 5.5 20 18H4z" />
                     </svg>
                   </button>
                   <button
@@ -1198,7 +1199,7 @@ export function DayQuickEditPopover({
                     }}
                   >
                     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
-                      <path fill="currentColor" d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z" />
+                      <path fill="currentColor" d="M12 18.5 4 6h16z" />
                     </svg>
                   </button>
                 </>

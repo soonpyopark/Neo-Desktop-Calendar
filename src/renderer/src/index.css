@@ -2250,7 +2250,9 @@ body.is-resizing-window {
   flex-direction: column;
   overflow: hidden;
   border-radius: 0.75rem;
-  border: 1px solid var(--gcal-border);
+  /* 1px frame, a bit stronger than --gcal-border so it reads on every skin. */
+  --neo-quick-edit-border: color-mix(in srgb, var(--gcal-heading) 32%, var(--gcal-border));
+  border: 1px solid var(--neo-quick-edit-border);
   background: var(--gcal-surface);
   box-shadow: var(--shadow-g-lg, 0 8px 28px rgba(60, 64, 67, 0.22));
 }
@@ -2411,6 +2413,12 @@ body.is-resizing-window {
   gap: 0.375rem;
 }
 
+/* Title input shares the row with the tool buttons (shape / emoji / calendar / tag). */
+.day-quick-edit-create .day-quick-edit-input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 .day-quick-edit-input {
   width: 100%;
   border-radius: 0.5rem;
@@ -2479,6 +2487,7 @@ body.is-resizing-window {
   border-radius: 0.375rem;
   padding: calc(0.2rem * var(--event-density, 1)) 0.25rem;
   padding-left: calc(0.25rem + 3px);
+  padding-right: calc(0.25rem + 3px);
   cursor: pointer;
 }
 
@@ -2508,7 +2517,9 @@ body.is-resizing-window {
 
 .day-quick-edit-row.is-selected {
   background: var(--gcal-blue-soft);
-  box-shadow: inset 3px 0 0 var(--gcal-blue, #1a73e8);
+  box-shadow:
+    inset 3px 0 0 var(--gcal-blue, #1a73e8),
+    inset -3px 0 0 var(--gcal-blue, #1a73e8);
 }
 
 .day-quick-edit-row.is-selected:hover {
@@ -2767,6 +2778,8 @@ html.neo-quick-edit-window .day-quick-edit {
   width: 100%;
   height: 100%;
   max-height: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--neo-quick-edit-border);
   box-shadow: none;
 }
 
@@ -2822,6 +2835,11 @@ html.neo-quick-edit-window.dark .recurrence-scope-shell {
   background: var(--gcal-surface);
   border-color: var(--gcal-border);
   color: var(--gcal-body);
+}
+
+html.neo-panel-window.dark .day-quick-edit,
+html.neo-quick-edit-window.dark .day-quick-edit {
+  border-color: var(--neo-quick-edit-border);
 }
 
 html.neo-panel-window.dark form.shell-solid-surface.rounded-lg {

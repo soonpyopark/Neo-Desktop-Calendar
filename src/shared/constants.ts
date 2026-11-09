@@ -5,7 +5,7 @@ export const APP_VERSION = '1.2.3'
  * `build:release` / `build:msi` / `build:portable` / `build:dist:mac`이 갱신한다.
  * 공개 버전이 같아도 재배포 시 업데이트 확인(OS별 스탬프 비교)에 쓴다.
  */
-export const APP_BUILD_STAMP = '261109_160120'
+export const APP_BUILD_STAMP = '261109_162931'
 export const APP_NAME = 'Neo Desktop Calendar'
 export const APP_TITLE = `${APP_NAME} v${APP_VERSION}`
 export const SITE_URL = 'https://note4all.tistory.com'

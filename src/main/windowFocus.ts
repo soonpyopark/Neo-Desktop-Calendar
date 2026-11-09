@@ -146,7 +146,10 @@ export function raiseFloatingPanelWindow(win: BrowserWindow | null | undefined):
   detachFloatingPanelParent(win)
 
   try {
-    win.setAlwaysOnTop(true, 'screen-saver')
+    // macOS: Chromium draws native `title` tooltips in a status-level window. A
+    // 'screen-saver' panel sits above it and hides the tooltip, so stay at 'floating'
+    // (still above the main calendar window and other normal windows).
+    win.setAlwaysOnTop(true, process.platform === 'darwin' ? 'floating' : 'screen-saver')
     win.moveTop()
   } catch (error) {
     console.warn('[focus] panel alwaysOnTop failed', error)
