@@ -90,7 +90,7 @@ export function DayHighlightPalette({
         compact={compact}
         value={value}
         isActive={isCustomSelected}
-        defaultDraft="#ded074"
+        defaultDraft="#caa458"
         onApply={(color) => onChange(color)}
         onRequestClose={onRequestClose}
         swatchClassName="day-color-swatch day-color-swatch--picker"

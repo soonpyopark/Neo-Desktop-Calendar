@@ -166,7 +166,7 @@ export function BackupSettingsPanel(): ReactElement {
       <section className="rounded-lg border border-gcal-border bg-gcal-surface p-5">
         <h3 className="mb-2 text-base font-medium text-gcal-heading">백업 대상</h3>
         <p className="text-sm leading-relaxed text-gcal-muted">
-          일정 데이터와 첨부 파일을 ZIP 하나로 저장합니다. 가져오기/내보내기의 저장 대화상자와
+          일정 데이터와 첨부 파일을 ZIP 하나로 저장합니다. 위 가져오기 / 내보내기의 저장 대화상자와
           같은 내용이며, 여기에서는 지정한 폴더에 날짜별 폴더로 쌓입니다.
         </p>
       </section>

@@ -130,7 +130,8 @@ export type DayQuickEditPopoverProps = {
   onShiftEvent?: (event: CalendarEvent, deltaDays: number) => void | Promise<void>
   /** Copy selected event onto another date (single instance; closes panel after). */
   onCopyEvent?: (event: CalendarEvent, targetDateKey: string) => void | Promise<void>
-  onOpenMore: (event?: CalendarEvent | null) => void
+  /** @deprecated Footer pencil removed; use onEditEvent / row double-click. Kept for callers. */
+  onOpenMore?: (event?: CalendarEvent | null) => void
   /** @deprecated Row click selects only; use onEditEvent / footer edit. Kept for callers. */
   onOpenEvent?: (
     event: CalendarEvent,
@@ -292,7 +293,6 @@ export function DayQuickEditPopover({
   onReorderEvents,
   onShiftEvent,
   onCopyEvent,
-  onOpenMore,
   onEditEvent,
   onAttachFiles,
   onDeleteCompleted,
@@ -1168,9 +1168,10 @@ export function DayQuickEditPopover({
                 selectedEvent?.calendarId !== HOLIDAYS_KR_CALENDAR_ID &&
                 selectedIndex >= 0
               return (
-                <div className="day-quick-edit-order-stack" role="group" aria-label="일정 순서">
+                <>
                   <button
                     type="button"
+                    className="day-quick-edit-edit"
                     title="위로 이동"
                     aria-label="위로 이동"
                     disabled={!canReorder || selectedIndex <= 0}
@@ -1180,12 +1181,13 @@ export function DayQuickEditPopover({
                       moveSelectedBy(-1)
                     }}
                   >
-                    <svg viewBox="0 0 24 24" aria-hidden>
+                    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
                       <path fill="currentColor" d="M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z" />
                     </svg>
                   </button>
                   <button
                     type="button"
+                    className="day-quick-edit-edit"
                     title="아래로 이동"
                     aria-label="아래로 이동"
                     disabled={!canReorder || selectedIndex >= movable.length - 1}
@@ -1195,11 +1197,11 @@ export function DayQuickEditPopover({
                       moveSelectedBy(1)
                     }}
                   >
-                    <svg viewBox="0 0 24 24" aria-hidden>
+                    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
                       <path fill="currentColor" d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z" />
                     </svg>
                   </button>
-                </div>
+                </>
               )
             })()}
             {[-1, 1].map((deltaDays) => {
@@ -1258,20 +1260,6 @@ export function DayQuickEditPopover({
                 </button>
               )
             })()}
-            <button
-              type="button"
-              className="day-quick-edit-edit"
-              title="상세 일정 편집"
-              aria-label="상세 일정 편집"
-              onClick={() => onOpenMore(selectedEvent)}
-            >
-              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
-                <path
-                  fill="currentColor"
-                  d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"
-                />
-              </svg>
-            </button>
             {onDeleteCompleted ? (
               <button
                 type="button"

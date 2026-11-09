@@ -20,7 +20,11 @@ import {
   HtmlIcon,
   PdfIcon
 } from './CalendarHeaderIcons'
-import type { CalendarStoreSnapshot, EventAttachment } from '../../../shared/calendarTypes'
+import type {
+  CalendarEvent,
+  CalendarStoreSnapshot,
+  EventAttachment
+} from '../../../shared/calendarTypes'
 import { HOLIDAYS_KR_CALENDAR_ID } from '../../../shared/calendarDefaults'
 import { exportFormatLabel, formatExportRangeLabel } from '../../../shared/exportCalendarHelpers.js'
 import type { ExportCalendarFormat } from '../../../shared/exportCalendar'
@@ -543,6 +547,49 @@ export function DayListPreviewPanel({
     setViewMonth(year * 12 + month)
   }, [month, year])
 
+  // The shared store only holds events for the range the host window loaded (the
+  // month it opened on, or the main calendar's visible weeks). Browsing to another
+  // month with the header arrows / [오늘] must load that month itself, otherwise
+  // one-off events outside the loaded range silently disappear.
+  const [monthEvents, setMonthEvents] = useState<{
+    key: number
+    events: CalendarEvent[]
+  } | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const api = window.neoCalendar
+    if (!api?.listCalendarEvents) return
+    let cancelled = false
+    const key = viewMonth
+    const from = toDateKey(shownYear, shownMonth, 1)
+    const to = toDateKey(
+      shownYear,
+      shownMonth,
+      new Date(shownYear, shownMonth + 1, 0).getDate()
+    )
+    void api
+      .listCalendarEvents({ from, to })
+      .then((events) => {
+        if (!cancelled) setMonthEvents({ key, events })
+      })
+      .catch(() => {
+        /* keep the store's events */
+      })
+    return () => {
+      cancelled = true
+    }
+    // `store` changes on every store-changed broadcast → reload after edits.
+  }, [open, shownMonth, shownYear, store, viewMonth])
+
+  const layoutStore = useMemo<CalendarStoreSnapshot>(
+    () =>
+      monthEvents && monthEvents.key === viewMonth
+        ? { ...store, events: monthEvents.events }
+        : store,
+    [monthEvents, store, viewMonth]
+  )
+
   const layout = useMemo(() => {
     const startDate = toDateKey(shownYear, shownMonth, 1)
     const endDate = toDateKey(
@@ -551,7 +598,7 @@ export function DayListPreviewPanel({
       new Date(shownYear, shownMonth + 1, 0).getDate()
     )
     try {
-      return prepareDayListExportLayout(store, { startDate, endDate }, {
+      return prepareDayListExportLayout(layoutStore, { startDate, endDate }, {
         includeCompleted: !completedHidden,
         includeHolidays: true,
         excludeHiddenCalendars: true
@@ -559,7 +606,7 @@ export function DayListPreviewPanel({
     } catch {
       return null
     }
-  }, [completedHidden, shownMonth, shownYear, store])
+  }, [completedHidden, layoutStore, shownMonth, shownYear])
 
   const { rows, matchCount } = useMemo(() => {
     const needle = query.trim()
@@ -594,7 +641,7 @@ export function DayListPreviewPanel({
                   ? { eventId: event.eventId, attachmentId }
                   : null
               const meta = attachment
-                ? findAttachmentMeta(store, attachment.eventId, attachment.attachmentId)
+                ? findAttachmentMeta(layoutStore, attachment.eventId, attachment.attachmentId)
                 : null
               return {
                 kind,
@@ -624,7 +671,7 @@ export function DayListPreviewPanel({
       }
     })
     return { rows: built, matchCount: index }
-  }, [eventsHidden, layout, query, sortDir, store])
+  }, [eventsHidden, layout, layoutStore, query, sortDir])
 
   const openAttachment = useCallback(
     async (attachment: AttachmentRef | null): Promise<void> => {

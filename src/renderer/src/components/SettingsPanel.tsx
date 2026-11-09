@@ -961,7 +961,7 @@ function CalendarSettingsPanel({
 
       if (picked.kind === 'zip-restored') {
         throw new Error(
-          '전체 ZIP 백업은 설정 → 가져오기 / 내보내기의 파일 선택으로 가져와 주세요.'
+          '전체 ZIP 백업은 설정 → 가져오기 / 내보내기 / 백업관리의 파일 선택으로 가져와 주세요.'
         )
       }
 
@@ -1381,7 +1381,7 @@ export function SettingsPanel({
                   active={section === 'import-export'}
                   onClick={() => setSection('import-export')}
                 >
-                  가져오기 / 내보내기
+                  가져오기 / 내보내기 / 백업관리
                 </NavBtn>
               ) : null}
               <NavBtn active={section === 'tags'} onClick={() => setSection('tags')}>

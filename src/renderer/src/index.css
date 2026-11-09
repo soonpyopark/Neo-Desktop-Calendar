@@ -932,7 +932,7 @@ textarea {
   left: 1px;
   z-index: -1;
   border-radius: 4px;
-  background: color-mix(in srgb, var(--day-highlight, #ded074) 85%, transparent);
+  background: color-mix(in srgb, var(--day-highlight, #caa458) 85%, transparent);
 }
 
 .day-cell.today {
@@ -2348,6 +2348,9 @@ body.is-resizing-window {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+  /* Match calendar chrome skin (headerFill), solid on the opaque panel. */
+  background-color: var(--neo-header-fill);
+  color: var(--gcal-body);
   border-bottom: 1px solid var(--neo-panel-divider);
   padding: 0.5rem 0.75rem;
 }
@@ -2535,7 +2538,6 @@ body.is-resizing-window {
 
 .day-quick-edit-row.is-completed .day-quick-edit-item-title {
   color: var(--gcal-muted);
-  text-decoration: line-through;
 }
 
 .day-quick-edit-trailing {
@@ -2581,6 +2583,9 @@ body.is-resizing-window {
   gap: 0.375rem;
   min-width: 0;
   overflow: hidden;
+  /* Match calendar chrome skin (footerFill), solid on the opaque panel. */
+  background-color: var(--neo-footer-fill);
+  color: var(--gcal-body);
   border-top: 1px solid var(--neo-panel-divider);
   padding: 0.375rem 0.5rem;
 }
@@ -2602,53 +2607,6 @@ body.is-resizing-window {
   gap: 0.25rem;
   min-width: 0;
   overflow: hidden;
-}
-
-/* Compact ▲▼ stack — one toolbar slot so extra reorder controls do not widen the panel. */
-.day-quick-edit-order-stack {
-  display: inline-flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  align-items: stretch;
-  justify-content: center;
-  width: 1.625rem;
-  height: 1.625rem;
-  overflow: hidden;
-  border-radius: 9999px;
-  background: var(--gcal-surface-2, #f1f3f4);
-  color: var(--gcal-muted, #5f6368);
-}
-
-.day-quick-edit-order-stack button {
-  display: inline-flex;
-  flex: 1 1 50%;
-  align-items: center;
-  justify-content: center;
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  line-height: 0;
-  transition: color 0.15s, background-color 0.15s;
-}
-
-.day-quick-edit-order-stack button:hover:not(:disabled) {
-  color: var(--gcal-heading, #202124);
-  background: rgba(0, 0, 0, 0.04);
-}
-
-.day-quick-edit-order-stack button:disabled {
-  cursor: not-allowed;
-  opacity: 0.35;
-}
-
-.day-quick-edit-order-stack button svg {
-  width: 10px;
-  height: 10px;
-  display: block;
-  flex-shrink: 0;
 }
 
 .day-quick-edit-footer-left .day-quick-edit-color-trigger,
@@ -3016,7 +2974,7 @@ html.neo-panel-window.dark form.shell-solid-surface.rounded-lg {
   justify-items: center;
 }
 
-/* 19 pastel presets + 색상 제거 + 사용자 정의 = three even rows of 7. */
+/* 19 theme-neutral presets + 색상 제거 + 사용자 정의 = three even rows of 7. */
 .day-color-palette--compact {
   grid-template-rows: repeat(3, 22px);
   grid-template-columns: repeat(7, 22px);

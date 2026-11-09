@@ -1,26 +1,26 @@
 /**
- * 형광펜 colors for the day-number highlight — same pastel family as the day-cell
- * palette, one step deeper (relative luminance ~0.62) so the circle stays visible
- * behind the date while every hue keeps the same brightness.
+ * 형광펜 colors for the day-number highlight — same theme-neutral hue wheel as the
+ * day-cell frame palette, one step lighter (relative luminance ~0.40) so the date
+ * number stays readable on light and dark skins alike.
  */
 export const DAY_HIGHLIGHT_PALETTE = [
-  '#f1c4c2',
-  '#eec6b8',
-  '#eac9a7',
-  '#e5cc92',
-  '#ded074',
-  '#bfda63',
-  '#9ee079',
-  '#86e398',
-  '#7de0c3',
-  '#77dfdf',
-  '#a3d6e9',
-  '#b4d2ed',
-  '#c0cef0',
-  '#cbcbf3',
-  '#d7c8f2',
-  '#e6c3f1',
-  '#f0c1e7',
-  '#f1c3d3',
-  '#cecece'
+  '#de9797',
+  '#d79d80',
+  '#caa458',
+  '#b5ad39',
+  '#95b639',
+  '#67be3c',
+  '#3dc24f',
+  '#3cbf82',
+  '#3bbcab',
+  '#5db6cc',
+  '#80afd7',
+  '#93a9dd',
+  '#a3a5e2',
+  '#b3a0e1',
+  '#c599df',
+  '#d990dc',
+  '#dd92c4',
+  '#de95ab',
+  '#a6aab1'
 ] as const

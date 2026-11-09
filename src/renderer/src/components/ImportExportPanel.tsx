@@ -127,7 +127,7 @@ export function ImportExportPanel({
 
   return (
     <div className="w-full max-w-full text-left">
-      <h2 className="mb-8 text-[22px] font-normal text-gcal-heading">가져오기 / 내보내기</h2>
+      <h2 className="mb-8 text-[22px] font-normal text-gcal-heading">가져오기 / 내보내기 / 백업관리</h2>
       <div className="space-y-4">
         <div className="rounded-lg border border-gcal-border bg-gcal-surface p-5">
           <h3 className="mb-2 text-base font-medium text-gcal-heading">가져오기</h3>

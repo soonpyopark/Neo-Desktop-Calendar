@@ -84,7 +84,7 @@ Admin login credentials come from `.env` (`MYCALENDAR_ADMIN_ID` / `MYCALENDAR_AD
 
 - Session role is loaded from `data/members.json` on login/restore.
 - Settings → **내 계정** is available to every logged-in user for password change.
-- Admin-only Settings tabs (보안·서버 관리·회원·공휴일 동기화·전체 가져오기/내보내기) and matching IPC/HTTP APIs reject non-admins with “권한이 없습니다.”
+- Admin-only Settings tabs (보안·서버 관리·회원·공휴일 동기화·전체 가져오기 / 내보내기 / 백업관리) and matching IPC/HTTP APIs reject non-admins with “권한이 없습니다.”
 - Agent rule: `.cursor/rules/neo-permissions.mdc`
 
 ## Build
